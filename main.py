@@ -46,22 +46,35 @@ MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3: 'Четверг', 4: 'Пятница', 5: 'Суббота'}
 
-# --- РАСПИСАНИЕ ЗВОНКОВ И ОБЕДОВ ---
-BELLS = [
-    (1, "08:30", "10:00", datetime.time(8, 30), datetime.time(10, 0)),
-    (2, "10:20", "11:50", datetime.time(10, 20), datetime.time(11, 50)),
-    (3, "12:30", "14:00", datetime.time(12, 30), datetime.time(14, 0)),
-    (4, "14:20", "15:50", datetime.time(14, 20), datetime.time(15, 50)),
-    (5, "16:00", "17:30", datetime.time(16, 0), datetime.time(17, 30)),
-    (6, "17:40", "19:10", datetime.time(17, 40), datetime.time(19, 10)),
-    (7, "19:20", "20:50", datetime.time(19, 20), datetime.time(20, 50)),
-]
+# --- РАСПИСАНИЕ ЗВОНКОВ (КОЛЛЕДЖ + ВЫСШАЯ ШКОЛА) ---
+BELLS_TABLE = {
+    # Высшая школа (ВШЭиП)
+    "08:00": ("08:00", "09:30", 1, None),
+    "09:40": ("09:40", "11:10", 2, "🥪 Обед 40 мин (11:10 – 11:50)"),
+    "11:50": ("11:50", "13:20", 3, None),
+    "13:30": ("13:30", "15:00", 4, None),
+    "15:40": ("15:40", "17:10", 5, None),
+    "17:20": ("17:20", "18:50", 6, None),
+    "19:00": ("19:00", "20:30", 7, None),
 
-def get_slot_by_time_str(time_str: str):
-    for slot, s_str, e_str, st, et in BELLS:
-        if time_str.startswith(s_str):
-            return slot, s_str, e_str, st, et
-    return None, time_str, "", None, None
+    # Колледж (ИЭК)
+    "08:30": ("08:30", "10:00", 1, None),
+    "10:20": ("10:20", "11:50", 2, "🥪 Обед 40 мин (11:50 – 12:30)"),
+    "12:30": ("12:30", "14:00", 3, None),
+    "14:20": ("14:20", "15:50", 4, None),
+    "16:00": ("16:00", "17:30", 5, None),
+    "17:40": ("17:40", "19:10", 6, None),
+    "19:20": ("19:20", "20:50", 7, None)
+}
+
+def get_slot_info(time_str: str):
+    prefix = time_str[:5]
+    if prefix in BELLS_TABLE:
+        s_str, e_str, slot, lunch = BELLS_TABLE[prefix]
+        st = datetime.time(int(s_str[:2]), int(s_str[3:]))
+        et = datetime.time(int(e_str[:2]), int(e_str[3:]))
+        return slot, s_str, e_str, st, et, lunch
+    return None, time_str, "", None, None, None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
