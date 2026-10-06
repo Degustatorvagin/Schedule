@@ -22,14 +22,15 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
+# --- ПЕРЕМЕННЫЕ И НАСТРОЙКИ ХОСТИНГА ---
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
-WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://bot-1791299850-3323-degustatorvagin.bothost.tech/").rstrip("/")
+WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://bot-1791299850-3323-degustatorvagin.bothost.tech").rstrip("/")
 PORT = int(os.getenv("PORT", 3000))
 
 DEFAULT_GROUP = "7241452"
-ANCHOR_MONDAY = datetime.date(2026, 8, 31)
+ANCHOR_MONDAY = datetime.date(2026, 8, 31)  # 2 сентября 2026 — верхняя неделя
 JSON_FILE = "schedule.json"
 DB_FILE = "users.db"
 MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
@@ -37,13 +38,15 @@ MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3: 'Четверг', 4: 'Пятница', 5: 'Суббота'}
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
+# --- FSM ДЛЯ СМЕНЫ ГРУППЫ ---
 class Form(StatesGroup):
     waiting_for_group = State()
 
+# --- БАЗА ДАННЫХ SQLITE ---
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
@@ -95,6 +98,7 @@ def get_stats():
         row = cursor.fetchone()
         return (row[0] or 0), (row[1] or 0)
 
+# --- РАСПИСАНИЕ И ЛОГИКА КАЛЕНДАРЯ ---
 def load_schedule() -> dict:
     if os.path.exists(JSON_FILE):
         with open(JSON_FILE, "r", encoding="utf-8") as f:
@@ -136,6 +140,7 @@ def format_day(day_name: str, wn: str, lessons: list) -> str:
             lines.append(f"    👤 {l['teacher']}")
     return "\n".join(lines)
 
+# --- КЛАВИАТУРЫ ДЛЯ TELEGRAM ---
 def main_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
     rows = [
         [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="➡️ Завтра")],
@@ -177,6 +182,7 @@ def settings_keyboard(notify_enabled: bool, is_admin: bool = False) -> InlineKey
         kb.append([InlineKeyboardButton(text="📊 Статистика пользователей", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
+# --- ОБРАБОТЧИКИ СООБЩЕНИЙ БОТА ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
@@ -290,8 +296,7 @@ async def cmd_web_admin(msg: Message):
         await msg.answer("⛔ Доступ только для администратора.")
         return
 
-    domain = WEB_DOMAIN or "https://твой-домен.bothost.tech"
-    admin_url = f"{domain}/admin?token={ADMIN_TOKEN}"
+    admin_url = f"{WEB_DOMAIN}/admin?token={ADMIN_TOKEN}"
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
@@ -361,6 +366,7 @@ async def cb_all(call: CallbackQuery):
     await call.message.edit_text("\n\n".join(parts), reply_markup=days_keyboard(wn))
     await call.answer()
 
+# --- ПАРСЕР ТАБЛИЦ EXCEL ---
 def parse_excel(file_path: str, group: str = DEFAULT_GROUP) -> dict:
     df = pd.read_excel(file_path, sheet_name=0, header=None)
     target_col = None
@@ -436,6 +442,7 @@ async def handle_excel_upload(msg: Message):
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
+# --- АВТОМАТИЧЕСКАЯ УТРЕННЯЯ РАССЫЛКА (07:30 MSK) ---
 async def morning_broadcast_worker():
     last_sent_date = None
     while True:
@@ -460,6 +467,7 @@ async def morning_broadcast_worker():
             logging.error(f"Ошибка в рассылке: {e}")
         await asyncio.sleep(20)
 
+# --- HTML/CSS/JS ВЕБ-ПАНЕЛИ УПРАВЛЕНИЯ ---
 ADMIN_HTML = """<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -567,7 +575,7 @@ ADMIN_HTML = """<!DOCTYPE html>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        let token = urlParams.get('token') || localStorage.getItem('admin_token') || 'kfu7241_secret_key';
+        let token = urlParams.get('token') || localStorage.getItem('admin_token') || 'key';
         localStorage.setItem('admin_token', token);
 
         let currentWN = 'в';
@@ -751,6 +759,7 @@ ADMIN_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
+# --- ЭНДПОИНТЫ ВЕБ-СЕРВЕРА AIOHTTP ---
 async def handle_index(request):
     return web.Response(text=ADMIN_HTML, content_type='text/html')
 
@@ -845,16 +854,29 @@ def create_web_app():
     app.router.add_post('/api/upload_excel', handle_api_upload_excel)
     return app
 
+# --- ТОЧКА ВХОДА И ЗАПУСК ---
 async def main():
     init_db()
     asyncio.create_task(morning_broadcast_worker())
 
+    # Сервер слушает и целевой порт 3000, и fallback-порт 80
     app = create_web_app()
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-    logging.info(f"Веб-сервер запущен на 0.0.0.0:{PORT}")
+    
+    ports_to_try = [PORT]
+    if 3000 not in ports_to_try:
+        ports_to_try.append(3000)
+    if 80 not in ports_to_try:
+        ports_to_try.append(80)
+
+    for p in ports_to_try:
+        try:
+            site = web.TCPSite(runner, '0.0.0.0', p)
+            await site.start()
+            logging.info(f"Веб-сервер запущен на 0.0.0.0:{p}")
+        except Exception as e:
+            logging.warning(f"Не удалось поднять порт {p}: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
