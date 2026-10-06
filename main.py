@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import io
 import json
 import logging
 import os
@@ -15,6 +16,8 @@ from aiogram.types import (
     InlineKeyboardButton,
     CallbackQuery,
     Message,
+    BufferedInputFile,
+    InputMediaPhoto,
     WebAppInfo
 )
 from aiogram.enums import ParseMode
@@ -22,7 +25,13 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-# --- КОНФИГУРАЦИЯ BOTHOST ---
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
+
+# --- КОНФИГУРАЦИЯ ---
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
@@ -40,13 +49,13 @@ DB_FILE = os.path.join(DATA_DIR, "users.db")
 JSON_FILE = "schedule.json"
 
 DEFAULT_GROUP = "7241452"
-ANCHOR_MONDAY = datetime.date(2026, 8, 31)  # 2 сентября 2026 — верхняя неделя
+ANCHOR_MONDAY = datetime.date(2026, 8, 31)
 MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3: 'Четверг', 4: 'Пятница', 5: 'Суббота'}
 
-# --- СЕТКА ЗВОНКОВ И ОБЕДОВ (ВШЭиП И КОЛЛЕДЖ) ---
+# --- СЕТКА ЗВОНКОВ ---
 BELLS_TABLE = {
     # Высшая школа (ВШЭиП)
     "08:00": ("08:00", "09:30", 1),
@@ -65,6 +74,16 @@ BELLS_TABLE = {
     "17:40": ("17:40", "19:10", 6),
     "19:20": ("19:20", "20:50", 7)
 }
+
+def normalize_type(typ: str) -> str:
+    t = typ.lower().strip()
+    if 'лек' in t:
+        return "Лекция"
+    elif 'пр' in t or 'сем' in t:
+        return "Практика"
+    elif 'лаб' in t:
+        return "Лабораторная"
+    return typ.capitalize() if typ else ""
 
 def get_slot_info(time_str: str):
     prefix = time_str[:5]
@@ -85,10 +104,8 @@ def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr
         h = diff_m // 60
         m = diff_m % 60
         time_txt = f"{h} ч {m} мин" if (h > 0 and m > 0) else (f"{h} ч" if h > 0 else f"{m} мин")
-        # Обед
         if (prev_end_str == "11:50" and curr_start_str == "12:30") or (prev_end_str == "11:10" and curr_start_str == "11:50"):
             return f"\n🥪 <i>Обед {time_txt} ({prev_end_str} – {curr_start_str})</i>\n"
-        # Окно (> 45 минут или пропуск слота)
         if diff_m >= 45 or (prev_slot and curr_slot and curr_slot - prev_slot > 1):
             return f"\n🕳 <b>Окно {time_txt}</b> ({prev_end_str} – {curr_start_str})\n"
         else:
@@ -96,10 +113,10 @@ def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr
     except Exception:
         return ""
 
-# --- ВСТРОЕННАЯ БАЗА РАСПИСАНИЯ ДЛЯ 7241452 И 18.2-545 ---
+# --- ВСТРОЕННАЯ БАЗА ---
 BUILTIN_SCHEDULES = {
     "18.2-545": {
-        "spec": "Филология (Перевод и переводоведение)",
+        "spec": "Филология (ВШЭиП, УЛК-7)",
         "schedule": {
             "в": {
                 "Понедельник": [
@@ -158,7 +175,7 @@ BUILTIN_SCHEDULES = {
         }
     },
     "7241452": {
-        "spec": "Информационные системы и программирование",
+        "spec": "ИСиП (Колледж)",
         "schedule": {
             "в": {
                 "Понедельник": [
@@ -245,6 +262,17 @@ def init_db():
                 )
             """)
             conn.commit()
+            for col, col_type, default_val in [
+                ("notify_morning", "INTEGER", "1"),
+                ("notify_remind", "INTEGER", "1"),
+                ("notify_hw", "INTEGER", "1"),
+                ("view_type", "TEXT", "'text'")
+            ]:
+                try:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type} DEFAULT {default_val}")
+                    conn.commit()
+                except Exception:
+                    pass
     except Exception as e:
         logging.error(f"Ошибка БД: {e}")
 
@@ -283,11 +311,11 @@ def update_user_field(user_id: int, field: str, value):
     except Exception as e:
         logging.error(f"Ошибка обновления {field}: {e}")
 
-def get_subscribers():
+def get_subscribers(field: str = "notify_morning"):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT user_id, group_name FROM users WHERE notify_morning = 1")
+            cursor.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1")
             return cursor.fetchall()
     except Exception:
         return []
@@ -319,26 +347,16 @@ def find_group(query: str):
     clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
     if not clean_q:
         return None
-
-    # Прямое совпадение
     for grp in SCHEDULE_DB.keys():
         if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
             return grp
-
-    # Приоритет группы девушки (18.2-545)
     if "545" in query:
-        if "18.2" in query or "182" in clean_q or "филолог" in query.lower():
-            return "18.2-545"
-        return "18.2-545" if "18.2-545" in SCHEDULE_DB else "18.03-545"
-
-    # Приоритет группы парня (7241452)
+        return "18.2-545"
     if "452" in query or "исип" in query.lower():
         return "7241452"
-
     for grp in SCHEDULE_DB.keys():
         if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
             return grp
-
     return None
 
 def get_group_schedule(group_name: str) -> dict:
@@ -359,8 +377,65 @@ def get_week_info(target_date: datetime.date = None):
         return 'в', 'Верхняя неделя 🔼'
     return 'н', 'Нижняя неделя 🔽'
 
-# --- ОФОРМЛЕНИЕ РАСПИСАНИЯ ПО ВАРИАНТУ А ---
-def format_day_variant_a(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
+# --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ (КАК НА СКРИНЕ 15) ---
+def render_table_png(lessons: list, day_name: str, group_name: str):
+    if not HAS_PILLOW:
+        return None
+    width = 750
+    header_h = 46
+    row_h = 80
+    padding = 14
+    total_h = padding * 2 + header_h + max(1, len(lessons)) * row_h
+    
+    img = Image.new('RGB', (width, total_h), color='#0e1621')
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    
+    x0, y0 = padding, padding
+    x1, y1 = width - padding, total_h - padding
+    draw.rectangle([x0, y0, x1, y1], fill='#17212b', outline='#242f3d', width=2)
+    
+    cols = [x0, x0 + 130, x0 + 410, x0 + 590, x1]
+    draw.rectangle([x0, y0, x1, y0 + header_h], fill='#1c2736', outline='#242f3d', width=1)
+    
+    headers = ["Пара", "Предмет", "Преподаватель", "Аудитория"]
+    for i, h in enumerate(headers):
+        draw.text((cols[i] + 12, y0 + 16), h, fill='#7f91a4', font=font)
+        if i > 0:
+            draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
+            
+    cy = y0 + header_h
+    for idx, l in enumerate(lessons):
+        draw.line([(x0, cy), (x1, cy)], fill='#242f3d', width=1)
+        slot, s_str, e_str, _, _ = get_slot_info(l.get('time', ''))
+        slot_str = str(slot or idx + 1)
+        t_range = f"{s_str} — {e_str}" if e_str else l.get('time', '')
+        
+        draw.text((cols[0] + 12, cy + 18), slot_str, fill='#ffffff', font=font)
+        draw.text((cols[0] + 12, cy + 38), t_range, fill='#40a7e3', font=font)
+        
+        subj = l.get('subject', '')
+        typ_full = normalize_type(l.get('type', ''))
+        draw.text((cols[1] + 12, cy + 18), subj[:35], fill='#ffffff', font=font)
+        if typ_full:
+            draw.text((cols[1] + 12, cy + 38), f"({typ_full})", fill='#22c55e' if 'Практ' in typ_full else '#38bdf8', font=font)
+            
+        teach = l.get('teacher', '—')
+        draw.text((cols[2] + 12, cy + 28), teach[:22], fill='#cbd5e1', font=font)
+        
+        bld = l.get('building', '')
+        room = l.get('room', '')
+        place = f"{bld}, {room}" if room else bld
+        draw.text((cols[3] + 12, cy + 28), place[:18], fill='#94a3b8', font=font)
+        cy += row_h
+        
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return buf
+
+# --- ТЕКСТОВОЕ ОФОРМЛЕНИЕ РАСПИСАНИЯ ---
+def format_day_text(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
     header_title = f"📅 <b>{day_name}</b>"
     if date_str:
@@ -391,27 +466,27 @@ def format_day_variant_a(day_name: str, wn_code: str, lessons: list, group_name:
                 lines.append(break_or_window)
 
         time_range = f"{l['s_str']} – {l['e_str']}" if l.get('e_str') else l.get('time')
-        typ = l.get('type', '')
-        type_badge = f" | {typ}" if typ else ""
+        typ_full = normalize_type(l.get('type', ''))
+        type_badge = f" | <b>{typ_full}</b>" if typ_full else ""
 
         sub_emoji = "📘"
-        if "пр" in typ.lower():
+        if "практ" in typ_full.lower():
             sub_emoji = "📗"
         elif "физ" in l.get('subject', '').lower():
             sub_emoji = "🏃"
 
-        lines.append(f"⏰ <b>{time_range}</b>{type_badge}")
+        lines.append(f"\n⏰ <b>{time_range}</b>{type_badge}")
         lines.append(f"{sub_emoji} <b>{l['subject']}</b>")
 
         place_parts = []
         if l.get('building'):
-            place_parts.append(l['building'])
+            place_parts.append(f"<b>{l['building']}</b>")
         if l.get('room'):
-            place_parts.append(f"ауд. {l['room']}")
+            place_parts.append(f"ауд. <b>{l['room']}</b>")
         if place_parts:
             lines.append(f"📍 {', '.join(place_parts)}")
         if l.get('teacher'):
-            lines.append(f"👤 {l['teacher']}")
+            lines.append(f"👤 <i>{l['teacher']}</i>")
         lines.append("")
 
     return "\n".join(lines).strip()
@@ -449,11 +524,12 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
         if l["st"] <= curr_t <= l["et"]:
             diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
             nxt = enriched[i+1] if i + 1 < len(enriched) else None
-            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} (ауд. {nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
+            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} ({nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
+            typ_f = normalize_type(l.get('type', ''))
             return (f"⚡ <b>Сейчас идёт занятие:</b>\n\n"
                     f"⏰ <b>{l['s_str']} – {l['e_str']}</b>\n"
-                    f"📘 <b>{l['subject']}</b> ({l.get('type', '')})\n"
-                    f"📍 {l.get('building', '')} {l.get('room', '')} | 👤 {l.get('teacher', '')}\n\n"
+                    f"📘 <b>{l['subject']}</b> ({typ_f})\n"
+                    f"📍 {l.get('building', '')} {l.get('room', '')} | 👤 <i>{l.get('teacher', '')}</i>\n\n"
                     f"⏳ До конца пары: <b>{diff_m} мин</b>{nxt_str}")
 
         if i + 1 < len(enriched):
@@ -464,14 +540,15 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
                 break_title = "🥪 <b>Сейчас обеденный перерыв (40 мин)</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
                 return (f"{break_title}\n\n"
                         f"⏳ До звонка на пару осталось: <b>{diff_m} мин</b>\n"
-                        f"➡️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
+                        f"➡️️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
                         f"📍 {nxt.get('building', '')} {nxt.get('room', '')}")
 
     return "ℹ️ Нет информации о текущей паре."
 
-# --- КЛАВИАТУРЫ: СТРОГИЙ ЭСТЕТИЧНЫЙ ДИЗАЙН ---
+# --- КЛАВИАТУРЫ ---
 def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    web_url = f"{WEB_DOMAIN}?group={user_group}" if WEB_DOMAIN.startswith("https://") else WEB_DOMAIN
+    # Передаем точную группу в WebApp URL
+    web_url = f"{WEB_DOMAIN}?group={user_group}"
     top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
     rows = [
         top_button,
@@ -483,19 +560,27 @@ def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> Re
         rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-def schedule_inline_keyboard(date_str: str) -> InlineKeyboardMarkup:
+def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarkup:
     d = datetime.date.fromisoformat(date_str)
     prev_d = d - datetime.timedelta(days=1)
     next_d = d + datetime.timedelta(days=1)
+    
+    # Кнопка быстрой смены недели на противоположную прямо под расписанием
+    opp_wn = 'в' if wn_code == 'н' else 'н'
+    opp_label = "Верхняя 🔼" if opp_wn == 'в' else "Нижняя 🔽"
+
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}"),
+            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}_{wn_code}"),
             InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today"),
-            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}")
+            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}_{wn_code}")
         ],
         [
-            InlineKeyboardButton(text="🗓 Вся неделя", callback_data="nav_week"),
-            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}")
+            InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"nav_{date_str}_{opp_wn}"),
+            InlineKeyboardButton(text="🗓 Вся неделя", callback_data=f"nav_week_{wn_code}")
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}_{wn_code}")
         ]
     ])
 
@@ -522,6 +607,53 @@ def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
         kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push")])
         kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
+
+# --- ОТПРАВКА И ОБНОВЛЕНИЕ РАСПИСАНИЯ ---
+async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, grp: str, is_callback: bool = False):
+    day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    user_row = get_user(target.from_user.id)
+    view_type = user_row[6] if user_row else 'text'
+    reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code)
+    
+    caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n👥 <i>Группа: <code>{grp}</code></i>"
+
+    if date_obj.weekday() == 6:
+        text = f"📅 <b>Воскресенье</b> ({date_obj.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
+        if is_callback:
+            if target.message.photo:
+                await target.message.delete()
+                await target.message.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
+        return
+
+    # РЕЖИМ 1: ТАБЛИЦА (КАРТИНКА)
+    if view_type == 'table' and HAS_PILLOW:
+        png_buf = render_table_png(lessons, day_name, grp)
+        file_input = BufferedInputFile(png_buf.getvalue(), filename="schedule.png")
+        if is_callback:
+            if target.message.photo:
+                await target.message.edit_media(InputMediaPhoto(media=file_input, caption=caption_header), reply_markup=reply_kb)
+            else:
+                await target.message.delete()
+                await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+        else:
+            await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+    # РЕЖИМ 2: ТЕКСТ
+    else:
+        text = format_day_text(day_name, wn_code, lessons, grp, date_obj.strftime('%d.%m.%Y'))
+        if is_callback:
+            if target.message.photo:
+                await target.message.delete()
+                await target.message.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
 
 # --- ХЕНДЛЕРЫ ---
 @dp.message(CommandStart())
@@ -582,18 +714,8 @@ async def cmd_today(msg: Message):
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
-
-    if today.weekday() == 6:
-        text = f"📅 <b>Воскресенье</b> ({today.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
-        await msg.answer(text, reply_markup=schedule_inline_keyboard(today.isoformat()))
-        return
-
     wn_code, _ = get_week_info(today)
-    day_name = DAYS_MAP[today.weekday()]
-    sched = get_group_schedule(grp)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    text = format_day_variant_a(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y'))
-    await msg.answer(text, reply_markup=schedule_inline_keyboard(today.isoformat()))
+    await send_or_edit_schedule(msg, today, wn_code, grp, is_callback=False)
 
 @dp.message(F.text == "📅 Завтра")
 @dp.message(Command("tomorrow"))
@@ -601,56 +723,38 @@ async def cmd_tomorrow(msg: Message):
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
-
-    if tomorrow.weekday() == 6:
-        text = f"📅 <b>Воскресенье</b> ({tomorrow.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
-        await msg.answer(text, reply_markup=schedule_inline_keyboard(tomorrow.isoformat()))
-        return
-
     wn_code, _ = get_week_info(tomorrow)
-    day_name = DAYS_MAP[tomorrow.weekday()]
-    sched = get_group_schedule(grp)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    text = format_day_variant_a(day_name, wn_code, lessons, grp, tomorrow.strftime('%d.%m.%Y'))
-    await msg.answer(text, reply_markup=schedule_inline_keyboard(tomorrow.isoformat()))
+    await send_or_edit_schedule(msg, tomorrow, wn_code, grp, is_callback=False)
 
 @dp.callback_query(F.data.startswith("nav_"))
 async def cb_nav_schedule(call: CallbackQuery):
-    action = call.data.replace("nav_", "")
+    data_parts = call.data.split("_")
     user = get_user(call.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
 
-    if action == "today":
+    if data_parts[1] == "today":
         target_d = datetime.datetime.now(MSK_TZ).date()
-    elif action == "week":
-        wn_code, wn_name = get_week_info()
+        wn_code, _ = get_week_info(target_d)
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
+    elif data_parts[1] == "week":
+        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info()[0]
+        wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
         sched = get_group_schedule(grp)
-        parts = [f"🗓 <b>Расписание на всю неделю ({wn_name})</b>\n👥 Группа: <code>{grp}</code>\n"]
+        parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n👥 Группа: <code>{grp}</code>\n"]
         for day in DAYS_ORDER:
             lessons = sched.get(wn_code, {}).get(day, [])
             if lessons:
-                parts.append(format_day_variant_a(day, wn_code, lessons))
-        await call.message.edit_text("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat()))
-        await call.answer()
-        return
+                parts.append(format_day_text(day, wn_code, lessons))
+        reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code)
+        if call.message.photo:
+            await call.message.delete()
+            await call.message.answer("\n\n".join(parts), reply_markup=reply_kb)
+        else:
+            await call.message.edit_text("\n\n".join(parts), reply_markup=reply_kb)
     else:
-        try:
-            target_d = datetime.date.fromisoformat(action)
-        except Exception:
-            target_d = datetime.datetime.now(MSK_TZ).date()
-
-    if target_d.weekday() == 6:
-        text = f"📅 <b>Воскресенье</b> ({target_d.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
-        await call.message.edit_text(text, reply_markup=schedule_inline_keyboard(target_d.isoformat()))
-        await call.answer()
-        return
-
-    wn_code, _ = get_week_info(target_d)
-    day_name = DAYS_MAP[target_d.weekday()]
-    sched = get_group_schedule(grp)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    text = format_day_variant_a(day_name, wn_code, lessons, grp, target_d.strftime('%d.%m.%Y'))
-    await call.message.edit_text(text, reply_markup=schedule_inline_keyboard(target_d.isoformat()))
+        target_d = datetime.date.fromisoformat(data_parts[1])
+        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info(target_d)[0]
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
     await call.answer()
 
 @dp.message(F.text == "⏱ Сейчас")
@@ -681,10 +785,10 @@ async def cmd_week(msg: Message):
     for day in DAYS_ORDER:
         lessons = sched.get(wn_code, {}).get(day, [])
         if lessons:
-            parts.append(format_day_variant_a(day, wn_code, lessons))
-    await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat()))
+            parts.append(format_day_text(day, wn_code, lessons))
+    await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code))
 
-# --- НАДЕЖНЫЙ ОБРАБОТЧИК НАСТРОЕК (НЕ ПАДАЕТ ОТ ЭМОДЗИ) ---
+# --- ОБРАБОТЧИКИ НАСТРОЕК (ТУМБЛЕРЫ) ---
 @dp.message(F.text.contains("Настройки"))
 @dp.message(Command("settings"))
 async def cmd_settings(msg: Message):
@@ -713,8 +817,7 @@ async def cb_toggle_view(call: CallbackQuery):
     new_v = "table" if cur == "text" else "text"
     update_user_field(call.from_user.id, "view_type", new_v)
     user = get_user(call.from_user.id)
-    is_adm = (call.from_user.id == ADMIN_ID)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=is_adm))
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
     await call.answer()
 
 @dp.callback_query(F.data == "toggle_morning")
@@ -724,8 +827,7 @@ async def cb_toggle_morning(call: CallbackQuery):
     new_v = 0 if cur else 1
     update_user_field(call.from_user.id, "notify_morning", new_v)
     user = get_user(call.from_user.id)
-    is_adm = (call.from_user.id == ADMIN_ID)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=is_adm))
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
     await call.answer()
 
 @dp.callback_query(F.data == "toggle_remind")
@@ -735,8 +837,7 @@ async def cb_toggle_remind(call: CallbackQuery):
     new_v = 0 if cur else 1
     update_user_field(call.from_user.id, "notify_remind", new_v)
     user = get_user(call.from_user.id)
-    is_adm = (call.from_user.id == ADMIN_ID)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=is_adm))
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
     await call.answer()
 
 @dp.callback_query(F.data == "toggle_hw")
@@ -746,8 +847,7 @@ async def cb_toggle_hw(call: CallbackQuery):
     new_v = 0 if cur else 1
     update_user_field(call.from_user.id, "notify_hw", new_v)
     user = get_user(call.from_user.id)
-    is_adm = (call.from_user.id == ADMIN_ID)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=is_adm))
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
     await call.answer()
 
 @dp.callback_query(F.data == "admin_stats")
@@ -770,7 +870,7 @@ async def cb_admin_test_push(call: CallbackQuery):
     day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
     sched = get_group_schedule(grp)
     lessons = sched.get(wn_code, {}).get(day_name, [])
-    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_variant_a(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y'))
+    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y'))
     await call.message.answer(demo_text)
     await call.answer("Тестовое уведомление отправлено!")
 
@@ -787,30 +887,97 @@ async def cmd_web_admin(msg: Message):
     ])
     await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
 
-# --- АВТОМАТИЧЕСКАЯ УТРЕННЯЯ РАССЫЛКА (07:30 MSK) ---
-async def morning_broadcast_worker():
-    last_sent_date = None
+# --- АВТОМАТИЧЕСКИЕ НАПОМИНАНИЯ И РАССЫЛКИ ---
+async def background_scheduler():
+    last_morning_date = None
+    last_evening_date = None
+    sent_reminders = set()
+
     while True:
         try:
             now_msk = datetime.datetime.now(MSK_TZ)
-            if now_msk.hour == 7 and now_msk.minute == 30 and last_sent_date != now_msk.date():
-                last_sent_date = now_msk.date()
-                if now_msk.weekday() != 6:
-                    wn_code, _ = get_week_info(now_msk.date())
-                    day_name = DAYS_MAP[now_msk.weekday()]
-                    subscribers = get_subscribers()
-                    for uid, grp in subscribers:
+            today_date = now_msk.date()
+            cur_hhmm = now_msk.strftime("%H:%M")
+
+            # 1. Утренняя рассылка в 07:30
+            if cur_hhmm == "07:30" and last_morning_date != today_date:
+                last_morning_date = today_date
+                if today_date.weekday() != 6:
+                    wn_code, _ = get_week_info(today_date)
+                    day_name = DAYS_MAP[today_date.weekday()]
+                    for uid, grp in get_subscribers("notify_morning"):
                         try:
                             sched = get_group_schedule(grp)
                             lessons = sched.get(wn_code, {}).get(day_name, [])
-                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_variant_a(day_name, wn_code, lessons, grp, now_msk.strftime('%d.%m.%Y'))
+                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today_date.strftime('%d.%m.%Y'))
                             await bot.send_message(uid, msg_text)
                             await asyncio.sleep(0.05)
                         except Exception:
                             pass
+
+            # 2. Вечерняя сводка ДЗ в 17:00
+            if cur_hhmm == "17:00" and last_evening_date != today_date:
+                last_evening_date = today_date
+                tom_date = today_date + datetime.timedelta(days=1)
+                if tom_date.weekday() != 6:
+                    wn_code, _ = get_week_info(tom_date)
+                    day_name = DAYS_MAP[tom_date.weekday()]
+                    for uid, grp in get_subscribers("notify_hw"):
+                        try:
+                            sched = get_group_schedule(grp)
+                            lessons = sched.get(wn_code, {}).get(day_name, [])
+                            if lessons:
+                                msg_text = "📚 <b>Вечерняя сводка: расписание на завтра:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, tom_date.strftime('%d.%m.%Y'))
+                                await bot.send_message(uid, msg_text)
+                                await asyncio.sleep(0.05)
+                        except Exception:
+                            pass
+
+            # 3. Напоминания за 15 минут до первой пары и после обеда
+            if today_date.weekday() != 6:
+                wn_code, _ = get_week_info(today_date)
+                day_name = DAYS_MAP[today_date.weekday()]
+                
+                # Проверяем для каждого подписчика
+                for uid, grp in get_subscribers("notify_remind"):
+                    sched = get_group_schedule(grp)
+                    lessons = sched.get(wn_code, {}).get(day_name, [])
+                    if not lessons:
+                        continue
+                    
+                    # Ищем 1-ю пару и пару после обеда
+                    targets = []
+                    if len(lessons) > 0:
+                        targets.append(lessons[0])
+                    for idx_l in range(1, len(lessons)):
+                        prev_l = lessons[idx_l - 1]
+                        cur_l = lessons[idx_l]
+                        if ("11:50" in prev_l.get('time', '') and "12:30" in cur_l.get('time', '')) or \
+                           ("11:10" in prev_l.get('time', '') and "11:50" in cur_l.get('time', '')):
+                            targets.append(cur_l)
+                            
+                    for t_l in targets:
+                        start_str = t_l.get('time', '')[:5]
+                        try:
+                            h, m = map(int, start_str.split(':'))
+                            rem_m = h * 60 + m - 15
+                            rem_str = f"{rem_m // 60:02d}:{rem_m % 60:02d}"
+                            rem_key = f"{uid}_{today_date}_{start_str}"
+                            if cur_hhmm == rem_str and rem_key not in sent_reminders:
+                                sent_reminders.add(rem_key)
+                                typ_f = normalize_type(t_l.get('type', ''))
+                                alert_msg = (
+                                    f"⏰ <b>Напоминание: через 15 минут пара!</b>\n\n"
+                                    f"В <b>{start_str}</b>: <b>{t_l.get('subject')}</b> ({typ_f})\n"
+                                    f"📍 {t_l.get('building')}, ауд. <b>{t_l.get('room')}</b>\n"
+                                    f"👤 <i>{t_l.get('teacher')}</i>"
+                                )
+                                await bot.send_message(uid, alert_msg)
+                        except Exception:
+                            pass
         except Exception as e:
-            logging.error(f"Ошибка в рассылке: {e}")
-        await asyncio.sleep(20)
+            logging.error(f"Ошибка в планировщике: {e}")
+        await asyncio.sleep(25)
 
 # --- ВЕБ-СЕРВЕР ---
 async def handle_index(request):
@@ -824,7 +991,7 @@ def create_web_app():
 
 async def main():
     init_db()
-    asyncio.create_task(morning_broadcast_worker())
+    asyncio.create_task(background_scheduler())
 
     app = create_web_app()
     runner = web.AppRunner(app)
