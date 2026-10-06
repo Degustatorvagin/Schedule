@@ -14,45 +14,73 @@
             --primary: #2481cc;
             --text: #ffffff;
             --text-muted: #7f91a4;
+            --accent-green: #22c55e;
+            --orange: #f59e0b;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); padding: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+        body { background: var(--bg); color: var(--text); padding: 12px; min-height: 100vh; display: flex; flex-direction: column; }
         
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .group-title { font-size: 19px; font-weight: 700; color: #fff; }
-        .group-sub { font-size: 13px; color: var(--text-muted); }
-        .week-pill { background: rgba(36, 129, 204, 0.15); border: 1px solid rgba(36, 129, 204, 0.4); color: #40a7e3; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        /* Шапка */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+        .group-info { display: flex; flex-direction: column; cursor: pointer; }
+        .group-title { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+        .group-change-badge { font-size: 11px; background: rgba(36, 129, 204, 0.2); color: #40a7e3; padding: 2px 6px; border-radius: 6px; }
+        .group-sub { font-size: 12px; color: var(--text-muted); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .week-pill { background: rgba(36, 129, 204, 0.15); border: 1px solid rgba(36, 129, 204, 0.4); color: #40a7e3; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
-        .day-switcher { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px 10px; margin-bottom: 14px; }
+        /* Переключатель дней */
+        .day-switcher { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px 8px; margin-bottom: 12px; }
         .arrow-btn { background: none; border: none; color: #40a7e3; font-size: 18px; padding: 8px 14px; cursor: pointer; font-weight: 700; border-radius: 8px; }
+        .arrow-btn:active { background: rgba(255,255,255,0.05); }
         .current-day-label { font-size: 15px; font-weight: 700; text-align: center; }
-        .current-date-label { font-size: 12px; color: var(--text-muted); text-align: center; font-weight: 500; }
+        .current-date-label { font-size: 11px; color: var(--text-muted); text-align: center; }
 
-        .days-scroll { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; }
-        .day-tab { flex: 1; min-width: 44px; text-align: center; padding: 9px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        /* Табы Пн-Сб */
+        .days-scroll { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 14px; padding-bottom: 2px; }
+        .day-tab { flex: 1; min-width: 42px; text-align: center; padding: 8px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
         .day-tab.active { background: var(--primary); color: #fff; border-color: transparent; }
 
-        .lesson-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+        /* Карточка пары */
+        .lesson-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
         .lesson-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
         .lesson-time { font-size: 14px; font-weight: 700; color: #40a7e3; }
-        .lesson-type { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; text-transform: uppercase; }
+        .lesson-type { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
         .type-lek { background: rgba(36, 129, 204, 0.2); color: #60a5fa; }
         .type-pr { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-        .lesson-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
-        .lesson-place { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        .type-lab { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+        .lesson-title { font-size: 15px; font-weight: 600; line-height: 1.35; color: #fff; }
+        .lesson-place { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
         .lesson-teacher { font-size: 13px; color: var(--text-muted); }
 
-        .break-card { text-align: center; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
-        .break-lunch { background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.4); color: #fbbf24; }
-        .break-window { background: rgba(239, 68, 68, 0.1); border: 1px dashed rgba(239, 68, 68, 0.4); color: #f87171; }
-        .break-short { background: rgba(127, 145, 164, 0.08); color: var(--text-muted); font-size: 12px; font-weight: 500; }
-        .empty-day { text-align: center; padding: 40px 10px; color: var(--text-muted); font-size: 15px; font-weight: 500; }
+        /* Плашки перерывов, обеда и окон */
+        .break-card { text-align: center; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+        .break-lunch { background: rgba(245, 158, 11, 0.12); border: 1px dashed rgba(245, 158, 11, 0.4); color: #fbbf24; }
+        .break-window { background: rgba(239, 68, 68, 0.12); border: 1px dashed rgba(239, 68, 68, 0.4); color: #f87171; }
+        .break-short { background: rgba(127, 145, 164, 0.08); color: var(--text-muted); font-weight: 500; }
+        .empty-day { text-align: center; padding: 40px 10px; color: var(--text-muted); font-size: 15px; }
+
+        /* Модальное окно поиска группы */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 100; }
+        .modal-sheet { background: var(--surface); width: 100%; max-height: 80vh; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border); padding: 18px 14px; display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .modal-title { font-size: 17px; font-weight: 700; }
+        .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+        .search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; outline: none; }
+        .search-input:focus { border-color: var(--primary); }
+        .group-list { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 6px; }
+        .group-item { background: var(--bg); border: 1px solid var(--border); padding: 10px 14px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .group-item:active { background: rgba(36, 129, 204, 0.2); }
+        .group-item-num { font-weight: 700; color: #fff; font-size: 15px; }
+        .group-item-spec { font-size: 12px; color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <div>
-            <div class="group-title" id="display-group">...</div>
+        <div class="group-info" onclick="openGroupModal()">
+            <div class="group-title">
+                <span id="display-group">Загрузка...</span>
+                <span class="group-change-badge">🔍 Сменить</span>
+            </div>
             <div class="group-sub" id="display-spec">НЧИ КФУ</div>
         </div>
         <button class="week-pill" id="btn-week-toggle" onclick="toggleWeek()">Нижняя неделя 🔽</button>
@@ -70,6 +98,18 @@
     <div class="days-scroll" id="days-tabs"></div>
     <div id="lessons-list"></div>
 
+    <!-- Модалка выбора группы -->
+    <div class="modal-overlay" id="group-modal" onclick="closeGroupModal(event)">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title">Выберите группу (156 групп)</div>
+                <button class="modal-close" onclick="closeGroupModal()">✕</button>
+            </div>
+            <input type="text" class="search-input" id="group-search" placeholder="Поиск по номеру (724..., 545, 18.2...)" oninput="filterGroups()">
+            <div class="group-list" id="modal-group-list"></div>
+        </div>
+    </div>
+
     <script>
         const tg = window.Telegram?.WebApp;
         if (tg) {
@@ -77,144 +117,68 @@
             tg.expand();
         }
 
-        const DB = {
-            "7241452": {
-                spec: "ИСиП (Колледж)",
-                schedule: {
-                    "в": {
-                        "Понедельник": [{time: "16:00", subject: "Численные Методы", room: "405", building: "УЛК-1", type: "Лекция", teacher: "Рязанова А.Н."}],
-                        "Вторник": [
-                            {time: "08:30", subject: "Архитектура аппаратных средств", room: "405", building: "УЛК-1", type: "Лекция", teacher: "Волкова А.А."},
-                            {time: "10:20", subject: "Системное программирование", room: "363", building: "УЛК-1", type: "Практика", teacher: "Сайханов М.А."},
-                            {time: "12:30", subject: "Системное программирование", room: "314", building: "УЛК-1", type: "Практика", teacher: "Сайханов М.А."}
-                        ],
-                        "Среда": [
-                            {time: "08:30", subject: "Архитектура аппаратных средств", room: "360", building: "УЛК-1", type: "Практика", teacher: "Волкова А.А."},
-                            {time: "10:20", subject: "Архитектура аппаратных средств", room: "360", building: "УЛК-1", type: "Практика", teacher: "Волкова А.А."},
-                            {time: "12:30", subject: "Численные Методы", room: "350", building: "УЛК-1", type: "Практика", teacher: "Рязанова А.Н."}
-                        ],
-                        "Четверг": [
-                            {time: "08:30", subject: "Разработка мобильных приложений", room: "314", building: "УЛК-1", type: "Практика", teacher: "Сулейманов А.И."},
-                            {time: "10:20", subject: "Разработка мобильных приложений", room: "417", building: "УЛК-1", type: "Лекция", teacher: "Сулейманов А.И."},
-                            {time: "12:30", subject: "Физическая культура", room: "", building: "УЛК-6/Спортманеж", type: "Практика", teacher: "Фатыхов И.Ф."}
-                        ],
-                        "Пятница": [
-                            {time: "10:20", subject: "Иностранный язык", room: "109", building: "УЛК-1", type: "Практика", teacher: "Кошенкова А.А."},
-                            {time: "12:30", subject: "Разработка мобильных приложений", room: "421", building: "УЛК-1", type: "Лекция", teacher: "Сулейманов А.И."},
-                            {time: "14:20", subject: "Системное программирование", room: "417", building: "УЛК-1", type: "Лекция", teacher: "Сайханов М.А."},
-                            {time: "16:00", subject: "Системное программирование", room: "417", building: "УЛК-1", type: "Лекция", teacher: "Сайханов М.А."}
-                        ],
-                        "Суббота": []
-                    },
-                    "н": {
-                        "Понедельник": [
-                            {time: "14:20", subject: "Численные Методы", room: "405", building: "УЛК-1", type: "Лекция", teacher: "Рязанова А.Н."},
-                            {time: "16:00", subject: "Численные Методы", room: "405", building: "УЛК-1", type: "Лекция", teacher: "Рязанова А.Н."},
-                            {time: "17:40", subject: "Иностранный язык", room: "109", building: "УЛК-1", type: "Практика", teacher: "Кошенкова А.А."}
-                        ],
-                        "Вторник": [
-                            {time: "08:30", subject: "Архитектура аппаратных средств", room: "405", building: "УЛК-1", type: "Лекция", teacher: "Волкова А.А."},
-                            {time: "10:20", subject: "Архитектура аппаратных средств", room: "417", building: "УЛК-1", type: "Лекция", teacher: "Волкова А.А."},
-                            {time: "12:30", subject: "Системное программирование", room: "314", building: "УЛК-1", type: "Практика", teacher: "Сайханов М.А."}
-                        ],
-                        "Среда": [
-                            {time: "08:30", subject: "Архитектура аппаратных средств", room: "360", building: "УЛК-1", type: "Практика", teacher: "Волкова А.А."},
-                            {time: "10:20", subject: "Иностранный язык", room: "109", building: "УЛК-1", type: "Практика", teacher: "Кошенкова А.А."},
-                            {time: "12:30", subject: "Численные Методы", room: "350", building: "УЛК-1", type: "Практика", teacher: "Рязанова А.Н."}
-                        ],
-                        "Четверг": [
-                            {time: "08:30", subject: "Разработка мобильных приложений", room: "417", building: "УЛК-1", type: "Лекция", teacher: "Сулейманов А.И."},
-                            {time: "14:20", subject: "Физическая культура", room: "", building: "УЛК-6/Спортманеж", type: "Практика", teacher: "Фатыхов И.Ф."}
-                        ],
-                        "Пятница": [
-                            {time: "10:20", subject: "Разработка мобильных приложений", room: "316", building: "УЛК-1", type: "Практика", teacher: "Сулейманов А.И."},
-                            {time: "12:30", subject: "Разработка мобильных приложений", room: "316", building: "УЛК-1", type: "Практика", teacher: "Сулейманов А.И."},
-                            {time: "14:20", subject: "Численные Методы", room: "363", building: "УЛК-1", type: "Практика", teacher: "Рязанова А.Н."},
-                            {time: "16:00", subject: "Системное программирование", room: "421", building: "УЛК-1", type: "Лекция", teacher: "Сайханов М.А."}
-                        ],
-                        "Суббота": [
-                            {time: "10:20", subject: "Физическая культура", room: "", building: "Спорткомплекс", type: "Практика", teacher: "Фатыхов И.Ф."}
-                        ]
-                    }
-                }
-            },
-            "18.2-545": {
-                spec: "Филология (ВШЭиП, УЛК-7)",
-                schedule: {
-                    "в": {
-                        "Понедельник": [
-                            {time: "11:50", subject: "Практический курс английского языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "13:30", subject: "Практический курс второго иностранного языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Вторник": [
-                            {time: "09:40", subject: "Элективные курсы по физической культуре", room: "сп.зал", building: "сп.комп-кс", type: "Практика", teacher: "Нихорошкина А.В."},
-                            {time: "11:50", subject: "Иностранный язык", room: "307", building: "УЛК-7", type: "Практика", teacher: "Петунина А.Р."},
-                            {time: "13:30", subject: "Практический курс английского языка", room: "302", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."}
-                        ],
-                        "Среда": [
-                            {time: "08:00", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Практика", teacher: "Айдарова А.М."},
-                            {time: "09:40", subject: "Практический курс английского языка", room: "201", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "11:50", subject: "Практический курс второго иностранного языка", room: "202", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Четверг": [
-                            {time: "08:00", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Лекция", teacher: "Айдарова А.М."},
-                            {time: "09:40", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Практика", teacher: "Айдарова А.М."},
-                            {time: "11:50", subject: "Практический курс английского языка", room: "312", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "13:30", subject: "Русский язык", room: "204", building: "УЛК-7", type: "Практика", teacher: "Родионова Н.Л."}
-                        ],
-                        "Пятница": [
-                            {time: "09:40", subject: "Элективные курсы по физической культуре", room: "сп.зал", building: "сп.комп-кс", type: "Практика", teacher: "Нихорошкина А.В."},
-                            {time: "13:30", subject: "Практический курс второго иностранного языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Суббота": []
-                    },
-                    "н": {
-                        "Понедельник": [
-                            {time: "11:50", subject: "Практический курс английского языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "13:30", subject: "Практический курс второго иностранного языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Вторник": [
-                            {time: "09:40", subject: "Элективные курсы по физической культуре", room: "сп.зал", building: "сп.комп-кс", type: "Практика", teacher: "Нихорошкина А.В."},
-                            {time: "11:50", subject: "Иностранный язык", room: "307", building: "УЛК-7", type: "Практика", teacher: "Петунина А.Р."},
-                            {time: "13:30", subject: "Практический курс английского языка", room: "302", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."}
-                        ],
-                        "Среда": [
-                            {time: "08:00", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Практика", teacher: "Айдарова А.М."},
-                            {time: "09:40", subject: "Практический курс английского языка", room: "201", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "11:50", subject: "Практический курс второго иностранного языка", room: "202", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Четверг": [
-                            {time: "08:00", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Лекция", teacher: "Айдарова А.М."},
-                            {time: "09:40", subject: "Теоретическая и практическая фонетика", room: "204", building: "УЛК-7", type: "Практика", teacher: "Айдарова А.М."},
-                            {time: "11:50", subject: "Практический курс английского языка", room: "312", building: "УЛК-7", type: "Практика", teacher: "Хузин И.Р."},
-                            {time: "13:30", subject: "Русский язык", room: "204", building: "УЛК-7", type: "Практика", teacher: "Родионова Н.Л."}
-                        ],
-                        "Пятница": [
-                            {time: "09:40", subject: "Элективные курсы по физической культуре", room: "сп.зал", building: "сп.комп-кс", type: "Практика", teacher: "Нихорошкина А.В."},
-                            {time: "13:30", subject: "Практический курс второго иностранного языка", room: "306", building: "УЛК-7", type: "Практика", teacher: "Лядова О.Н."}
-                        ],
-                        "Суббота": []
-                    }
-                }
-            }
-        };
-
         const BELLS = {
             "08:00": "09:30", "09:40": "11:10", "11:50": "13:20", "13:30": "15:00", "15:40": "17:10", "17:20": "18:50",
             "08:30": "10:00", "10:20": "11:50", "12:30": "14:00", "14:20": "15:50", "16:00": "17:30", "17:40": "19:10"
         };
-
         const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
         const SHORT_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-        const params = new URLSearchParams(window.location.search);
-        let curGroup = params.get('group') || localStorage.getItem('last_grp') || '7241452';
-        if (!DB[curGroup] && curGroup.includes('545')) curGroup = '18.2-545';
-        if (!DB[curGroup]) curGroup = '7241452';
-        localStorage.setItem('last_grp', curGroup);
-
+        let DB = {};
+        let curGroup = '7241452';
         let curWN = 'н';
         let curDayIdx = new Date().getDay() === 0 ? 0 : new Date().getDay() - 1;
+
+        async function initApp() {
+            // Читаем параметр ?group= из ссылки
+            const params = new URLSearchParams(window.location.search);
+            const queryGrp = params.get('group');
+            if (queryGrp) {
+                curGroup = queryGrp;
+                localStorage.setItem('kfu_group', curGroup);
+            } else {
+                curGroup = localStorage.getItem('kfu_group') || '7241452';
+            }
+
+            // Загружаем полный schedule.json
+            try {
+                const res = await fetch('./schedule.json');
+                if (res.ok) {
+                    DB = await res.json();
+                }
+            } catch (e) {
+                console.warn('Не удалось загрузить schedule.json, используем резерв', e);
+            }
+
+            // Подбор группы
+            findAndSetGroup(curGroup);
+            renderTabs();
+            renderSchedule();
+        }
+
+        function findAndSetGroup(q) {
+            if (DB[q]) {
+                curGroup = q;
+                return;
+            }
+            const clean = q.replace(/[^a-zA-Z0-9а-яА-Я]/g, '').toLowerCase();
+            for (let k in DB) {
+                if (k.replace(/[^a-zA-Z0-9а-яА-Я]/g, '').toLowerCase() === clean) {
+                    curGroup = k;
+                    return;
+                }
+            }
+            if (q.includes('545') && DB['18.2-545']) {
+                curGroup = '18.2-545';
+                return;
+            }
+            if (q.includes('452') && DB['7241452']) {
+                curGroup = '7241452';
+                return;
+            }
+            const keys = Object.keys(DB);
+            if (keys.length > 0) curGroup = keys[0];
+        }
 
         function renderTabs() {
             const container = document.getElementById('days-tabs');
@@ -253,12 +217,14 @@
             const dayName = DAYS[curDayIdx];
             document.getElementById('label-day').innerText = dayName;
             document.getElementById('display-group').innerText = curGroup;
-            document.getElementById('display-spec').innerText = DB[curGroup].spec;
+            document.getElementById('display-spec').innerText = (DB[curGroup] && DB[curGroup].spec) ? DB[curGroup].spec : 'НЧИ КФУ';
 
             const list = document.getElementById('lessons-list');
             list.innerHTML = '';
 
-            const dayLessons = DB[curGroup].schedule[curWN][dayName] || [];
+            const dayLessons = (DB[curGroup] && DB[curGroup].schedule && DB[curGroup].schedule[curWN]) 
+                ? (DB[curGroup].schedule[curWN][dayName] || []) 
+                : [];
 
             if (dayLessons.length === 0) {
                 list.innerHTML = '<div class="empty-day">🎉 В этот день занятий нет!<br>Можно отдыхать.</div>';
@@ -287,14 +253,17 @@
                     }
                 }
 
-                const isPr = l.type.toLowerCase().includes('практ');
-                const typeClass = isPr ? 'type-pr' : 'type-lek';
+                let typeClass = 'type-pr';
+                const typ = (l.type || '').toLowerCase();
+                if (typ.includes('лек')) typeClass = 'type-lek';
+                else if (typ.includes('лаб')) typeClass = 'type-lab';
+
                 const card = document.createElement('div');
                 card.className = 'lesson-card';
                 card.innerHTML = `
                     <div class="lesson-header">
                         <span class="lesson-time">⏰ ${startT}${endT ? ' – ' + endT : ''}</span>
-                        <span class="lesson-type ${typeClass}">${l.type}</span>
+                        <span class="lesson-type ${typeClass}">${l.type || 'Пара'}</span>
                     </div>
                     <div class="lesson-title">${l.subject}</div>
                     <div class="lesson-place">📍 ${l.building} ${l.room ? ', ауд. ' + l.room : ''}</div>
@@ -304,8 +273,50 @@
             });
         }
 
-        renderTabs();
-        renderSchedule();
+        // Модальное окно выбора группы
+        function openGroupModal() {
+            document.getElementById('group-modal').style.display = 'flex';
+            filterGroups();
+        }
+
+        function closeGroupModal() {
+            document.getElementById('group-modal').style.display = 'none';
+        }
+
+        function filterGroups() {
+            const query = document.getElementById('group-search').value.toLowerCase().trim();
+            const list = document.getElementById('modal-group-list');
+            list.innerHTML = '';
+
+            const keys = Object.keys(DB);
+            const filtered = keys.filter(k => {
+                const spec = (DB[k].spec || '').toLowerCase();
+                return k.toLowerCase().includes(query) || spec.includes(query);
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:12px;">Группа не найдена</div>';
+                return;
+            }
+
+            filtered.slice(0, 30).forEach(k => {
+                const item = document.createElement('div');
+                item.className = 'group-item';
+                item.innerHTML = `
+                    <div class="group-item-num">${k}</div>
+                    <div class="group-item-spec">${DB[k].spec || ''}</div>
+                `;
+                item.onclick = () => {
+                    curGroup = k;
+                    localStorage.setItem('kfu_group', curGroup);
+                    closeGroupModal();
+                    renderSchedule();
+                };
+                list.appendChild(item);
+            });
+        }
+
+        initApp();
     </script>
 </body>
 </html>
