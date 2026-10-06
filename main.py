@@ -31,11 +31,12 @@ try:
 except ImportError:
     HAS_PILLOW = False
 
-# --- КОНФИГУРАЦИЯ ---
+# --- ПРЯМАЯ ССЫЛКА НА GITHUB PAGES ---
+WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
+
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
-WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://degustatorvagin.github.io/Schedule").rstrip("/")
 PORT = int(os.getenv("PORT", 3000))
 
 DATA_DIR = os.getenv("DATA_DIR", ".")
@@ -57,7 +58,6 @@ DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3
 
 # --- СЕТКА ЗВОНКОВ ---
 BELLS_TABLE = {
-    # Высшая школа (ВШЭиП)
     "08:00": ("08:00", "09:30", 1),
     "09:40": ("09:40", "11:10", 2),
     "11:50": ("11:50", "13:20", 3),
@@ -65,7 +65,6 @@ BELLS_TABLE = {
     "15:40": ("15:40", "17:10", 5),
     "17:20": ("17:20", "18:50", 6),
     "19:00": ("19:00", "20:30", 7),
-    # Колледж (ИЭК)
     "08:30": ("08:30", "10:00", 1),
     "10:20": ("10:20", "11:50", 2),
     "12:30": ("12:30", "14:00", 3),
@@ -113,62 +112,82 @@ def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr
     except Exception:
         return ""
 
-# --- ВСТРОЕННАЯ БАЗА ---
+# --- НАДЁЖНАЯ ЗАГРУЗКА ШРИФТА ДЛЯ РУССКОГО ЯЗЫКА ---
+def get_cyrillic_font(size=13, bold=False):
+    candidate_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "C:\\Windows\\Fonts\\arialbd.ttf" if bold else "C:\\Windows\\Fonts\\arial.ttf",
+        "C:\\Windows\\Fonts\\tahoma.ttf",
+        os.path.join(DATA_DIR, "DejaVuSans.ttf")
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+
+# --- ВСТРОЕННЫЙ РЕЗЕРВ РАСПИСАНИЯ ---
 BUILTIN_SCHEDULES = {
     "18.2-545": {
         "spec": "Филология (ВШЭиП, УЛК-7)",
         "schedule": {
             "в": {
                 "Понедельник": [
-                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Вторник": [
-                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
-                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "пр", "teacher": "Петунина А.Р."},
-                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "пр", "teacher": "Хузин И.Р."}
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
                 ],
                 "Среда": [
-                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
-                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Четверг": [
-                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "лек", "teacher": "Айдарова А.М."},
-                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
-                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Родионова Н.Л."}
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
                 ],
                 "Пятница": [
-                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
-                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Суббота": []
             },
             "н": {
                 "Понедельник": [
-                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Вторник": [
-                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
-                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "пр", "teacher": "Петунина А.Р."},
-                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "пр", "teacher": "Хузин И.Р."}
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
                 ],
                 "Среда": [
-                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
-                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Четверг": [
-                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "лек", "teacher": "Айдарова А.М."},
-                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
-                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "пр", "teacher": "Хузин И.Р."},
-                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Родионова Н.Л."}
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
                 ],
                 "Пятница": [
-                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
-                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
                 ],
                 "Суббота": []
             }
@@ -179,59 +198,59 @@ BUILTIN_SCHEDULES = {
         "schedule": {
             "в": {
                 "Понедельник": [
-                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."}
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."}
                 ],
                 "Вторник": [
-                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Волкова А.А."},
-                    {"time": "10:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "363", "type": "пр", "teacher": "Сайханов М.А."},
-                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сайханов М.А."}
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Сайханов М.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
                 ],
                 "Среда": [
-                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
-                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
-                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "пр", "teacher": "Рязанова А.Н."}
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
                 ],
                 "Четверг": [
-                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сулейманов А.И."},
-                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сулейманов А.И."},
-                    {"time": "12:30", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
                 ],
                 "Пятница": [
-                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."},
-                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "421", "type": "лек", "teacher": "Сулейманов А.И."},
-                    {"time": "14:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сайханов М.А."},
-                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сайханов М.А."}
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."}
                 ],
                 "Суббота": []
             },
             "н": {
                 "Понедельник": [
-                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."},
-                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."},
-                    {"time": "17:40", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."}
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "17:40", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."}
                 ],
                 "Вторник": [
-                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Волкова А.А."},
-                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Волкова А.А."},
-                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сайханов М.А."}
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
                 ],
                 "Среда": [
-                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
-                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."},
-                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "пр", "teacher": "Рязанова А.Н."}
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
                 ],
                 "Четверг": [
-                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сулейманов А.И."},
-                    {"time": "14:20", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
                 ],
                 "Пятница": [
-                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "пр", "teacher": "Сулейманов А.И."},
-                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "пр", "teacher": "Сулейманов А.И."},
-                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "363", "type": "пр", "teacher": "Рязанова А.Н."},
-                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "421", "type": "лек", "teacher": "Сайханов М.А."}
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сайханов М.А."}
                 ],
                 "Суббота": [
-                    {"time": "10:20", "subject": "Физическая культура", "building": "Спорткомплекс", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                    {"time": "10:20", "subject": "Физическая культура", "building": "Спорткомплекс", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
                 ]
             }
         }
@@ -377,19 +396,24 @@ def get_week_info(target_date: datetime.date = None):
         return 'в', 'Верхняя неделя 🔼'
     return 'н', 'Нижняя неделя 🔽'
 
-# --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ (КАК НА СКРИНЕ 15) ---
+# --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ С ЧЁТКИМ РУССКИМ ШРИФТОМ ---
 def render_table_png(lessons: list, day_name: str, group_name: str):
     if not HAS_PILLOW:
         return None
-    width = 750
-    header_h = 46
-    row_h = 80
+    font_header = get_cyrillic_font(13, bold=True)
+    font_bold = get_cyrillic_font(13, bold=True)
+    font_cell = get_cyrillic_font(12, bold=False)
+    font_time = get_cyrillic_font(12, bold=True)
+    font_sub = get_cyrillic_font(11, bold=False)
+
+    width = 760
+    header_h = 44
+    row_h = 76
     padding = 14
     total_h = padding * 2 + header_h + max(1, len(lessons)) * row_h
     
     img = Image.new('RGB', (width, total_h), color='#0e1621')
     draw = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
     
     x0, y0 = padding, padding
     x1, y1 = width - padding, total_h - padding
@@ -400,7 +424,7 @@ def render_table_png(lessons: list, day_name: str, group_name: str):
     
     headers = ["Пара", "Предмет", "Преподаватель", "Аудитория"]
     for i, h in enumerate(headers):
-        draw.text((cols[i] + 12, y0 + 16), h, fill='#7f91a4', font=font)
+        draw.text((cols[i] + 12, y0 + 14), h, fill='#7f91a4', font=font_header)
         if i > 0:
             draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
             
@@ -411,22 +435,27 @@ def render_table_png(lessons: list, day_name: str, group_name: str):
         slot_str = str(slot or idx + 1)
         t_range = f"{s_str} — {e_str}" if e_str else l.get('time', '')
         
-        draw.text((cols[0] + 12, cy + 18), slot_str, fill='#ffffff', font=font)
-        draw.text((cols[0] + 12, cy + 38), t_range, fill='#40a7e3', font=font)
+        draw.text((cols[0] + 12, cy + 17), slot_str, fill='#ffffff', font=font_bold)
+        draw.text((cols[0] + 12, cy + 39), t_range, fill='#40a7e3', font=font_time)
         
         subj = l.get('subject', '')
-        typ_full = normalize_type(l.get('type', ''))
-        draw.text((cols[1] + 12, cy + 18), subj[:35], fill='#ffffff', font=font)
-        if typ_full:
-            draw.text((cols[1] + 12, cy + 38), f"({typ_full})", fill='#22c55e' if 'Практ' in typ_full else '#38bdf8', font=font)
+        typ = normalize_type(l.get('type', ''))
+        if len(subj) > 34:
+            subj = subj[:32] + "..."
+        draw.text((cols[1] + 12, cy + 17), subj, fill='#ffffff', font=font_bold)
+        if typ:
+            type_color = '#4ade80' if 'практ' in typ.lower() else '#60a5fa'
+            draw.text((cols[1] + 12, cy + 39), f"({typ})", fill=type_color, font=font_sub)
             
         teach = l.get('teacher', '—')
-        draw.text((cols[2] + 12, cy + 28), teach[:22], fill='#cbd5e1', font=font)
+        if len(teach) > 22:
+            teach = teach[:20] + "..."
+        draw.text((cols[2] + 12, cy + 27), teach, fill='#cbd5e1', font=font_cell)
         
         bld = l.get('building', '')
         room = l.get('room', '')
         place = f"{bld}, {room}" if room else bld
-        draw.text((cols[3] + 12, cy + 28), place[:18], fill='#94a3b8', font=font)
+        draw.text((cols[3] + 12, cy + 27), place[:18], fill='#94a3b8', font=font_cell)
         cy += row_h
         
     buf = io.BytesIO()
@@ -540,15 +569,15 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
                 break_title = "🥪 <b>Сейчас обеденный перерыв (40 мин)</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
                 return (f"{break_title}\n\n"
                         f"⏳ До звонка на пару осталось: <b>{diff_m} мин</b>\n"
-                        f"➡️️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
+                        f"➡️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
                         f"📍 {nxt.get('building', '')} {nxt.get('room', '')}")
 
     return "ℹ️ Нет информации о текущей паре."
 
 # --- КЛАВИАТУРЫ ---
 def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    # Передаем точную группу в WebApp URL
-    web_url = f"{WEB_DOMAIN}?group={user_group}"
+    # Прямая ссылка на GitHub Pages с группой
+    web_url = f"{WEB_APP_URL}?group={user_group}"
     top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
     rows = [
         top_button,
@@ -564,8 +593,6 @@ def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarku
     d = datetime.date.fromisoformat(date_str)
     prev_d = d - datetime.timedelta(days=1)
     next_d = d + datetime.timedelta(days=1)
-    
-    # Кнопка быстрой смены недели на противоположную прямо под расписанием
     opp_wn = 'в' if wn_code == 'н' else 'н'
     opp_label = "Верхняя 🔼" if opp_wn == 'в' else "Нижняя 🔽"
 
@@ -608,7 +635,6 @@ def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
         kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- ОТПРАВКА И ОБНОВЛЕНИЕ РАСПИСАНИЯ ---
 async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, grp: str, is_callback: bool = False):
     day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
     sched = get_group_schedule(grp)
@@ -788,7 +814,6 @@ async def cmd_week(msg: Message):
             parts.append(format_day_text(day, wn_code, lessons))
     await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code))
 
-# --- ОБРАБОТЧИКИ НАСТРОЕК (ТУМБЛЕРЫ) ---
 @dp.message(F.text.contains("Настройки"))
 @dp.message(Command("settings"))
 async def cmd_settings(msg: Message):
@@ -880,7 +905,7 @@ async def cmd_web_admin(msg: Message):
     if msg.from_user.id != ADMIN_ID:
         await msg.answer("⛔ Доступ только для администратора.")
         return
-    admin_url = f"{WEB_DOMAIN}?admin=true&token={ADMIN_TOKEN}"
+    admin_url = f"{WEB_APP_URL}?admin=true&token={ADMIN_TOKEN}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
         [InlineKeyboardButton(text="📱 Открыть как Mini App", web_app=WebAppInfo(url=admin_url))]
@@ -938,14 +963,12 @@ async def background_scheduler():
                 wn_code, _ = get_week_info(today_date)
                 day_name = DAYS_MAP[today_date.weekday()]
                 
-                # Проверяем для каждого подписчика
                 for uid, grp in get_subscribers("notify_remind"):
                     sched = get_group_schedule(grp)
                     lessons = sched.get(wn_code, {}).get(day_name, [])
                     if not lessons:
                         continue
                     
-                    # Ищем 1-ю пару и пару после обеда
                     targets = []
                     if len(lessons) > 0:
                         targets.append(lessons[0])
