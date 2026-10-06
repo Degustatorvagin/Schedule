@@ -24,9 +24,9 @@ from aiogram.fsm.state import State, StatesGroup
 
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "kfu7241_secret_key")
-WEB_DOMAIN = os.getenv("WEB_DOMAIN", "").rstrip("/")
-PORT = int(os.getenv("PORT", 8080))
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
+WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://bot-1791299850-3323-degustatorvagin.bothost.tech/").rstrip("/")
+PORT = int(os.getenv("PORT", 3000))
 
 DEFAULT_GROUP = "7241452"
 ANCHOR_MONDAY = datetime.date(2026, 8, 31)
