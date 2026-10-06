@@ -22,11 +22,11 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-# --- НАСТРОЙКИ ХОСТИНГА BOTHOST ---
+# --- КОНФИГУРАЦИЯ BOTHOST ---
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
-WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://bot-1791299850-3323-degustatorvagin.bothost.tech").rstrip("/")
+WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://degustatorvagin.github.io/Schedule").rstrip("/")
 PORT = int(os.getenv("PORT", 3000))
 
 DATA_DIR = os.getenv("DATA_DIR", ".")
@@ -40,13 +40,13 @@ DB_FILE = os.path.join(DATA_DIR, "users.db")
 JSON_FILE = "schedule.json"
 
 DEFAULT_GROUP = "7241452"
-ANCHOR_MONDAY = datetime.date(2026, 8, 31)  # 2 сентября 2026 — верхняя неделя
+ANCHOR_MONDAY = datetime.date(2026, 8, 31)  # Неделя 2 сентября 2026 — верхняя
 MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3: 'Четверг', 4: 'Пятница', 5: 'Суббота'}
 
-# --- РАСПИСАНИЕ ЗВОНКОВ (КОЛЛЕДЖ + ВЫСШАЯ ШКОЛА) ---
+# --- СЕТКА ЗВОНКОВ И ОБЕДОВ (ВШЭиП И КОЛЛЕДЖ) ---
 BELLS_TABLE = {
     # Высшая школа (ВШЭиП)
     "08:00": ("08:00", "09:30", 1, None),
@@ -56,7 +56,6 @@ BELLS_TABLE = {
     "15:40": ("15:40", "17:10", 5, None),
     "17:20": ("17:20", "18:50", 6, None),
     "19:00": ("19:00", "20:30", 7, None),
-
     # Колледж (ИЭК)
     "08:30": ("08:30", "10:00", 1, None),
     "10:20": ("10:20", "11:50", 2, "🥪 Обед 40 мин (11:50 – 12:30)"),
@@ -76,6 +75,131 @@ def get_slot_info(time_str: str):
         return slot, s_str, e_str, st, et, lunch
     return None, time_str, "", None, None, None
 
+# --- ВСТРОЕННАЯ БАЗА ДЛЯ 7241452 И 18.2-545 ---
+BUILTIN_SCHEDULES = {
+    "18.2-545": {
+        "spec": "Филология (Перевод и переводоведение)",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "пр", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "пр", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "лек", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "пр", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "пр", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "лек", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "пр", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "пр", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "пр", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "пр", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            }
+        }
+    },
+    "7241452": {
+        "spec": "Информационные системы и программирование",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "363", "type": "пр", "teacher": "Сайханов М.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "пр", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сулейманов А.И."},
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "421", "type": "лек", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сайханов М.А."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Рязанова А.Н."},
+                    {"time": "17:40", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "лек", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "пр", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "пр", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "пр", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "пр", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "лек", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "пр", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "пр", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "363", "type": "пр", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "421", "type": "лек", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": [
+                    {"time": "10:20", "subject": "Физическая культура", "building": "Спорткомплекс", "room": "", "type": "пр", "teacher": "Фатыхов И.Ф."}
+                ]
+            }
+        }
+    }
+}
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -83,7 +207,6 @@ dp = Dispatcher()
 class Form(StatesGroup):
     waiting_for_group = State()
 
-# --- БАЗА ДАННЫХ SQLITE ---
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -153,15 +276,16 @@ def get_stats():
     except Exception:
         return 0, 0
 
-# --- РАСПИСАНИЕ И ПОИСК ГРУПП ---
 def load_schedule() -> dict:
+    db = dict(BUILTIN_SCHEDULES)
     if os.path.exists(JSON_FILE):
         try:
             with open(JSON_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                disk_db = json.load(f)
+                db.update(disk_db)
         except Exception:
             pass
-    return {}
+    return db
 
 def save_schedule(data: dict):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
@@ -173,14 +297,26 @@ def find_group(query: str):
     clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
     if not clean_q:
         return None
+
+    # Прямое совпадение
     for grp in SCHEDULE_DB.keys():
-        clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
-        if clean_q == clean_grp:
+        if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
             return grp
+
+    # Приоритет группы девушки (18.2-545)
+    if "545" in query:
+        if "18.2" in query or "182" in clean_q or "филолог" in query.lower():
+            return "18.2-545"
+        return "18.2-545" if "18.2-545" in SCHEDULE_DB else "18.03-545"
+
+    # Приоритет группы парня (7241452)
+    if "452" in query or "исип" in query.lower():
+        return "7241452"
+
     for grp in SCHEDULE_DB.keys():
-        clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
-        if clean_q in clean_grp:
+        if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
             return grp
+
     return None
 
 def get_group_schedule(group_name: str) -> dict:
@@ -201,7 +337,7 @@ def get_week_info(target_date: datetime.date = None):
         return 'в', 'Верхняя неделя 🔼'
     return 'н', 'Нижняя неделя 🔽'
 
-# --- ФОРМАТИРОВАНИЕ РАСПИСАНИЯ (ВАРИАНТ А) ---
+# --- ОФОРМЛЕНИЕ РАСПИСАНИЯ ПО ВАРИАНТУ А ---
 def format_day_variant_a(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
     header_title = f"📅 <b>{day_name}</b>"
@@ -220,25 +356,28 @@ def format_day_variant_a(day_name: str, wn_code: str, lessons: list, group_name:
 
     enriched = []
     for l in lessons:
-        slot, s_str, e_str, st, et = get_slot_by_time_str(l.get('time', ''))
-        enriched.append({**l, "slot": slot, "s_str": s_str, "e_str": e_str, "st": st, "et": et})
+        slot, s_str, e_str, st, et, lunch = get_slot_info(l.get('time', ''))
+        enriched.append({**l, "slot": slot, "s_str": s_str, "e_str": e_str, "st": st, "et": et, "lunch": lunch})
+
+    enriched.sort(key=lambda x: x["st"] if x["st"] else datetime.time(0, 0))
 
     for i, l in enumerate(enriched):
         if i > 0:
             prev = enriched[i-1]
-            if prev["slot"] and l["slot"]:
+            if prev.get("slot") and l.get("slot"):
                 slot_diff = l["slot"] - prev["slot"]
                 if slot_diff == 1:
-                    if prev["slot"] == 2 and l["slot"] == 3:
-                        lines.append("\n🥪 <i>Обед 40 мин (11:50 – 12:30)</i>\n")
+                    if prev.get("lunch"):
+                        lines.append(f"\n{prev['lunch']}\n")
                 elif slot_diff > 1:
-                    m_diff = (l["st"].hour * 60 + l["st"].minute) - (prev["et"].hour * 60 + prev["et"].minute)
-                    h = m_diff // 60
-                    m = m_diff % 60
-                    time_txt = f"{h} ч {m} мин" if m else f"{h} ч"
-                    lines.append(f"\n🕳 <b>Окно {time_txt}</b> ({prev['e_str']} – {l['s_str']})\n")
+                    if prev.get("et") and l.get("st"):
+                        m_diff = (l["st"].hour * 60 + l["st"].minute) - (prev["et"].hour * 60 + prev["et"].minute)
+                        h = m_diff // 60
+                        m = m_diff % 60
+                        time_txt = f"{h} ч {m} мин" if m else f"{h} ч"
+                        lines.append(f"\n🕳 <b>Окно {time_txt}</b> ({prev['e_str']} – {l['s_str']})\n")
 
-        time_range = f"{l['s_str']} – {l['e_str']}" if l['e_str'] else l['time']
+        time_range = f"{l['s_str']} – {l['e_str']}" if l.get('e_str') else l.get('time')
         typ = l.get('type', '')
         type_badge = f" | {typ}" if typ else ""
 
@@ -269,13 +408,14 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
 
     enriched = []
     for l in lessons:
-        slot, s_str, e_str, st, et = get_slot_by_time_str(l.get('time', ''))
+        slot, s_str, e_str, st, et, lunch = get_slot_info(l.get('time', ''))
         if st and et:
-            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str})
+            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str, "lunch": lunch})
 
     if not enriched:
         return "🎉 <b>Сегодня пар нет!</b>"
 
+    enriched.sort(key=lambda x: x["st"])
     curr_t = check_dt.time()
     first_st = enriched[0]["st"]
     last_et = enriched[-1]["et"]
@@ -295,7 +435,7 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
         if l["st"] <= curr_t <= l["et"]:
             diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
             nxt = enriched[i+1] if i + 1 < len(enriched) else None
-            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} (ауд. {nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
+            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} ({nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
             return (f"⚡ <b>Сейчас идёт занятие:</b>\n\n"
                     f"⏰ <b>{l['s_str']} – {l['e_str']}</b>\n"
                     f"📘 <b>{l['subject']}</b> ({l.get('type', '')})\n"
@@ -306,8 +446,8 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
             nxt = enriched[i+1]
             if l["et"] < curr_t < nxt["st"]:
                 diff_m = (nxt["st"].hour * 60 + nxt["st"].minute) - (curr_t.hour * 60 + curr_t.minute)
-                is_lunch = (l["e_str"] == "11:50" and nxt["s_str"] == "12:30")
-                break_title = "🥪 <b>Сейчас обеденный перерыв (11:50 – 12:30)</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
+                is_lunch = bool(l.get("lunch"))
+                break_title = f"🥪 <b>{l['lunch']}</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
                 return (f"{break_title}\n\n"
                         f"⏳ До звонка на пару осталось: <b>{diff_m} мин</b>\n"
                         f"➡️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
@@ -315,17 +455,17 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
 
     return "ℹ️ Нет информации о текущей паре."
 
-# --- КЛАВИАТУРЫ ---
+# --- ЦВЕТНЫЕ КЛАВИАТУРЫ BOT API (STYLE) ---
 def main_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
-    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=WEB_DOMAIN))] if WEB_DOMAIN.startswith("https://") else [KeyboardButton(text="⏱ Сейчас")]
+    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=WEB_DOMAIN), style="success")] if WEB_DOMAIN.startswith("https://") else [KeyboardButton(text="⏱ Сейчас", style="success")]
     rows = [
         top_button,
-        [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")] if WEB_DOMAIN.startswith("https://") else [KeyboardButton(text="🗓 Неделя")],
-        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
+        [KeyboardButton(text="📅 Сегодня", style="primary"), KeyboardButton(text="📅 Завтра", style="primary")],
+        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас", style="success")] if WEB_DOMAIN.startswith("https://") else [KeyboardButton(text="🗓 Неделя")],
+        [KeyboardButton(text="⚙️️ Настройки"), KeyboardButton(text="🔍 Сменить группу", style="danger")]
     ]
     if is_admin:
-        rows.append([KeyboardButton(text="🌐 Веб-Админка")])
+        rows.append([KeyboardButton(text="🌐 Веб-Админка", style="primary")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 def schedule_inline_keyboard(date_str: str) -> InlineKeyboardMarkup:
@@ -335,28 +475,29 @@ def schedule_inline_keyboard(date_str: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}"),
-            InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today"),
+            InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today", style="primary"),
             InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}")
         ],
         [
             InlineKeyboardButton(text="🗓 Вся неделя", callback_data="nav_week"),
-            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}")
+            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}", style="success")
         ]
     ])
 
 def settings_keyboard(notify_enabled: bool, is_admin: bool = False) -> InlineKeyboardMarkup:
     status_icon = "🔔" if notify_enabled else "🔕"
     status_text = "Вкл" if notify_enabled else "Выкл"
+    btn_style = "success" if notify_enabled else "danger"
     kb = [
-        [InlineKeyboardButton(text=f"{status_icon} Утреннее расписание (07:30): {status_text}", callback_data="toggle_notify")],
-        [InlineKeyboardButton(text="🔍 Сменить группу", callback_data="change_group")]
+        [InlineKeyboardButton(text=f"{status_icon} Утреннее расписание (07:30): {status_text}", callback_data="toggle_notify", style=btn_style)],
+        [InlineKeyboardButton(text="🔍 Сменить группу", callback_data="change_group", style="danger")]
     ]
     if is_admin:
-        kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push")])
+        kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push", style="primary")])
         kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- ХЕНДЛЕРЫ TELEGRAM ---
+# --- ХЕНДЛЕРЫ ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
@@ -366,7 +507,7 @@ async def cmd_start(msg: Message, state: FSMContext):
         await state.set_state(Form.waiting_for_group)
         text = (
             "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
-            "Напиши номер своей группы (например: <code>7241452</code> или <code>18.03-545</code>):"
+            "Напиши номер своей группы (например: <code>7241452</code> или <code>18.2-545</code>):"
         )
         await msg.answer(text)
         return
@@ -401,12 +542,12 @@ async def process_custom_group(msg: Message, state: FSMContext):
 @dp.message(Command("setgroup"))
 async def cmd_change_group(msg: Message, state: FSMContext):
     await state.set_state(Form.waiting_for_group)
-    await msg.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.03-545</code>):")
+    await msg.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
 
 @dp.callback_query(F.data == "change_group")
 async def cb_change_group(call: CallbackQuery, state: FSMContext):
     await state.set_state(Form.waiting_for_group)
-    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.03-545</code>):")
+    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
     await call.answer()
 
 @dp.message(F.text == "📅 Сегодня")
@@ -533,7 +674,7 @@ async def cmd_settings(msg: Message):
         "<blockquote>\n"
         f"┌ 👥 <b>Группа</b>: <code>{user[2]}</code>\n"
         f"├ 🔔 <b>Утренняя рассылка (07:30)</b>: <b>{notify_status}</b>\n"
-        f"├ 🥪 <b>Обеденный перерыв</b>: <b>11:50 – 12:30</b>\n"
+        f"├ 🥪 <b>Обеденный перерыв</b>: <b>Включен</b>\n"
         f"├ ⚡ <b>Текущая неделя</b>: <b>{wn_name}</b>\n"
         f"└ 🆔 <b>Ваш ID</b>: <code>{msg.from_user.id}</code>\n"
         "</blockquote>\n\n"
@@ -553,7 +694,7 @@ async def cb_toggle_notify(call: CallbackQuery):
         "<blockquote>\n"
         f"┌ 👥 <b>Группа</b>: <code>{user[2]}</code>\n"
         f"├ 🔔 <b>Утренняя рассылка (07:30)</b>: <b>{notify_status}</b>\n"
-        f"├ 🥪 <b>Обеденный перерыв</b>: <b>11:50 – 12:30</b>\n"
+        f"├ 🥪 <b>Обеденный перерыв</b>: <b>Включен</b>\n"
         f"├ ⚡ <b>Текущая неделя</b>: <b>{wn_name}</b>\n"
         f"└ 🆔 <b>Ваш ID</b>: <code>{call.from_user.id}</code>\n"
         "</blockquote>\n\n"
@@ -594,103 +735,12 @@ async def cmd_web_admin(msg: Message):
         return
     admin_url = f"{WEB_DOMAIN}/admin?token={ADMIN_TOKEN}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
+        [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url, style="primary")],
         [InlineKeyboardButton(text="📱 Открыть как Mini App", web_app=WebAppInfo(url=admin_url))]
     ])
     await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
 
-@dp.message(Command("help"))
-async def cmd_help(msg: Message):
-    text = (
-        "📖 <b>Команды бота расписания:</b>\n\n"
-        "<blockquote>\n"
-        "• /start — перезапустить меню\n"
-        "• /today — расписание на сегодня\n"
-        "• /tomorrow — расписание на завтра\n"
-        "• /week — расписание на неделю\n"
-        "• /now — какая пара идёт сейчас\n"
-        "• /setgroup — сменить группу\n"
-        "• /settings — настройки рассылки\n"
-        "• /help — эта справка\n"
-        "</blockquote>\n\n"
-        "💡 <i>Также можно нажимать кнопки внизу экрана!</i>"
-    )
-    await msg.answer(text)
-
-# --- ОБНОВЛЕНИЕ БАЗЫ EXCEL (ДЛЯ АДМИНА) ---
-@dp.message(F.document)
-async def handle_excel_upload(msg: Message):
-    if msg.from_user.id != ADMIN_ID:
-        return
-    fname = msg.document.file_name or ""
-    if not (fname.endswith('.xlsx') or fname.endswith('.xls')):
-        await msg.answer("⚠️ Принимаются только файлы .xlsx")
-        return
-
-    status = await msg.answer("⏳ Скачиваю и обновляю базу всех групп...")
-    tmp_path = f"temp_{msg.document.file_id}.xlsx"
-    try:
-        await bot.download(msg.document, destination=tmp_path)
-        global SCHEDULE_DB
-        import pandas as pd
-        df = pd.read_excel(tmp_path, sheet_name=0, header=None)
-
-        def extract_grp_info(val: str):
-            match = re.search(r'Группа\s+([^\(\n]+)(?:\((.*?)(?:,\s*\d+\s*чел\))?\))?', val, re.IGNORECASE)
-            if match:
-                num = match.group(1).strip()
-                spec = match.group(2).strip() if match.group(2) else ""
-                return num, spec
-            return val.strip(), ""
-
-        updated_count = 0
-        for c in range(df.shape[1]):
-            val = str(df.iloc[0, c])
-            if 'Группа' in val or 'группа' in val:
-                num, spec = extract_grp_info(val)
-                col_time, col_subject, col_bld = c - 2, c, c + 1
-                col_room, col_type, col_teacher = c + 2, c + 3, c + 5
-
-                sched = {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
-                for day_idx, day_name in enumerate(DAYS_ORDER):
-                    start_row = 2 + day_idx * 14
-                    for slot in range(7):
-                        for wn_offset, wn_type in [(0, 'в'), (1, 'н')]:
-                            row = start_row + slot * 2 + wn_offset
-                            if row >= df.shape[0]:
-                                continue
-                            subj = df.iloc[row, col_subject]
-                            if pd.notna(subj) and str(subj).strip():
-                                raw_time = str(df.iloc[row, col_time])
-                                time_str = raw_time.split()[0] if ' ' in raw_time else raw_time
-                                if len(time_str.split(':')) == 3:
-                                    time_str = ':'.join(time_str.split(':')[:2])
-                                room = df.iloc[row, col_room]
-                                room_str = str(int(room)) if isinstance(room, float) and not pd.isna(room) else (str(room) if pd.notna(room) else "")
-                                sched[wn_type][day_name].append({
-                                    "time": time_str,
-                                    "subject": str(subj).strip(),
-                                    "building": str(df.iloc[row, col_bld]).strip() if pd.notna(df.iloc[row, col_bld]) else "",
-                                    "room": room_str,
-                                    "type": str(df.iloc[row, col_type]).strip() if pd.notna(df.iloc[row, col_type]) else "",
-                                    "teacher": str(df.iloc[row, col_teacher]).strip() if pd.notna(df.iloc[row, col_teacher]) else ""
-                                })
-                SCHEDULE_DB[num] = {"spec": spec, "schedule": sched}
-                updated_count += 1
-
-        save_schedule(SCHEDULE_DB)
-        await status.edit_text(
-            f"✅ <b>База расписания обновлена!</b>\n\n"
-            f"• Обновлено групп из файла: {updated_count}\n"
-            f"• Всего групп в системе: {len(SCHEDULE_DB)}"
-        )
-    except Exception as e:
-        await status.edit_text(f"❌ Ошибка при разборе: {e}")
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-# --- УТРЕННЯЯ РАССЫЛКА (07:30 MSK) ---
+# --- АВТОМАТИЧЕСКАЯ УТРЕННЯЯ РАССЫЛКА (07:30 ПО МСК) ---
 async def morning_broadcast_worker():
     last_sent_date = None
     while True:
@@ -737,7 +787,7 @@ async def main():
         await site.start()
         logging.info(f"Веб-сервер запущен на 0.0.0.0:{PORT}")
     except Exception as e:
-        logging.warning(f"Не удалось поднять порт: {e}")
+        logging.warning(f"Порт не поднят: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
