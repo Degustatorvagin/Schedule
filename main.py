@@ -3,8 +3,8 @@ import datetime
 import json
 import logging
 import os
+import re
 import sqlite3
-import pandas as pd
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
@@ -22,17 +22,25 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-# --- ПЕРЕМЕННЫЕ И НАСТРОЙКИ ХОСТИНГА ---
+# --- НАСТРОЙКИ ХОСТИНГА ---
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
 WEB_DOMAIN = os.getenv("WEB_DOMAIN", "https://bot-1791299850-3323-degustatorvagin.bothost.tech").rstrip("/")
 PORT = int(os.getenv("PORT", 3000))
 
-DEFAULT_GROUP = "7241452"
-ANCHOR_MONDAY = datetime.date(2026, 8, 31)  # 2 сентября 2026 — верхняя неделя
+DATA_DIR = os.getenv("DATA_DIR", ".")
+if not os.path.exists(DATA_DIR):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        DATA_DIR = "."
+
+DB_FILE = os.path.join(DATA_DIR, "users.db")
 JSON_FILE = "schedule.json"
-DB_FILE = "users.db"
+
+DEFAULT_GROUP = "7241452"
+ANCHOR_MONDAY = datetime.date(2026, 8, 31)
 MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
@@ -42,74 +50,125 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# --- FSM ДЛЯ СМЕНЫ ГРУППЫ ---
 class Form(StatesGroup):
     waiting_for_group = State()
 
 # --- БАЗА ДАННЫХ SQLITE ---
 def init_db():
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                group_name TEXT DEFAULT '7241452',
-                notify_enabled INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    group_name TEXT DEFAULT '7241452',
+                    notify_enabled INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+    except Exception as e:
+        logging.error(f"Ошибка БД: {e}")
 
 def get_user(user_id: int):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, username, group_name, notify_enabled FROM users WHERE user_id = ?", (user_id,))
-        return cursor.fetchone()
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, group_name, notify_enabled FROM users WHERE user_id = ?", (user_id,))
+            return cursor.fetchone()
+    except Exception:
+        return None
 
 def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO users (user_id, username, group_name, notify_enabled)
-            VALUES (?, ?, ?, COALESCE((SELECT notify_enabled FROM users WHERE user_id = ?), 1))
-        """, (user_id, username, group_name, user_id))
-        conn.commit()
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO users (user_id, username, group_name, notify_enabled)
+                VALUES (?, ?, ?, COALESCE((SELECT notify_enabled FROM users WHERE user_id = ?), 1))
+            """, (user_id, username, group_name, user_id))
+            conn.commit()
+    except Exception as e:
+        logging.error(f"Ошибка регистрации: {e}")
 
 def toggle_user_notify(user_id: int) -> int:
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET notify_enabled = 1 - notify_enabled WHERE user_id = ?", (user_id,))
-        conn.commit()
-        cursor.execute("SELECT notify_enabled FROM users WHERE user_id = ?", (user_id,))
-        res = cursor.fetchone()
-        return res[0] if res else 1
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET notify_enabled = 1 - notify_enabled WHERE user_id = ?", (user_id,))
+            conn.commit()
+            cursor.execute("SELECT notify_enabled FROM users WHERE user_id = ?", (user_id,))
+            res = cursor.fetchone()
+            return res[0] if res else 1
+    except Exception:
+        return 1
 
 def get_subscribers():
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, group_name FROM users WHERE notify_enabled = 1")
-        return cursor.fetchall()
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, group_name FROM users WHERE notify_enabled = 1")
+            return cursor.fetchall()
+    except Exception:
+        return []
 
 def get_stats():
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT count(*), sum(notify_enabled) FROM users")
-        row = cursor.fetchone()
-        return (row[0] or 0), (row[1] or 0)
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT count(*), sum(notify_enabled) FROM users")
+            row = cursor.fetchone()
+            return (row[0] or 0), (row[1] or 0)
+    except Exception:
+        return 0, 0
 
-# --- РАСПИСАНИЕ И ЛОГИКА КАЛЕНДАРЯ ---
+# --- РАСПИСАНИЕ ВСЕХ ГРУПП ---
 def load_schedule() -> dict:
     if os.path.exists(JSON_FILE):
-        with open(JSON_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
+        try:
+            with open(JSON_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 def save_schedule(data: dict):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-SCHEDULE = load_schedule()
+SCHEDULE_DB = load_schedule()
+
+def find_group(query: str):
+    """Умный поиск группы по номеру (например: '545', '18.2-545', '7241452')"""
+    clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
+    if not clean_q:
+        return None
+
+    # Прямое совпадение
+    for grp in SCHEDULE_DB.keys():
+        clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
+        if clean_q == clean_grp:
+            return grp
+
+    # Поиск по подстроке (например '545' найдет '18.03-545')
+    for grp in SCHEDULE_DB.keys():
+        clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
+        if clean_q in clean_grp:
+            return grp
+
+    return None
+
+def get_group_schedule(group_name: str) -> dict:
+    data = SCHEDULE_DB.get(group_name)
+    if not data:
+        # Резервный поиск
+        matched = find_group(group_name)
+        if matched:
+            data = SCHEDULE_DB.get(matched)
+    if isinstance(data, dict) and "schedule" in data:
+        return data["schedule"]
+    return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
 
 def get_week_info(target_date: datetime.date = None):
     if target_date is None:
@@ -119,13 +178,16 @@ def get_week_info(target_date: datetime.date = None):
         return 'в', 'Верхняя 🔼'
     return 'н', 'Нижняя 🔽'
 
-def format_day(day_name: str, wn: str, lessons: list) -> str:
+def format_day(day_name: str, wn: str, lessons: list, group_name: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn == 'в' else "Нижняя неделя 🔽"
-    lines = [f"📅 <b>{day_name}</b> ({wn_label})", "━━━━━━━━━━━━━━━━━━━━"]
+    header = f"📅 <b>{day_name}</b> ({wn_label})"
+    if group_name:
+        header += f" | Группа: <code>{group_name}</code>"
+    lines = [header, "━━━━━━━━━━━━━━━━━━━━"]
     if not lessons:
         lines.append("🎉 Пар нет! Отдыхаем.")
         return "\n".join(lines)
-    
+
     for idx, l in enumerate(lessons, 1):
         typ = f"({l['type']})" if l.get('type') else ""
         lines.append(f"<b>{idx}. {l['time']}</b> — <b>{l['subject']}</b> {typ}")
@@ -140,7 +202,7 @@ def format_day(day_name: str, wn: str, lessons: list) -> str:
             lines.append(f"    👤 {l['teacher']}")
     return "\n".join(lines)
 
-# --- КЛАВИАТУРЫ ДЛЯ TELEGRAM ---
+# --- КЛАВИАТУРЫ ---
 def main_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
     rows = [
         [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="➡️ Завтра")],
@@ -153,7 +215,8 @@ def main_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
 
 def onboarding_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"🎓 {DEFAULT_GROUP} (ИСиП)", callback_data="onboard_default")],
+        [InlineKeyboardButton(text="🎓 7241452 (ИСиП)", callback_data="setgrp_7241452")],
+        [InlineKeyboardButton(text="⚖️ 18.03-545 (Юристы)", callback_data="setgrp_18.03-545")],
         [InlineKeyboardButton(text="✍️ Ввести другую группу", callback_data="onboard_custom")]
     ])
 
@@ -182,7 +245,7 @@ def settings_keyboard(notify_enabled: bool, is_admin: bool = False) -> InlineKey
         kb.append([InlineKeyboardButton(text="📊 Статистика пользователей", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- ОБРАБОТЧИКИ СООБЩЕНИЙ БОТА ---
+# --- ХЕНДЛЕРЫ TELEGRAM ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
@@ -191,14 +254,14 @@ async def cmd_start(msg: Message, state: FSMContext):
     if not user:
         await msg.answer(
             "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
-            "Давай настроим профиль. Выбери свою группу или укажи её номер:",
+            "Выбери свою группу кнопкой или введи её номер вручную:",
             reply_markup=onboarding_keyboard()
         )
         return
 
     _, wn_name = get_week_info()
     text = (
-        f"👋 С возвращением! Группа: <b>{user[2]}</b>\n"
+        f"👋 С возвращением! Твоя группа: <b>{user[2]}</b>\n"
         f"⚡ Сейчас идет: <b>{wn_name}</b>\n\n"
         f"Используй кнопки внизу для просмотра расписания."
     )
@@ -206,13 +269,14 @@ async def cmd_start(msg: Message, state: FSMContext):
         text += "\n\n👑 <i>Ты администратор. Доступна кнопка «🌐 Веб-Админка».</i>"
     await msg.answer(text, reply_markup=main_keyboard(is_admin=is_adm))
 
-@dp.callback_query(F.data == "onboard_default")
-async def cb_onboard_default(call: CallbackQuery):
-    register_user(call.from_user.id, call.from_user.username or "", DEFAULT_GROUP)
+@dp.callback_query(F.data.startswith("setgrp_"))
+async def cb_set_group(call: CallbackQuery):
+    grp = call.data.replace("setgrp_", "")
+    register_user(call.from_user.id, call.from_user.username or "", grp)
     _, wn_name = get_week_info()
     is_adm = (call.from_user.id == ADMIN_ID)
     await call.message.edit_text(
-        f"✅ Отлично! Установлена группа: <b>{DEFAULT_GROUP}</b> (ИСиП).\n"
+        f"✅ Установлена группа: <b>{grp}</b>.\n"
         f"🔔 Утренние уведомления в 07:30: <b>Включены</b>.\n"
         f"⚡ Текущая неделя: <b>{wn_name}</b>"
     )
@@ -223,16 +287,19 @@ async def cb_onboard_default(call: CallbackQuery):
 @dp.callback_query(F.data == "change_group")
 async def cb_input_group(call: CallbackQuery, state: FSMContext):
     await state.set_state(Form.waiting_for_group)
-    await call.message.answer("✍️ Напиши номер своей группы (например: <code>7241452</code>):")
+    await call.message.answer("✍️ Напиши номер своей группы (например: <code>7241452</code> или <code>18.03-545</code>):")
     await call.answer()
 
 @dp.message(Form.waiting_for_group)
 async def process_custom_group(msg: Message, state: FSMContext):
-    new_grp = msg.text.strip()
-    register_user(msg.from_user.id, msg.from_user.username or "", new_grp)
+    raw_query = msg.text.strip()
+    matched = find_group(raw_query)
+    final_grp = matched if matched else raw_query
+    register_user(msg.from_user.id, msg.from_user.username or "", final_grp)
     await state.clear()
     is_adm = (msg.from_user.id == ADMIN_ID)
-    await msg.answer(f"✅ Группа успешно сохранена: <b>{new_grp}</b>", reply_markup=main_keyboard(is_admin=is_adm))
+    note = "" if matched else "\n⚠️ <i>Группа пока не найдена в расписании, но сохранена.</i>"
+    await msg.answer(f"✅ Группа сохранена: <b>{final_grp}</b>{note}", reply_markup=main_keyboard(is_admin=is_adm))
 
 @dp.message(F.text == "⚙️ Настройки")
 async def cmd_settings(msg: Message):
@@ -241,11 +308,12 @@ async def cmd_settings(msg: Message):
         register_user(msg.from_user.id, msg.from_user.username or "", DEFAULT_GROUP)
         user = get_user(msg.from_user.id)
 
-    notify_status = "Включена 🔔 (каждое утро в 07:30)" if user[3] else "Выключена 🔕"
+    notify_status = "Включена 🔔 (каждое утро в 07:30)" if user and user[3] else "Выключена 🔕"
     is_adm = (msg.from_user.id == ADMIN_ID)
+    grp = user[2] if user else DEFAULT_GROUP
     text = (
         "⚙️ <b>Настройки профиля</b>\n\n"
-        f"👥 Твоя группа: <b>{user[2]}</b>\n"
+        f"👥 Твоя группа: <b>{grp}</b>\n"
         f"⏰ Утренняя рассылка: <b>{notify_status}</b>\n"
     )
     if is_adm:
@@ -258,9 +326,10 @@ async def cb_toggle_notify(call: CallbackQuery):
     is_adm = (call.from_user.id == ADMIN_ID)
     user = get_user(call.from_user.id)
     notify_status = "Включена 🔔 (каждое утро в 07:30)" if new_val else "Выключена 🔕"
+    grp = user[2] if user else DEFAULT_GROUP
     text = (
         "⚙️ <b>Настройки профиля</b>\n\n"
-        f"👥 Твоя группа: <b>{user[2]}</b>\n"
+        f"👥 Твоя группа: <b>{grp}</b>\n"
         f"⏰ Утренняя рассылка: <b>{notify_status}</b>\n"
     )
     if is_adm:
@@ -274,18 +343,21 @@ async def cb_admin_stats(call: CallbackQuery):
         await call.answer("Доступ запрещен", show_alert=True)
         return
     total, active_notify = get_stats()
-    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков на рассылку: {active_notify}", show_alert=True)
+    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков на рассылку: {active_notify}\n📚 Всего групп в базе: {len(SCHEDULE_DB)}", show_alert=True)
 
 @dp.callback_query(F.data == "admin_test_push")
 async def cb_admin_test_push(call: CallbackQuery):
     if call.from_user.id != ADMIN_ID:
         await call.answer("Доступ запрещен", show_alert=True)
         return
+    user = get_user(call.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
     day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
-    lessons = SCHEDULE.get(wn_code, {}).get(day_name, [])
-    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Доброе утро! Расписание на сегодня:</b>\n\n" + format_day(day_name, wn_code, lessons)
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day(day_name, wn_code, lessons, grp)
     await call.message.answer(demo_text)
     await call.answer("Тестовое уведомление отправлено!")
 
@@ -297,47 +369,45 @@ async def cmd_web_admin(msg: Message):
         return
 
     admin_url = f"{WEB_DOMAIN}/admin?token={ADMIN_TOKEN}"
-    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
         [InlineKeyboardButton(text="📱 Открыть как Mini App", web_app=WebAppInfo(url=admin_url))]
     ])
-
-    text = (
-        "🛠 <b>Панель управления расписанием:</b>\n\n"
-        f"🔗 Ссылка: <code>{admin_url}</code>\n\n"
-        "<i>Нажми на кнопку ниже, чтобы открыть панель на ПК, телефоне или прямо внутри Telegram:</i>"
-    )
-    await msg.answer(text, reply_markup=kb)
+    await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
 
 @dp.message(F.text == "ℹ️ Какая неделя?")
 async def cmd_current_week(msg: Message):
     today = datetime.datetime.now(MSK_TZ).date()
     _, wn_name = get_week_info(today)
-    today_str = today.strftime("%d.%m.%Y")
-    await msg.answer(f"📆 Сегодня: <b>{today_str}</b>\n⚡ Текущая неделя: <b>{wn_name}</b>")
+    await msg.answer(f"📆 Сегодня: <b>{today.strftime('%d.%m.%Y')}</b>\n⚡ Текущая неделя: <b>{wn_name}</b>")
 
 @dp.message(F.text == "📅 Сегодня")
 async def cmd_today(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     if today.weekday() == 6:
         await msg.answer("🎉 Сегодня воскресенье! Занятий нет.")
         return
     wn_code, _ = get_week_info(today)
     day_name = DAYS_MAP[today.weekday()]
-    lessons = SCHEDULE.get(wn_code, {}).get(day_name, [])
-    await msg.answer(format_day(day_name, wn_code, lessons))
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    await msg.answer(format_day(day_name, wn_code, lessons, grp))
 
 @dp.message(F.text == "➡️ Завтра")
 async def cmd_tomorrow(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
     if tomorrow.weekday() == 6:
         await msg.answer("🎉 Завтра воскресенье! Выходной.")
         return
     wn_code, _ = get_week_info(tomorrow)
     day_name = DAYS_MAP[tomorrow.weekday()]
-    lessons = SCHEDULE.get(wn_code, {}).get(day_name, [])
-    await msg.answer(format_day(day_name, wn_code, lessons))
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    await msg.answer(format_day(day_name, wn_code, lessons, grp))
 
 @dp.message(F.text == "🔼 Верхняя неделя")
 async def cmd_upper(msg: Message):
@@ -349,68 +419,30 @@ async def cmd_lower(msg: Message):
 
 @dp.callback_query(F.data.startswith("day_"))
 async def cb_day(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     _, wn, day_name = call.data.split("_")
-    lessons = SCHEDULE.get(wn, {}).get(day_name, [])
-    await call.message.edit_text(format_day(day_name, wn, lessons), reply_markup=days_keyboard(wn))
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn, {}).get(day_name, [])
+    await call.message.edit_text(format_day(day_name, wn, lessons, grp), reply_markup=days_keyboard(wn))
     await call.answer()
 
 @dp.callback_query(F.data.startswith("all_"))
 async def cb_all(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     wn = call.data.split("_")[1]
     wn_label = "Верхняя неделя 🔼" if wn == 'в' else "Нижняя неделя 🔽"
-    parts = [f"📚 <b>Вся {wn_label} целиком</b>\n"]
+    sched = get_group_schedule(grp)
+    parts = [f"📚 <b>Вся {wn_label} целиком</b> | Группа: <code>{grp}</code>\n"]
     for day in DAYS_ORDER:
-        lessons = SCHEDULE.get(wn, {}).get(day, [])
+        lessons = sched.get(wn, {}).get(day, [])
         if lessons:
             parts.append(format_day(day, wn, lessons))
     await call.message.edit_text("\n\n".join(parts), reply_markup=days_keyboard(wn))
     await call.answer()
 
-# --- ПАРСЕР ТАБЛИЦ EXCEL ---
-def parse_excel(file_path: str, group: str = DEFAULT_GROUP) -> dict:
-    df = pd.read_excel(file_path, sheet_name=0, header=None)
-    target_col = None
-    for c in range(df.shape[1]):
-        if group in str(df.iloc[0, c]):
-            target_col = c
-            break
-    if target_col is None:
-        raise ValueError(f"Группа {group} не найдена в таблице!")
-
-    col_time = target_col - 2
-    col_subject = target_col
-    col_bld = target_col + 1
-    col_room = target_col + 2
-    col_type = target_col + 3
-    col_teacher = target_col + 5
-
-    parsed = {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
-    for day_idx, day_name in enumerate(DAYS_ORDER):
-        start_row = 2 + day_idx * 14
-        for slot in range(7):
-            for wn_offset, wn in [(0, 'в'), (1, 'н')]:
-                row = start_row + slot * 2 + wn_offset
-                if row >= df.shape[0]:
-                    continue
-                subj = df.iloc[row, col_subject]
-                if pd.notna(subj) and str(subj).strip():
-                    raw_time = str(df.iloc[row, col_time])
-                    time_str = raw_time.split()[0] if ' ' in raw_time else raw_time
-                    if len(time_str.split(':')) == 3:
-                        time_str = ':'.join(time_str.split(':')[:2])
-                    room = df.iloc[row, col_room]
-                    room_str = str(int(room)) if isinstance(room, float) and not pd.isna(room) else (str(room) if pd.notna(room) else "")
-                    
-                    parsed[wn][day_name].append({
-                        "time": time_str,
-                        "subject": str(subj).strip(),
-                        "building": str(df.iloc[row, col_bld]).strip() if pd.notna(df.iloc[row, col_bld]) else "",
-                        "room": room_str,
-                        "type": str(df.iloc[row, col_type]).strip() if pd.notna(df.iloc[row, col_type]) else "",
-                        "teacher": str(df.iloc[row, col_teacher]).strip() if pd.notna(df.iloc[row, col_teacher]) else ""
-                    })
-    return parsed
-
+# --- ОБНОВЛЕНИЕ БАЗЫ ИЗ ТЕЛЕГРАМ ---
 @dp.message(F.document)
 async def handle_excel_upload(msg: Message):
     if msg.from_user.id != ADMIN_ID:
@@ -420,21 +452,54 @@ async def handle_excel_upload(msg: Message):
         await msg.answer("⚠️ Принимаются только файлы .xlsx")
         return
 
-    status = await msg.answer("⏳ Скачиваю и парсю расписание...")
+    status = await msg.answer("⏳ Скачиваю и обновляю базу всех групп...")
     tmp_path = f"temp_{msg.document.file_id}.xlsx"
     try:
         await bot.download(msg.document, destination=tmp_path)
-        global SCHEDULE
-        new_data = parse_excel(tmp_path)
-        save_schedule(new_data)
-        SCHEDULE = new_data
-        
-        v_count = sum(len(l) for l in new_data["в"].values())
-        n_count = sum(len(l) for l in new_data["н"].values())
+        global SCHEDULE_DB
+        import pandas as pd
+        df = pd.read_excel(tmp_path, sheet_name=0, header=None)
+
+        updated_count = 0
+        for c in range(df.shape[1]):
+            val = str(df.iloc[0, c])
+            if 'Группа' in val or 'группа' in val:
+                num, spec = extract_group_info(val)
+                col_time, col_subject, col_bld = c - 2, c, c + 1
+                col_room, col_type, col_teacher = c + 2, c + 3, c + 5
+
+                sched = {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
+                for day_idx, day_name in enumerate(DAYS_ORDER):
+                    start_row = 2 + day_idx * 14
+                    for slot in range(7):
+                        for wn_offset, wn_type in [(0, 'в'), (1, 'н')]:
+                            row = start_row + slot * 2 + wn_offset
+                            if row >= df.shape[0]:
+                                continue
+                            subj = df.iloc[row, col_subject]
+                            if pd.notna(subj) and str(subj).strip():
+                                raw_time = str(df.iloc[row, col_time])
+                                time_str = raw_time.split()[0] if ' ' in raw_time else raw_time
+                                if len(time_str.split(':')) == 3:
+                                    time_str = ':'.join(time_str.split(':')[:2])
+                                room = df.iloc[row, col_room]
+                                room_str = str(int(room)) if isinstance(room, float) and not pd.isna(room) else (str(room) if pd.notna(room) else "")
+                                sched[wn_type][day_name].append({
+                                    "time": time_str,
+                                    "subject": str(subj).strip(),
+                                    "building": str(df.iloc[row, col_bld]).strip() if pd.notna(df.iloc[row, col_bld]) else "",
+                                    "room": room_str,
+                                    "type": str(df.iloc[row, col_type]).strip() if pd.notna(df.iloc[row, col_type]) else "",
+                                    "teacher": str(df.iloc[row, col_teacher]).strip() if pd.notna(df.iloc[row, col_teacher]) else ""
+                                })
+                SCHEDULE_DB[num] = {"spec": spec, "schedule": sched}
+                updated_count += 1
+
+        save_schedule(SCHEDULE_DB)
         await status.edit_text(
-            f"✅ <b>Расписание успешно обновлено!</b>\n\n"
-            f"• Верхняя неделя: {v_count} пар\n"
-            f"• Нижняя неделя: {n_count} пар"
+            f"✅ <b>База расписания обновлена!</b>\n\n"
+            f"• Обновлено групп из файла: {updated_count}\n"
+            f"• Всего групп в системе: {len(SCHEDULE_DB)}"
         )
     except Exception as e:
         await status.edit_text(f"❌ Ошибка при разборе: {e}")
@@ -442,7 +507,7 @@ async def handle_excel_upload(msg: Message):
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
 
-# --- АВТОМАТИЧЕСКАЯ УТРЕННЯЯ РАССЫЛКА (07:30 MSK) ---
+# --- УТРЕННЯЯ РАССЫЛКА ПО ВСЕМ ГРУППАМ ---
 async def morning_broadcast_worker():
     last_sent_date = None
     while True:
@@ -453,430 +518,44 @@ async def morning_broadcast_worker():
                 if now_msk.weekday() != 6:
                     wn_code, _ = get_week_info(now_msk.date())
                     day_name = DAYS_MAP[now_msk.weekday()]
-                    lessons = SCHEDULE.get(wn_code, {}).get(day_name, [])
-                    morning_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day(day_name, wn_code, lessons)
-                    
+
                     subscribers = get_subscribers()
                     for uid, grp in subscribers:
                         try:
-                            await bot.send_message(uid, morning_text)
+                            sched = get_group_schedule(grp)
+                            lessons = sched.get(wn_code, {}).get(day_name, [])
+                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day(day_name, wn_code, lessons, grp)
+                            await bot.send_message(uid, msg_text)
                             await asyncio.sleep(0.05)
-                        except Exception as e:
-                            logging.warning(f"Не удалось отправить уведомление {uid}: {e}")
+                        except Exception:
+                            pass
         except Exception as e:
             logging.error(f"Ошибка в рассылке: {e}")
         await asyncio.sleep(20)
 
-# --- HTML/CSS/JS ВЕБ-ПАНЕЛИ УПРАВЛЕНИЯ ---
-ADMIN_HTML = """<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-Панель | НЧИ КФУ</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0b0f19;
-            --surface: #131b2e;
-            --border: #1e293b;
-            --primary: #3b82f6;
-            --primary-gradient: linear-gradient(135deg, #6366f1, #3b82f6);
-            --success: #10b981;
-            --danger: #ef4444;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-        .title-block h1 { font-size: 22px; font-weight: 700; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .title-block p { font-size: 13px; color: var(--text-muted); }
-        .stats-badge { display: flex; gap: 8px; flex-wrap: wrap; }
-        .badge { background: var(--surface); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px; }
-        .tab-btn { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); padding: 10px 18px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap; transition: 0.2s; }
-        .tab-btn.active { background: var(--primary-gradient); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .card h2 { font-size: 18px; margin-bottom: 16px; }
-        .selector-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-        .pill-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
-        .pill-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-        .lesson-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
-        .lesson-info { display: flex; flex-direction: column; gap: 4px; }
-        .lesson-time { font-weight: 700; color: var(--primary); font-size: 14px; }
-        .lesson-name { font-weight: 600; font-size: 15px; }
-        .lesson-meta { font-size: 13px; color: var(--text-muted); }
-        .type-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-        .type-lek { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
-        .type-pr { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
-        textarea, input[type="text"] { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; outline: none; }
-        textarea:focus, input[type="text"]:focus { border-color: var(--primary); }
-        .btn { background: var(--primary-gradient); color: #fff; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-danger { background: var(--danger); padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; color: #fff; cursor: pointer; }
-        #toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--primary); color: #fff; padding: 12px 20px; border-radius: 10px; display: none; z-index: 100; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header class="header">
-            <div class="title-block">
-                <h1>⚡ Админ-Панель | 7241452</h1>
-                <p>Управление расписанием и оповещениями НЧИ КФУ</p>
-            </div>
-            <div class="stats-badge">
-                <span class="badge" id="b-week">⏳ Загрузка...</span>
-                <span class="badge" id="b-users">👥 Студентов: ...</span>
-            </div>
-        </header>
-
-        <nav class="tabs">
-            <button class="tab-btn active" onclick="switchTab('tab-schedule')">📅 Расписание</button>
-            <button class="tab-btn" onclick="switchTab('tab-broadcast')">📢 Объявление</button>
-            <button class="tab-btn" onclick="switchTab('tab-upload')">📁 Загрузить Excel</button>
-        </nav>
-
-        <section id="tab-schedule" class="card">
-            <h2>📅 Редактирование расписания</h2>
-            <div class="selector-row">
-                <button class="pill-btn active" id="wn-v" onclick="selectWeek('в')">🔼 Верхняя неделя</button>
-                <button class="pill-btn" id="wn-n" onclick="selectWeek('н')">🔽 Нижняя неделя</button>
-            </div>
-            <div class="selector-row" id="days-pills"></div>
-            <div id="lessons-list"></div>
-            <div style="margin-top: 16px; display: flex; gap: 10px;">
-                <button class="btn" onclick="openAddLesson()">➕ Добавить пару</button>
-                <button class="btn" style="background: var(--success);" onclick="saveScheduleToServer()">💾 Сохранить изменения</button>
-            </div>
-        </section>
-
-        <section id="tab-broadcast" class="card" style="display: none;">
-            <h2>📢 Срочное объявление одногруппникам</h2>
-            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
-                Сообщение будет мгновенно отправлено всем студентам, подписанным на бота.
-            </p>
-            <textarea id="broadcast-text" rows="5" placeholder="Например: Завтра первой пары не будет, препод заболел!"></textarea>
-            <button class="btn" onclick="sendBroadcast()">🚀 Разослать сообщение</button>
-        </section>
-
-        <section id="tab-upload" class="card" style="display: none;">
-            <h2>📁 Обновление базы из Excel (.xlsx)</h2>
-            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
-                Выберите обновленный файл расписания колледжа. Бот автоматически спарсит группу 7241452.
-            </p>
-            <input type="file" id="excel-file" accept=".xlsx, .xls" style="margin-bottom: 14px;">
-            <br>
-            <button class="btn" onclick="uploadExcel()">📤 Загрузить и обновить</button>
-        </section>
-    </div>
-
-    <div id="toast"></div>
-
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        let token = urlParams.get('token') || localStorage.getItem('admin_token') || 'key';
-        localStorage.setItem('admin_token', token);
-
-        let currentWN = 'в';
-        let currentDay = 'Понедельник';
-        let scheduleData = null;
-        const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 3000);
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.card').forEach(c => c.style.display = 'none');
-            event.target.classList.add('active');
-            document.getElementById(tabId).style.display = 'block';
-        }
-
-        function initDays() {
-            const container = document.getElementById('days-pills');
-            container.innerHTML = '';
-            days.forEach(d => {
-                const btn = document.createElement('button');
-                btn.className = 'pill-btn' + (d === currentDay ? ' active' : '');
-                btn.innerText = d;
-                btn.onclick = () => {
-                    currentDay = d;
-                    initDays();
-                    renderLessons();
-                };
-                container.appendChild(btn);
-            });
-        }
-
-        function selectWeek(wn) {
-            currentWN = wn;
-            document.getElementById('wn-v').classList.toggle('active', wn === 'в');
-            document.getElementById('wn-n').classList.toggle('active', wn === 'н');
-            renderLessons();
-        }
-
-        async function loadStats() {
-            try {
-                const res = await fetch(`/api/stats?token=${token}`);
-                if (!res.ok) throw new Error();
-                const data = await res.json();
-                document.getElementById('b-week').innerText = '⚡ ' + data.week_type;
-                document.getElementById('b-users').innerText = `👥 Студентов: ${data.total_users} (пуши: ${data.subscribers})`;
-            } catch(e) {
-                document.getElementById('b-week').innerText = '⚡ НЧИ КФУ';
-            }
-        }
-
-        async function loadSchedule() {
-            try {
-                const res = await fetch(`/api/schedule?token=${token}`);
-                scheduleData = await res.json();
-                renderLessons();
-            } catch(e) {
-                showToast('Ошибка загрузки');
-            }
-        }
-
-        function renderLessons() {
-            const list = document.getElementById('lessons-list');
-            list.innerHTML = '';
-            if (!scheduleData || !scheduleData[currentWN] || !scheduleData[currentWN][currentDay]) return;
-            const items = scheduleData[currentWN][currentDay];
-            if (items.length === 0) {
-                list.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">Пар нет 🎉</div>';
-                return;
-            }
-            items.forEach((item, idx) => {
-                const el = document.createElement('div');
-                el.className = 'lesson-item';
-                const typeClass = item.type === 'лек' ? 'type-lek' : 'type-pr';
-                el.innerHTML = `
-                    <div class="lesson-info">
-                        <span class="lesson-time">${item.time}</span>
-                        <span class="lesson-name">${item.subject} <span class="type-badge ${typeClass}">${item.type || 'пара'}</span></span>
-                        <span class="lesson-meta">📍 ${item.building || ''} ${item.room ? 'ауд. ' + item.room : ''} | 👤 ${item.teacher || '—'}</span>
-                    </div>
-                    <div>
-                        <button class="btn-danger" onclick="deleteLesson(${idx})">🗑 Удалить</button>
-                    </div>
-                `;
-                list.appendChild(el);
-            });
-        }
-
-        function deleteLesson(idx) {
-            scheduleData[currentWN][currentDay].splice(idx, 1);
-            renderLessons();
-            showToast('Пара удалена (нажмите Сохранить)');
-        }
-
-        function openAddLesson() {
-            const time = prompt('Время (например 08:30):', '08:30');
-            if (!time) return;
-            const subj = prompt('Название предмета:');
-            if (!subj) return;
-            const room = prompt('Аудитория (например 405):', '');
-            const bld = prompt('Корпус (например УЛК-1):', 'УЛК-1');
-            const type = prompt('Тип (лек / пр):', 'пр');
-            const teacher = prompt('Преподаватель:', '');
-
-            scheduleData[currentWN][currentDay].push({
-                time: time,
-                subject: subj,
-                room: room,
-                building: bld,
-                type: type,
-                teacher: teacher
-            });
-            renderLessons();
-            showToast('Пара добавлена (нажмите Сохранить)');
-        }
-
-        async function saveScheduleToServer() {
-            try {
-                const res = await fetch(`/api/schedule?token=${token}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(scheduleData)
-                });
-                if (res.ok) showToast('✅ Расписание сохранено!');
-                else showToast('Ошибка сохранения');
-            } catch(e) {
-                showToast('Ошибка сети');
-            }
-        }
-
-        async function sendBroadcast() {
-            const text = document.getElementById('broadcast-text').value.trim();
-            if (!text) return alert('Введите текст!');
-            if (!confirm('Отправить сообщение всем подписанным студентам?')) return;
-            try {
-                const res = await fetch(`/api/broadcast?token=${token}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast(`✅ Отправлено ${data.sent_count} студентам!`);
-                    document.getElementById('broadcast-text').value = '';
-                } else alert(data.error);
-            } catch(e) {
-                alert('Ошибка отправки');
-            }
-        }
-
-        async function uploadExcel() {
-            const fileInput = document.getElementById('excel-file');
-            if (!fileInput.files[0]) return alert('Выберите файл!');
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
-            showToast('⏳ Загрузка и парсинг...');
-            try {
-                const res = await fetch(`/api/upload_excel?token=${token}`, {
-                    method: 'POST',
-                    body: formData
-                });
-                if (res.ok) {
-                    showToast('✅ База обновлена из Excel!');
-                    await loadSchedule();
-                } else alert('Ошибка разбора Excel');
-            } catch(e) {
-                alert('Ошибка загрузки');
-            }
-        }
-
-        initDays();
-        loadStats();
-        loadSchedule();
-    </script>
-</body>
-</html>"""
-
-# --- ЭНДПОИНТЫ ВЕБ-СЕРВЕРА AIOHTTP ---
+# --- ВЕБ-СЕРВЕР ---
 async def handle_index(request):
-    return web.Response(text=ADMIN_HTML, content_type='text/html')
-
-def check_token(request):
-    req_token = request.query.get("token") or request.headers.get("Authorization", "").replace("Bearer ", "")
-    return req_token == ADMIN_TOKEN
-
-async def handle_api_schedule(request):
-    if not check_token(request):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    return web.json_response(SCHEDULE)
-
-async def handle_api_save_schedule(request):
-    if not check_token(request):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    try:
-        data = await request.json()
-        global SCHEDULE
-        save_schedule(data)
-        SCHEDULE = data
-        return web.json_response({"status": "ok"})
-    except Exception as e:
-        return web.json_response({"error": str(e)}, status=400)
-
-async def handle_api_stats(request):
-    if not check_token(request):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    total, subs = get_stats()
-    _, wn_name = get_week_info()
-    return web.json_response({
-        "total_users": total,
-        "subscribers": subs,
-        "week_type": wn_name,
-        "group": DEFAULT_GROUP
-    })
-
-async def handle_api_broadcast(request):
-    if not check_token(request):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    try:
-        data = await request.json()
-        text = data.get("text", "").strip()
-        if not text:
-            return web.json_response({"error": "Текст пустой"}, status=400)
-        subs = get_subscribers()
-        sent = 0
-        msg_formatted = f"📢 <b>Объявление от старосты / админа:</b>\n\n{text}"
-        for uid, _ in subs:
-            try:
-                await bot.send_message(uid, msg_formatted)
-                sent += 1
-                await asyncio.sleep(0.05)
-            except Exception:
-                pass
-        return web.json_response({"status": "ok", "sent_count": sent})
-    except Exception as e:
-        return web.json_response({"error": str(e)}, status=400)
-
-async def handle_api_upload_excel(request):
-    if not check_token(request):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    try:
-        reader = await request.multipart()
-        field = await reader.next()
-        if field.name != 'file':
-            return web.json_response({"error": "Файл не передан"}, status=400)
-        temp_path = f"web_upload_{datetime.datetime.now().timestamp()}.xlsx"
-        with open(temp_path, "wb") as f:
-            while True:
-                chunk = await field.read_chunk()
-                if not chunk:
-                    break
-                f.write(chunk)
-        global SCHEDULE
-        new_data = parse_excel(temp_path)
-        save_schedule(new_data)
-        SCHEDULE = new_data
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        return web.json_response({"status": "ok"})
-    except Exception as e:
-        return web.json_response({"error": str(e)}, status=400)
+    return web.Response(text=f"<h1>Сервер расписания НЧИ КФУ онлайн</h1><p>Групп в базе: {len(SCHEDULE_DB)}</p>", content_type='text/html')
 
 def create_web_app():
-    app = web.Application(client_max_size=20 * 1024 * 1024)
+    app = web.Application()
     app.router.add_get('/', handle_index)
     app.router.add_get('/admin', handle_index)
-    app.router.add_get('/api/schedule', handle_api_schedule)
-    app.router.add_post('/api/schedule', handle_api_save_schedule)
-    app.router.add_get('/api/stats', handle_api_stats)
-    app.router.add_post('/api/broadcast', handle_api_broadcast)
-    app.router.add_post('/api/upload_excel', handle_api_upload_excel)
     return app
 
-# --- ТОЧКА ВХОДА И ЗАПУСК ---
 async def main():
     init_db()
     asyncio.create_task(morning_broadcast_worker())
 
-    # Сервер слушает и целевой порт 3000, и fallback-порт 80
     app = create_web_app()
     runner = web.AppRunner(app)
     await runner.setup()
-    
-    ports_to_try = [PORT]
-    if 3000 not in ports_to_try:
-        ports_to_try.append(3000)
-    if 80 not in ports_to_try:
-        ports_to_try.append(80)
-
-    for p in ports_to_try:
-        try:
-            site = web.TCPSite(runner, '0.0.0.0', p)
-            await site.start()
-            logging.info(f"Веб-сервер запущен на 0.0.0.0:{p}")
-        except Exception as e:
-            logging.warning(f"Не удалось поднять порт {p}: {e}")
+    try:
+        site = web.TCPSite(runner, '0.0.0.0', PORT)
+        await site.start()
+        logging.info(f"Веб-сервер запущен на 0.0.0.0:{PORT}")
+    except Exception as e:
+        logging.warning(f"Не удалось поднять веб-порт: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
