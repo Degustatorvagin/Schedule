@@ -34,7 +34,7 @@ except ImportError:
 # --- ПРЯМАЯ ССЫЛКА НА GITHUB PAGES ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
 
-TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAFL5x_T3O5yr5swc5GUJKygjUsDqDEdpZQ")
+TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "key")
 PORT = int(os.getenv("PORT", 3000))
