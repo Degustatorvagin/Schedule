@@ -33,11 +33,11 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# --- ССЫЛКА НА САЙТ MINI APP ---
+# --- ПРЯМАЯ ССЫЛКА НА GITHUB PAGES ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
 
-# Токен безопасно берется из переменных окружения Bothost
-TOKEN = os.getenv("BOT_TOKEN")
+# Токен берется из Bothost; если там read-only не совпадает, можно подставить запасной
+TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
@@ -131,7 +131,137 @@ def get_cyrillic_font(size=13):
                 pass
     return None
 
-# --- БАЗА ДАННЫХ SQLITE ---
+# --- БАЗА ДАННЫХ ---
+BUILTIN_SCHEDULES = {
+    "18.2-545": {
+        "spec": "Филология (ВШЭиП, УЛК-7)",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            }
+        }
+    },
+    "7241452": {
+        "spec": "ИСиП (Колледж)",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Сайханов М.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "17:40", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": [
+                    {"time": "10:20", "subject": "Физическая культура", "building": "Спорткомплекс", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ]
+            }
+        }
+    }
+}
+
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
+
+class Form(StatesGroup):
+    waiting_for_group = State()
+
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -140,9 +270,7 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
-                    role TEXT DEFAULT 'student',
                     group_name TEXT DEFAULT '7241452',
-                    teacher_name TEXT DEFAULT '',
                     notify_morning INTEGER DEFAULT 1,
                     notify_remind INTEGER DEFAULT 1,
                     notify_hw INTEGER DEFAULT 1,
@@ -152,8 +280,6 @@ def init_db():
             """)
             conn.commit()
             for col, col_type, default_val in [
-                ("role", "TEXT", "'student'"),
-                ("teacher_name", "TEXT", "''"),
                 ("notify_morning", "INTEGER", "1"),
                 ("notify_remind", "INTEGER", "1"),
                 ("notify_hw", "INTEGER", "1"),
@@ -171,28 +297,24 @@ def get_user(user_id: int):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT user_id, username, group_name, notify_morning, notify_remind, 
-                       notify_hw, view_type, role, teacher_name 
-                FROM users WHERE user_id = ?
-            """, (user_id,))
+            cursor.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
             return cursor.fetchone()
     except Exception:
         return None
 
-def register_user(user_id: int, username: str, role: str = "student", group_name: str = DEFAULT_GROUP, teacher_name: str = ""):
+def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR REPLACE INTO users (user_id, username, role, group_name, teacher_name, notify_morning, notify_remind, notify_hw, view_type)
-                VALUES (?, ?, ?, ?, ?,
+                INSERT OR REPLACE INTO users (user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type)
+                VALUES (?, ?, ?, 
                     COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT notify_remind FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text')
                 )
-            """, (user_id, username, role, group_name, teacher_name, user_id, user_id, user_id, user_id))
+            """, (user_id, username, group_name, user_id, user_id, user_id, user_id))
             conn.commit()
     except Exception as e:
         logging.error(f"Ошибка регистрации: {e}")
@@ -210,7 +332,7 @@ def get_subscribers(field: str = "notify_morning"):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute(f"SELECT user_id, role, group_name, teacher_name FROM users WHERE {field} = 1")
+            cursor.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1")
             return cursor.fetchall()
     except Exception:
         return []
@@ -225,107 +347,44 @@ def get_stats():
     except Exception:
         return 0, 0
 
-# --- РАСПИСАНИЕ И ПОИСК ---
 def load_schedule() -> dict:
+    db = dict(BUILTIN_SCHEDULES)
     if os.path.exists(JSON_FILE):
         try:
             with open(JSON_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                disk_db = json.load(f)
+                db.update(disk_db)
         except Exception:
             pass
-    return {}
+    return db
 
 SCHEDULE_DB = load_schedule()
 
-def get_all_teachers_list():
-    teachers = set()
-    for grp, data in SCHEDULE_DB.items():
-        sched = data.get("schedule", {})
-        for wn in ["в", "н"]:
-            for day, lessons in sched.get(wn, {}).items():
-                for l in lessons:
-                    raw_t = l.get("teacher", "").strip()
-                    if not raw_t or raw_t == "—":
-                        continue
-                    parts = re.split(r'\s{2,}|\n|,', raw_t)
-                    for p in parts:
-                        p = p.strip()
-                        if p and len(p) > 3:
-                            teachers.add(p)
-    return sorted(list(teachers))
-
-TEACHERS_LIST = get_all_teachers_list()
-
-def find_teachers(query: str):
-    q = query.lower().strip()
-    if not q:
-        return []
-    exact = [t for t in TEACHERS_LIST if q == t.lower()]
-    if exact:
-        return exact
-    return [t for t in TEACHERS_LIST if q in t.lower()]
-
-def find_group_strict(query: str):
+def find_group(query: str):
     clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
     if not clean_q:
         return None
     for grp in SCHEDULE_DB.keys():
         if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
             return grp
-    if "545" in clean_q:
-        if "182" in clean_q or "филолог" in query.lower():
-            return "18.2-545" if "18.2-545" in SCHEDULE_DB else None
-        if "1803" in clean_q or "юр" in query.lower():
-            return "18.03-545" if "18.03-545" in SCHEDULE_DB else None
-        return "18.2-545" if "18.2-545" in SCHEDULE_DB else ("18.03-545" if "18.03-545" in SCHEDULE_DB else None)
-    if "452" in clean_q:
-        if "7241452" in SCHEDULE_DB:
-            return "7241452"
-    if len(clean_q) >= 4:
-        for grp in SCHEDULE_DB.keys():
-            clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
-            if clean_q in clean_grp:
-                return grp
+    if "545" in query:
+        return "18.2-545"
+    if "452" in query or "исип" in query.lower():
+        return "7241452"
+    for grp in SCHEDULE_DB.keys():
+        if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
+            return grp
     return None
 
 def get_group_schedule(group_name: str) -> dict:
     data = SCHEDULE_DB.get(group_name)
+    if not data:
+        matched = find_group(group_name)
+        if matched:
+            data = SCHEDULE_DB.get(matched)
     if isinstance(data, dict) and "schedule" in data:
         return data["schedule"]
     return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
-
-def get_teacher_schedule(target_teacher: str) -> dict:
-    t_sched = {
-        "в": {d: [] for d in DAYS_ORDER},
-        "н": {d: [] for d in DAYS_ORDER}
-    }
-    t_clean = target_teacher.lower()
-    for grp, g_data in SCHEDULE_DB.items():
-        g_sched = g_data.get("schedule", {})
-        for wn in ["в", "н"]:
-            for day, lessons in g_sched.get(wn, {}).items():
-                for l in lessons:
-                    teacher_val = l.get("teacher", "")
-                    if t_clean in teacher_val.lower():
-                        lesson_copy = dict(l)
-                        lesson_copy["group"] = grp
-                        t_sched[wn][day].append(lesson_copy)
-    for wn in ["в", "н"]:
-        for day in t_sched[wn]:
-            t_sched[wn][day].sort(key=lambda x: x.get("time", ""))
-            combined = []
-            for item in t_sched[wn][day]:
-                matched_existing = False
-                for c in combined:
-                    if c["time"] == item["time"] and c["subject"] == item["subject"] and c.get("room") == item.get("room"):
-                        if item["group"] not in c["group"]:
-                            c["group"] += f", {item['group']}"
-                        matched_existing = True
-                        break
-                if not matched_existing:
-                    combined.append(dict(item))
-            t_sched[wn][day] = combined
-    return t_sched
 
 def get_week_info(target_date: datetime.date = None):
     if target_date is None:
@@ -335,8 +394,8 @@ def get_week_info(target_date: datetime.date = None):
         return 'в', 'Верхняя неделя 🔼'
     return 'н', 'Нижняя неделя 🔽'
 
-# --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ ---
-def render_table_png(lessons: list, day_name: str, target_name: str, role: str = "student"):
+# --- РЕНДЕРИНГ ТАБЛИЦЫ ---
+def render_table_png(lessons: list, day_name: str, group_name: str):
     if not HAS_PILLOW:
         return None
     font_header = get_cyrillic_font(13)
@@ -353,34 +412,33 @@ def render_table_png(lessons: list, day_name: str, target_name: str, role: str =
     row_h = 76
     padding = 14
     total_h = padding * 2 + header_h + max(1, len(lessons)) * row_h
-
+    
     img = Image.new('RGB', (width, total_h), color='#0e1621')
     draw = ImageDraw.Draw(img)
-
+    
     x0, y0 = padding, padding
     x1, y1 = width - padding, total_h - padding
     draw.rectangle([x0, y0, x1, y1], fill='#17212b', outline='#242f3d', width=2)
-
+    
     cols = [x0, x0 + 130, x0 + 410, x0 + 590, x1]
     draw.rectangle([x0, y0, x1, y0 + header_h], fill='#1c2736', outline='#242f3d', width=1)
-
-    col2_title = "Группа" if role == "teacher" else "Преподаватель"
-    headers = ["Пара", "Предмет", col2_title, "Аудитория"]
+    
+    headers = ["Пара", "Предмет", "Преподаватель", "Аудитория"]
     for i, h in enumerate(headers):
         draw.text((cols[i] + 12, y0 + 14), h, fill='#7f91a4', font=font_header)
         if i > 0:
             draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
-
+            
     cy = y0 + header_h
     for idx, l in enumerate(lessons):
         draw.line([(x0, cy), (x1, cy)], fill='#242f3d', width=1)
         slot, s_str, e_str, _, _ = get_slot_info(l.get('time', ''))
         slot_str = str(slot or idx + 1)
         t_range = f"{s_str} — {e_str}" if e_str else l.get('time', '')
-
+        
         draw.text((cols[0] + 12, cy + 17), slot_str, fill='#ffffff', font=font_bold)
         draw.text((cols[0] + 12, cy + 39), t_range, fill='#40a7e3', font=font_time)
-
+        
         subj = l.get('subject', '')
         typ = normalize_type(l.get('type', ''))
         if len(subj) > 34:
@@ -389,25 +447,25 @@ def render_table_png(lessons: list, day_name: str, target_name: str, role: str =
         if typ:
             type_color = '#4ade80' if 'практ' in typ.lower() else '#60a5fa'
             draw.text((cols[1] + 12, cy + 39), f"({typ})", fill=type_color, font=font_sub)
-
-        info_col2 = l.get('group', '—') if role == "teacher" else l.get('teacher', '—')
-        if len(info_col2) > 22:
-            info_col2 = info_col2[:20] + "..."
-        draw.text((cols[2] + 12, cy + 27), info_col2, fill='#cbd5e1', font=font_cell)
-
+            
+        teach = l.get('teacher', '—')
+        if len(teach) > 22:
+            teach = teach[:20] + "..."
+        draw.text((cols[2] + 12, cy + 27), teach, fill='#cbd5e1', font=font_cell)
+        
         bld = l.get('building', '')
         room = l.get('room', '')
         place = f"{bld}, {room}" if room else bld
         draw.text((cols[3] + 12, cy + 27), place[:18], fill='#94a3b8', font=font_cell)
         cy += row_h
-
+        
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     buf.seek(0)
     return buf
 
 # --- ТЕКСТОВОЕ ОФОРМЛЕНИЕ ---
-def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str = "", role: str = "student", date_str: str = "") -> str:
+def format_day_text(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
     header_title = f"📅 <b>{day_name}</b>"
     if date_str:
@@ -415,14 +473,12 @@ def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str
     header_title += f" — <i>{wn_label}</i>"
 
     lines = [header_title]
-    if role == "teacher":
-        lines.append(f"👨‍🏫 Преподаватель: <code>{target_name}</code>")
-    else:
-        lines.append(f"👥 Группа: <code>{target_name}</code>")
+    if group_name:
+        lines.append(f"👥 Группа: <code>{group_name}</code>")
     lines.append("━━━━━━━━━━━━━━━━━━━━")
 
     if not lessons:
-        lines.append("\n🎉 <b>В этот день пар нет! Можно отдыхать.</b>")
+        lines.append("\n🎉 <b>Пар нет! Можно отдыхать.</b>")
         return "\n".join(lines)
 
     enriched = []
@@ -459,17 +515,13 @@ def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str
             place_parts.append(f"ауд. <b>{l['room']}</b>")
         if place_parts:
             lines.append(f"📍 {', '.join(place_parts)}")
-
-        if role == "teacher":
-            lines.append(f"👥 Группа: <code>{l.get('group', '—')}</code>")
-        else:
-            if l.get('teacher'):
-                lines.append(f"👤 <i>{l['teacher']}</i>")
+        if l.get('teacher'):
+            lines.append(f"👤 <i>{l['teacher']}</i>")
         lines.append("")
 
     return "\n".join(lines).strip()
 
-def get_now_status(lessons: list, check_dt: datetime.datetime, target_name: str = "", role: str = "student") -> str:
+def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str = "") -> str:
     if not lessons:
         return "🎉 <b>Сегодня занятий нет!</b> Можно отдыхать."
 
@@ -490,11 +542,10 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, target_name: str 
     if curr_t < first_st:
         diff_m = (first_st.hour * 60 + first_st.minute) - (curr_t.hour * 60 + curr_t.minute)
         f = enriched[0]
-        extra = f"\n👥 Группа: <code>{f.get('group', '')}</code>" if role == "teacher" else ""
         return (f"⏰ <b>Пары ещё не начались</b>\n\n"
                 f"⏳ До первой пары осталось: <b>{diff_m} мин</b>\n"
                 f"В <b>{f['s_str']}</b> — <b>{f['subject']}</b>\n"
-                f"📍 {f.get('building', '')} {f.get('room', '')}{extra}")
+                f"📍 {f.get('building', '')} {f.get('room', '')}")
 
     if curr_t > last_et:
         return "🎉 <b>Все пары на сегодня завершились!</b> Можно отдыхать."
@@ -505,11 +556,10 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, target_name: str 
             nxt = enriched[i+1] if i + 1 < len(enriched) else None
             nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} ({nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
             typ_f = normalize_type(l.get('type', ''))
-            extra = f"\n👥 Группа: <code>{l.get('group', '')}</code>" if role == "teacher" else f"\n👤 <i>{l.get('teacher', '')}</i>"
             return (f"⚡ <b>Сейчас идёт занятие:</b>\n\n"
                     f"⏰ <b>{l['s_str']} – {l['e_str']}</b>\n"
                     f"📘 <b>{l['subject']}</b> ({typ_f})\n"
-                    f"📍 {l.get('building', '')} {l.get('room', '')}{extra}\n\n"
+                    f"📍 {l.get('building', '')} {l.get('room', '')} | 👤 <i>{l.get('teacher', '')}</i>\n\n"
                     f"⏳ До конца пары: <b>{diff_m} мин</b>{nxt_str}")
 
         if i + 1 < len(enriched):
@@ -526,20 +576,14 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, target_name: str 
     return "ℹ️ Нет информации о текущей паре."
 
 # --- КЛАВИАТУРЫ ---
-def role_choice_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎓 Я студент", callback_data="choose_role_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Я преподаватель", callback_data="choose_role_teacher")]
-    ])
-
-def main_keyboard(role: str = "student", target_name: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=f"{WEB_APP_URL}?group={target_name}"), style="success")] if role == "student" else [KeyboardButton(text="⏱ Сейчас", style="success")]
-    change_btn_text = "🔍 Сменить группу" if role == "student" else "🔍 Сменить преподавателя"
+def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
+    web_url = f"{WEB_APP_URL}?group={user_group}"
+    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
     rows = [
         top_button,
         [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")] if role == "student" else [KeyboardButton(text="🗓 Неделя")],
-        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text=change_btn_text)]
+        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")],
+        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
     ]
     if is_admin:
         rows.append([KeyboardButton(text="🌐 Веб-Админка")])
@@ -568,9 +612,7 @@ def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarku
     ])
 
 def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
-    role = user_row[7] if user_row and len(user_row) > 7 else "student"
     grp = user_row[2] if user_row else DEFAULT_GROUP
-    teacher = user_row[8] if user_row and len(user_row) > 8 else ""
     m_val = user_row[3] if user_row else 1
     r_val = user_row[4] if user_row else 1
     hw_val = user_row[5] if user_row else 1
@@ -581,39 +623,30 @@ def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
     r_txt = "Вкл" if r_val else "Выкл"
     hw_txt = "Вкл" if hw_val else "Выкл"
 
-    target_label = f"👥 Группа: {grp}" if role == "student" else f"👨‍🏫 Преподаватель: {teacher}"
-    target_cb = "change_group" if role == "student" else "change_teacher"
-
     kb = [
-        [InlineKeyboardButton(text="🔄 Сменить роль (Студент / Преподаватель)", callback_data="switch_role")],
-        [InlineKeyboardButton(text=target_label, callback_data=target_cb)],
         [InlineKeyboardButton(text=f"🎨 Вид расписания: {view_txt}", callback_data="toggle_view")],
         [InlineKeyboardButton(text=f"🔔 Утреннее расписание (07:30): {m_txt}", callback_data="toggle_morning")],
         [InlineKeyboardButton(text=f"⏰ Напоминание (1-я пара и после обеда): {r_txt}", callback_data="toggle_remind")],
-        [InlineKeyboardButton(text=f"📚 Напоминание о парах на завтра (17:00): {hw_txt}", callback_data="toggle_hw")]
+        [InlineKeyboardButton(text=f"📚 Напоминание о ДЗ (17:00): {hw_txt}", callback_data="toggle_hw")],
+        [InlineKeyboardButton(text=f"👥 Группа: {grp}", callback_data="change_group")]
     ]
     if is_admin:
         kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push")])
         kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
-# --- ОТПРАВКА РАСПИСАНИЯ ---
-async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, is_callback: bool = False):
-    user_row = get_user(target.from_user.id)
-    role = user_row[7] if user_row and len(user_row) > 7 else "student"
-    target_name = user_row[8] if role == "teacher" else (user_row[2] if user_row else DEFAULT_GROUP)
-
+async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, grp: str, is_callback: bool = False):
     day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+    sched = get_group_schedule(grp)
     lessons = sched.get(wn_code, {}).get(day_name, [])
+    user_row = get_user(target.from_user.id)
     view_type = user_row[6] if user_row else 'text'
     reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code)
-
-    sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-    caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n{sub_title}"
+    
+    caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n👥 <i>Группа: <code>{grp}</code></i>"
 
     if date_obj.weekday() == 6:
-        text = f"📅 <b>Воскресенье</b> ({date_obj.strftime('%d.%m.%Y')})\n{sub_title}\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
+        text = f"📅 <b>Воскресенье</b> ({date_obj.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
         if is_callback:
             if target.message.photo:
                 await target.message.delete()
@@ -624,9 +657,10 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, i
             await target.answer(text, reply_markup=reply_kb)
         return
 
+    # РЕЖИМ 1: ТАБЛИЦА
     png_buf = None
     if view_type == 'table' and HAS_PILLOW:
-        png_buf = render_table_png(lessons, day_name, target_name, role=role)
+        png_buf = render_table_png(lessons, day_name, grp)
 
     if png_buf:
         file_input = BufferedInputFile(png_buf.getvalue(), filename="schedule.png")
@@ -638,8 +672,9 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, i
                 await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
         else:
             await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+    # РЕЖИМ 2: ТЕКСТ
     else:
-        text = format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=date_obj.strftime('%d.%m.%Y'))
+        text = format_day_text(day_name, wn_code, lessons, grp, date_obj.strftime('%d.%m.%Y'))
         if is_callback:
             if target.message.photo:
                 await target.message.delete()
@@ -649,198 +684,96 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, i
         else:
             await target.answer(text, reply_markup=reply_kb)
 
-# --- FSM СОСТОЯНИЯ ---
-class RoleForm(StatesGroup):
-    waiting_for_group = State()
-    waiting_for_teacher = State()
-
-# --- ХЕНДЛЕРЫ СТАРТА И ВЫБОРА РОЛИ ---
+# --- ХЕНДЛЕРЫ ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
     user = get_user(msg.from_user.id)
     is_adm = (msg.from_user.id == ADMIN_ID)
-    if not user or not (user[2] or (len(user) > 8 and user[8])):
+    if not user:
+        await state.set_state(Form.waiting_for_group)
         text = (
             "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
-            "Пожалуйста, выберите, кто вы:"
+            "Напиши номер своей группы (например: <code>7241452</code> или <code>18.2-545</code>):"
         )
-        await msg.answer(text, reply_markup=role_choice_keyboard())
+        await msg.answer(text)
         return
 
-    role = user[7] if len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else user[2]
     _, wn_name = get_week_info()
-    label = f"👨‍🏫 Преподаватель: <code>{target_name}</code>" if role == "teacher" else f"👥 Группа: <code>{target_name}</code>"
     text = (
-        f"👋 С возвращением!\n{label}\n"
+        f"👋 С возвращением! Группа: <code>{user[2]}</code>\n"
         f"⚡ Сейчас идет: <b>{wn_name}</b>\n\n"
         f"Используй кнопки внизу экрана:"
     )
     if is_adm:
-        text += "\n\n👑 <i>Статус администратора активен.</i>"
-    await msg.answer(text, reply_markup=main_keyboard(role, target_name, is_admin=is_adm))
+        text += "\n\n👑 <i>Ты администратор. Доступна кнопка «🌐 Веб-Админка».</i>"
+    await msg.answer(text, reply_markup=main_keyboard(user[2], is_admin=is_adm))
 
-@dp.callback_query(F.data == "choose_role_student")
-@dp.callback_query(F.data == "change_group")
-async def cb_role_student(call: CallbackQuery, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_group)
-    text = (
-        "🎓 <b>Режим студента</b>\n\n"
-        "✍️ Напиши номер своей группы (например: <code>7241452</code> или <code>18.2-545</code>):"
-    )
-    await call.message.answer(text)
-    await call.answer()
-
-@dp.callback_query(F.data == "choose_role_teacher")
-@dp.callback_query(F.data == "change_teacher")
-async def cb_role_teacher(call: CallbackQuery, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_teacher)
-    text = (
-        "👨‍🏫 <b>Режим преподавателя</b>\n\n"
-        "✍️ Напишите вашу фамилию (например: <code>Мельников</code>, <code>Волкова</code> или <code>Хузин</code>):"
-    )
-    await call.message.answer(text)
-    await call.answer()
-
-@dp.callback_query(F.data == "switch_role")
-async def cb_switch_role(call: CallbackQuery, state: FSMContext):
-    await state.clear()
-    await call.message.answer("Выберите новую роль:", reply_markup=role_choice_keyboard())
-    await call.answer()
-
-# --- СТРОГАЯ ВАЛИДАЦИЯ ГРУППЫ ---
-@dp.message(RoleForm.waiting_for_group)
-async def process_student_group(msg: Message, state: FSMContext):
+@dp.message(Form.waiting_for_group)
+async def process_custom_group(msg: Message, state: FSMContext):
     raw_query = msg.text.strip()
-    matched = find_group_strict(raw_query)
-
-    if not matched:
-        await msg.answer(
-            f"❌ Группа «{raw_query}» не найдена в расписании!\n\n"
-            "Пожалуйста, введи реальный номер группы колледжа или высшей школы.\n"
-            "<i>Примеры:</i> <code>7241452</code>, <code>18.2-545</code>, <code>18.03-551</code>, <code>7231405</code>."
-        )
-        return  # Состояние не сбрасывается, ждем корректный ввод
-
-    register_user(msg.from_user.id, msg.from_user.username or "", role="student", group_name=matched)
+    matched = find_group(raw_query)
+    final_grp = matched if matched else raw_query
+    register_user(msg.from_user.id, msg.from_user.username or "", final_grp)
     await state.clear()
-    _, wn_name = get_week_info()
     is_adm = (msg.from_user.id == ADMIN_ID)
+    _, wn_name = get_week_info()
     await msg.answer(
-        f"✅ Отлично! Установлена группа: <b>{matched}</b>\n"
+        f"✅ Отлично! Установлена группа: <b>{final_grp}</b>\n"
         f"🔔 Утреннее расписание в 07:30: <b>Включено</b>\n"
         f"⚡ Текущая неделя: <b>{wn_name}</b>",
-        reply_markup=main_keyboard("student", matched, is_admin=is_adm)
+        reply_markup=main_keyboard(final_grp, is_admin=is_adm)
     )
 
-# --- ПОИСК И ВЫБОР ПРЕПОДАВАТЕЛЯ ---
-@dp.message(RoleForm.waiting_for_teacher)
-async def process_teacher_name(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
-    matches = find_teachers(raw_query)
+@dp.message(F.text.contains("Сменить группу"))
+@dp.message(Command("setgroup"))
+async def cmd_change_group(msg: Message, state: FSMContext):
+    await state.set_state(Form.waiting_for_group)
+    await msg.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
 
-    if not matches:
-        await msg.answer(
-            f"❌ Преподаватель с фамилией «{raw_query}» не найден в базе расписания.\n\n"
-            "Попробуйте ввести только фамилию на русском языке (например: <code>Мельников</code>, <code>Волкова</code>, <code>Хузин</code>):"
-        )
-        return
-
-    if len(matches) == 1:
-        chosen = matches[0]
-        register_user(msg.from_user.id, msg.from_user.username or "", role="teacher", teacher_name=chosen)
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (msg.from_user.id == ADMIN_ID)
-        await msg.answer(
-            f"✅ Здравствуйте, <b>{chosen}</b>!\n"
-            f"Расписание ваших занятий успешно подключено.\n"
-            f"⚡ Текущая неделя: <b>{wn_name}</b>",
-            reply_markup=main_keyboard("teacher", chosen, is_admin=is_adm)
-        )
-        return
-
-    # Если найдено несколько преподавателей
-    kb_rows = []
-    for idx, t_name in enumerate(matches[:8]):
-        try:
-            real_idx = TEACHERS_LIST.index(t_name)
-            kb_rows.append([InlineKeyboardButton(text=f"👤 {t_name}", callback_data=f"tchr_{real_idx}")])
-        except Exception:
-            pass
-
-    await msg.answer(
-        f"🔍 По запросу «{raw_query}» найдено несколько преподавателей.\nВыберите себя из списка:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows)
-    )
-
-@dp.callback_query(F.data.startswith("tchr_"))
-async def cb_pick_teacher(call: CallbackQuery, state: FSMContext):
-    t_idx = int(call.data.replace("tchr_", ""))
-    if 0 <= t_idx < len(TEACHERS_LIST):
-        chosen = TEACHERS_LIST[t_idx]
-        register_user(call.from_user.id, call.from_user.username or "", role="teacher", teacher_name=chosen)
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (call.from_user.id == ADMIN_ID)
-        await call.message.edit_text(f"✅ Выбран преподаватель: <b>{chosen}</b>")
-        await call.message.answer(
-            f"Главное меню открыто. Текущая неделя: <b>{wn_name}</b>",
-            reply_markup=main_keyboard("teacher", chosen, is_admin=is_adm)
-        )
+@dp.callback_query(F.data == "change_group")
+async def cb_change_group(call: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.waiting_for_group)
+    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
     await call.answer()
 
-# --- КНОПКИ СМЕНЫ ---
-@dp.message(F.text.contains("Сменить группу"))
-@dp.message(F.text.contains("Сменить преподавателя"))
-@dp.message(Command("setgroup"))
-async def cmd_change_profile(msg: Message, state: FSMContext):
-    user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    if role == "teacher":
-        await state.set_state(RoleForm.waiting_for_teacher)
-        await msg.answer("✍️ Напишите фамилию преподавателя:")
-    else:
-        await state.set_state(RoleForm.waiting_for_group)
-        await msg.answer("✍️ Напиши номер группы (например: <code>7241452</code> или <code>18.2-545</code>):")
-
-# --- ОСНОВНЫЕ КОМАНДЫ РАСПИСАНИЯ ---
 @dp.message(F.text == "📅 Сегодня")
 @dp.message(Command("today"))
 async def cmd_today(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
-    await send_or_edit_schedule(msg, today, wn_code, is_callback=False)
+    await send_or_edit_schedule(msg, today, wn_code, grp, is_callback=False)
 
 @dp.message(F.text == "📅 Завтра")
 @dp.message(Command("tomorrow"))
 async def cmd_tomorrow(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
     tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
     wn_code, _ = get_week_info(tomorrow)
-    await send_or_edit_schedule(msg, tomorrow, wn_code, is_callback=False)
+    await send_or_edit_schedule(msg, tomorrow, wn_code, grp, is_callback=False)
 
 @dp.callback_query(F.data.startswith("nav_"))
 async def cb_nav_schedule(call: CallbackQuery):
     data_parts = call.data.split("_")
     user = get_user(call.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    grp = user[2] if user else DEFAULT_GROUP
 
     if data_parts[1] == "today":
         target_d = datetime.datetime.now(MSK_TZ).date()
         wn_code, _ = get_week_info(target_d)
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True)
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
     elif data_parts[1] == "week":
         wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info()[0]
         wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
-        sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-        sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-        parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n{sub_title}\n"]
+        sched = get_group_schedule(grp)
+        parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n👥 Группа: <code>{grp}</code>\n"]
         for day in DAYS_ORDER:
             lessons = sched.get(wn_code, {}).get(day, [])
             if lessons:
-                parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
+                parts.append(format_day_text(day, wn_code, lessons))
         reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code)
         if call.message.photo:
             await call.message.delete()
@@ -850,16 +783,14 @@ async def cb_nav_schedule(call: CallbackQuery):
     else:
         target_d = datetime.date.fromisoformat(data_parts[1])
         wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info(target_d)[0]
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True)
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
     await call.answer()
 
 @dp.message(F.text == "⏱ Сейчас")
 @dp.message(Command("now"))
 async def cmd_now(msg: Message):
     user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
-
+    grp = user[2] if user else DEFAULT_GROUP
     now_msk = datetime.datetime.now(MSK_TZ)
     if now_msk.weekday() == 6:
         await msg.answer("🎉 Сегодня воскресенье! Пар нет.")
@@ -867,29 +798,25 @@ async def cmd_now(msg: Message):
 
     wn_code, _ = get_week_info(now_msk.date())
     day_name = DAYS_MAP[now_msk.weekday()]
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+    sched = get_group_schedule(grp)
     lessons = sched.get(wn_code, {}).get(day_name, [])
-    res = get_now_status(lessons, now_msk, target_name, role=role)
+    res = get_now_status(lessons, now_msk, grp)
     await msg.answer(res)
 
 @dp.message(F.text == "🗓 Неделя")
 @dp.message(Command("week"))
 async def cmd_week(msg: Message):
     user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
-
+    grp = user[2] if user else DEFAULT_GROUP
     wn_code, wn_name = get_week_info()
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-    parts = [f"🗓 <b>Расписание на текущую неделю ({wn_name})</b>\n{sub_title}\n"]
+    sched = get_group_schedule(grp)
+    parts = [f"🗓 <b>Расписание на текущую неделю ({wn_name})</b>\n👥 Группа: <code>{grp}</code>\n"]
     for day in DAYS_ORDER:
         lessons = sched.get(wn_code, {}).get(day, [])
         if lessons:
-            parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
+            parts.append(format_day_text(day, wn_code, lessons))
     await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code))
 
-# --- МЕНЮ НАСТРОЕК ---
 @dp.message(F.text.contains("Настройки"))
 @dp.message(Command("settings"))
 async def cmd_settings(msg: Message):
@@ -900,13 +827,12 @@ async def cmd_settings(msg: Message):
 
     is_adm = (msg.from_user.id == ADMIN_ID)
     text = (
-        "<b>Настройки профиля</b>\n\n"
+        "<b>Настройки</b>\n\n"
         "<blockquote>"
-        "• 🔄 <b>Смена роли</b> — переключение между студентом и преподавателем\n"
-        "• 🎨 <b>Вид расписания</b> — таблица с аудиториями или структурированный текст\n"
-        "• 🔔 <b>Утреннее расписание (07:30)</b> — сводка пар на день каждое утро\n"
-        "• ⏰ <b>Напоминание за 15 минут</b> — перед первой парой и парой после обеда\n"
-        "• 📚 <b>Сводка на завтра (17:00)</b> — вечернее напоминание о расписании"
+        "• 🎨 <b>Вид расписания</b> — переключение между таблицей и простым текстом\n"
+        "• 🔔 <b>Утреннее расписание (07:30)</b> — рассылка расписания каждое утро\n"
+        "• ⏰ <b>Напоминание за 15 минут</b> — перед первой парой и занятием после обеда\n"
+        "• 📚 <b>Напоминание о ДЗ (17:00)</b> — вечерняя сводка заданий на завтра"
         "</blockquote>\n\n"
         "Нажимайте на кнопки для переключения:"
     )
@@ -958,7 +884,7 @@ async def cb_admin_stats(call: CallbackQuery):
         await call.answer("Доступ запрещен", show_alert=True)
         return
     total, active_notify = get_stats()
-    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n📚 Всего групп в базе: {len(SCHEDULE_DB)}\n👨‍🏫 Преподавателей: {len(TEACHERS_LIST)}", show_alert=True)
+    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n📚 Всего групп в базе: {len(SCHEDULE_DB)}", show_alert=True)
 
 @dp.callback_query(F.data == "admin_test_push")
 async def cb_admin_test_push(call: CallbackQuery):
@@ -966,14 +892,13 @@ async def cb_admin_test_push(call: CallbackQuery):
         await call.answer("Доступ запрещен", show_alert=True)
         return
     user = get_user(call.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
     day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+    sched = get_group_schedule(grp)
     lessons = sched.get(wn_code, {}).get(day_name, [])
-    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=today.strftime('%d.%m.%Y'))
+    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y'))
     await call.message.answer(demo_text)
     await call.answer("Тестовое уведомление отправлено!")
 
@@ -990,7 +915,7 @@ async def cmd_web_admin(msg: Message):
     ])
     await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
 
-# --- ПЛАНИРОВЩИК УВЕДОМЛЕНИЙ ---
+# --- АВТОМАТИЧЕСКИЕ НАПОМИНАНИЯ И РАССЫЛКИ ---
 async def background_scheduler():
     last_morning_date = None
     last_evening_date = None
@@ -1008,31 +933,29 @@ async def background_scheduler():
                 if today_date.weekday() != 6:
                     wn_code, _ = get_week_info(today_date)
                     day_name = DAYS_MAP[today_date.weekday()]
-                    for uid, role, grp, teacher in get_subscribers("notify_morning"):
+                    for uid, grp in get_subscribers("notify_morning"):
                         try:
-                            target_name = teacher if role == "teacher" else grp
-                            sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+                            sched = get_group_schedule(grp)
                             lessons = sched.get(wn_code, {}).get(day_name, [])
-                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=today_date.strftime('%d.%m.%Y'))
+                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today_date.strftime('%d.%m.%Y'))
                             await bot.send_message(uid, msg_text)
                             await asyncio.sleep(0.05)
                         except Exception:
                             pass
 
-            # 2. Вечерняя сводка в 17:00
+            # 2. Вечерняя сводка ДЗ в 17:00
             if cur_hhmm == "17:00" and last_evening_date != today_date:
                 last_evening_date = today_date
                 tom_date = today_date + datetime.timedelta(days=1)
                 if tom_date.weekday() != 6:
                     wn_code, _ = get_week_info(tom_date)
                     day_name = DAYS_MAP[tom_date.weekday()]
-                    for uid, role, grp, teacher in get_subscribers("notify_hw"):
+                    for uid, grp in get_subscribers("notify_hw"):
                         try:
-                            target_name = teacher if role == "teacher" else grp
-                            sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+                            sched = get_group_schedule(grp)
                             lessons = sched.get(wn_code, {}).get(day_name, [])
                             if lessons:
-                                msg_text = "📚 <b>Вечерняя сводка: пары на завтра:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=tom_date.strftime('%d.%m.%Y'))
+                                msg_text = "📚 <b>Вечерняя сводка: расписание на завтра:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, tom_date.strftime('%d.%m.%Y'))
                                 await bot.send_message(uid, msg_text)
                                 await asyncio.sleep(0.05)
                         except Exception:
@@ -1042,12 +965,13 @@ async def background_scheduler():
             if today_date.weekday() != 6:
                 wn_code, _ = get_week_info(today_date)
                 day_name = DAYS_MAP[today_date.weekday()]
-                for uid, role, grp, teacher in get_subscribers("notify_remind"):
-                    target_name = teacher if role == "teacher" else grp
-                    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+                
+                for uid, grp in get_subscribers("notify_remind"):
+                    sched = get_group_schedule(grp)
                     lessons = sched.get(wn_code, {}).get(day_name, [])
                     if not lessons:
                         continue
+                    
                     targets = []
                     if len(lessons) > 0:
                         targets.append(lessons[0])
@@ -1057,6 +981,7 @@ async def background_scheduler():
                         if ("11:50" in prev_l.get('time', '') and "12:30" in cur_l.get('time', '')) or \
                            ("11:10" in prev_l.get('time', '') and "11:50" in cur_l.get('time', '')):
                             targets.append(cur_l)
+                            
                     for t_l in targets:
                         start_str = t_l.get('time', '')[:5]
                         try:
@@ -1067,11 +992,11 @@ async def background_scheduler():
                             if cur_hhmm == rem_str and rem_key not in sent_reminders:
                                 sent_reminders.add(rem_key)
                                 typ_f = normalize_type(t_l.get('type', ''))
-                                info_who = f"\n👥 Группа: <code>{t_l.get('group', '')}</code>" if role == "teacher" else f"\n👤 <i>{t_l.get('teacher', '')}</i>"
                                 alert_msg = (
                                     f"⏰ <b>Напоминание: через 15 минут пара!</b>\n\n"
                                     f"В <b>{start_str}</b>: <b>{t_l.get('subject')}</b> ({typ_f})\n"
-                                    f"📍 {t_l.get('building')}, ауд. <b>{t_l.get('room')}</b>{info_who}"
+                                    f"📍 {t_l.get('building')}, ауд. <b>{t_l.get('room')}</b>\n"
+                                    f"👤 <i>{t_l.get('teacher')}</i>"
                                 )
                                 await bot.send_message(uid, alert_msg)
                         except Exception:
@@ -1080,9 +1005,9 @@ async def background_scheduler():
             logging.error(f"Ошибка в планировщике: {e}")
         await asyncio.sleep(25)
 
-# --- ЗАПУСК ВЕБ-СЕРВЕРА ---
+# --- ВЕБ-СЕРВЕР ---
 async def handle_index(request):
-    return web.Response(text=f"<h1>Расписание НЧИ КФУ онлайн</h1><p>Групп: {len(SCHEDULE_DB)} | Преподавателей: {len(TEACHERS_LIST)}</p>", content_type='text/html')
+    return web.Response(text=f"<h1>Расписание НЧИ КФУ онлайн</h1><p>Групп в базе: {len(SCHEDULE_DB)}</p>", content_type='text/html')
 
 def create_web_app():
     app = web.Application()
