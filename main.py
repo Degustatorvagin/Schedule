@@ -36,8 +36,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # --- ССЫЛКА НА САЙТ MINI APP ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
 
-# Токен безопасно берется из переменных окружения Bothost
-TOKEN = os.getenv("BOT_TOKEN")
+# Токен берется из переменных окружения Bothost
+TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
@@ -721,7 +721,7 @@ async def process_student_group(msg: Message, state: FSMContext):
             "Пожалуйста, введи реальный номер группы колледжа или высшей школы.\n"
             "<i>Примеры:</i> <code>7241452</code>, <code>18.2-545</code>, <code>18.03-551</code>, <code>7231405</code>."
         )
-        return  # Состояние не сбрасывается, ждем корректный ввод
+        return
 
     register_user(msg.from_user.id, msg.from_user.username or "", role="student", group_name=matched)
     await state.clear()
@@ -761,7 +761,6 @@ async def process_teacher_name(msg: Message, state: FSMContext):
         )
         return
 
-    # Если найдено несколько преподавателей
     kb_rows = []
     for idx, t_name in enumerate(matches[:8]):
         try:
