@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sqlite3
+import urllib.parse
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
@@ -33,16 +34,14 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# --- ССЫЛКА НА САЙТ MINI APP ---
+# --- КОНФИГУРАЦИЯ ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
-
-# Токен берется из переменных окружения Bothost
-TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
+TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
 
-# ВАЖНО: Инициализация бота и диспетчера в начале файла (до всех функций)
+# Инициализация бота и диспетчера в начале файла
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
@@ -135,7 +134,7 @@ def get_cyrillic_font(size=13):
                 pass
     return None
 
-# --- БАЗА ДАННЫХ SQLITE ---
+# --- БАЗА ДАННЫХ И ЛОГИРОВАНИЕ ---
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -151,6 +150,17 @@ def init_db():
                     notify_remind INTEGER DEFAULT 1,
                     notify_hw INTEGER DEFAULT 1,
                     view_type TEXT DEFAULT 'text',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS activity_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    username TEXT,
+                    role TEXT,
+                    action TEXT,
+                    details TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -171,6 +181,18 @@ def init_db():
     except Exception as e:
         logging.error(f"Ошибка БД: {e}")
 
+def log_activity(user_id: int, username: str, role: str, action: str, details: str = ""):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO activity_logs (user_id, username, role, action, details)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, username or "", role, action, details))
+            conn.commit()
+    except Exception as e:
+        logging.error(f"Ошибка логирования: {e}")
+
 def get_user(user_id: int):
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -184,8 +206,11 @@ def get_user(user_id: int):
     except Exception:
         return None
 
-def register_user(user_id: int, username: str, role: str = "student", group_name: str = DEFAULT_GROUP, teacher_name: str = ""):
+def register_user(user_id: int, username: str, role: str = "student", group_name: str = None, teacher_name: str = None):
     try:
+        existing = get_user(user_id)
+        saved_grp = group_name if group_name is not None else (existing[2] if existing else DEFAULT_GROUP)
+        saved_teacher = teacher_name if teacher_name is not None else (existing[8] if existing else "")
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -196,7 +221,7 @@ def register_user(user_id: int, username: str, role: str = "student", group_name
                     COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text')
                 )
-            """, (user_id, username, role, group_name, teacher_name, user_id, user_id, user_id, user_id))
+            """, (user_id, username, role, saved_grp, saved_teacher, user_id, user_id, user_id, user_id))
             conn.commit()
     except Exception as e:
         logging.error(f"Ошибка регистрации: {e}")
@@ -218,16 +243,6 @@ def get_subscribers(field: str = "notify_morning"):
             return cursor.fetchall()
     except Exception:
         return []
-
-def get_stats():
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT count(*), sum(notify_morning) FROM users")
-            row = cursor.fetchone()
-            return (row[0] or 0), (row[1] or 0)
-    except Exception:
-        return 0, 0
 
 # --- РАСПИСАНИЕ И ПОИСК ---
 def load_schedule() -> dict:
@@ -338,6 +353,72 @@ def get_week_info(target_date: datetime.date = None):
     if weeks_diff % 2 == 0:
         return 'в', 'Верхняя неделя 🔼'
     return 'н', 'Нижняя неделя 🔽'
+
+# --- МОДУЛЬ: ГДЕ СЕЙЧАС ПРЕПОДАВАТЕЛЬ ---
+def locate_teacher(teacher_name: str, check_dt: datetime.datetime, wn_code: str):
+    t_sched = get_teacher_schedule(teacher_name)
+    day_name = DAYS_MAP.get(check_dt.weekday())
+    if not day_name:
+        return f"🏖 Сегодня воскресенье. <b>{teacher_name}</b> отдыхает."
+
+    day_lessons = t_sched.get(wn_code, {}).get(day_name, [])
+    if not day_lessons:
+        return f"☕ Сегодня ({day_name}) у преподавателя <b>{teacher_name}</b> по расписанию занятий нет."
+
+    enriched = []
+    for l in day_lessons:
+        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
+        if st and et:
+            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str, "slot": slot})
+
+    if not enriched:
+        return f"ℹ️ Расписание найдено, но время звонков не определено."
+
+    enriched.sort(key=lambda x: x["st"])
+    curr_t = check_dt.time()
+    first_st = enriched[0]["st"]
+    last_et = enriched[-1]["et"]
+
+    if curr_t < first_st:
+        f = enriched[0]
+        diff_m = (first_st.hour * 60 + first_st.minute) - (curr_t.hour * 60 + curr_t.minute)
+        return (
+            f"⏳ <b>{teacher_name}</b> ещё не на парах.\n\n"
+            f"Первая пара начнётся через <b>{diff_m} мин</b> (в <b>{f['s_str']}</b>):\n"
+            f"📘 <b>{f['subject']}</b>\n"
+            f"📍 {f.get('building', '')}, ауд. <b>{f.get('room', '')}</b>\n"
+            f"👥 Группа: <code>{f.get('group', '')}</code>"
+        )
+
+    if curr_t > last_et:
+        return f"🏁 Все занятия у преподавателя <b>{teacher_name}</b> на сегодня завершились (последняя пара закончилась в <b>{enriched[-1]['e_str']}</b>)."
+
+    for i, l in enumerate(enriched):
+        if l["st"] <= curr_t <= l["et"]:
+            diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
+            nxt = enriched[i+1] if i + 1 < len(enriched) else None
+            nxt_str = f"\n\n➡️ Следующая пара в <b>{nxt['s_str']}</b>: ауд. <b>{nxt.get('room')}</b> ({nxt.get('building')}), группа <code>{nxt.get('group')}</code>" if nxt else "\n\n🏁 Это последняя пара преподавателя на сегодня!"
+            return (
+                f"📍 <b>{teacher_name} прямо сейчас ведёт пару:</b>\n\n"
+                f"📘 <b>{l['subject']}</b> ({l.get('type', '')})\n"
+                f"📍 <b>{l.get('building', '')}</b>, ауд. <b>{l.get('room', '')}</b>\n"
+                f"👥 Группа: <code>{l.get('group', '')}</code>\n"
+                f"⏰ До звонка с пары осталось: <b>{diff_m} мин</b> (до {l['e_str']}){nxt_str}"
+            )
+
+        if i + 1 < len(enriched):
+            nxt = enriched[i+1]
+            if l["et"] < curr_t < nxt["st"]:
+                diff_m = (nxt["st"].hour * 60 + nxt["st"].minute) - (curr_t.hour * 60 + curr_t.minute)
+                return (
+                    f"☕ <b>{teacher_name} сейчас на перерыве</b> (окно/перемена до {nxt['s_str']}):\n\n"
+                    f"⏳ До следующей пары: <b>{diff_m} мин</b>\n"
+                    f"➡️ В <b>{nxt['s_str']}</b> будет в <b>{nxt.get('building', '')}</b>, ауд. <b>{nxt.get('room', '')}</b>\n"
+                    f"📘 Предмет: <b>{nxt['subject']}</b>\n"
+                    f"👥 Группа: <code>{nxt.get('group', '')}</code>"
+                )
+
+    return f"ℹ️ Преподаватель: {teacher_name}."
 
 # --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ ---
 def render_table_png(lessons: list, day_name: str, target_name: str, role: str = "student"):
@@ -537,37 +618,51 @@ def role_choice_keyboard() -> InlineKeyboardMarkup:
     ])
 
 def main_keyboard(role: str = "student", target_name: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=f"{WEB_APP_URL}?group={target_name}"), style="success")] if role == "student" else [KeyboardButton(text="⏱ Сейчас", style="success")]
-    change_btn_text = "🔍 Сменить группу" if role == "student" else "🔍 Сменить преподавателя"
-    rows = [
-        top_button,
-        [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")] if role == "student" else [KeyboardButton(text="🗓 Неделя")],
-        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text=change_btn_text)]
-    ]
+    if role == "teacher":
+        top_url = f"{WEB_APP_URL}?role=teacher&teacher={urllib.parse.quote(target_name)}"
+        top_button = [KeyboardButton(text="⚡ Моё расписание онлайн", web_app=WebAppInfo(url=top_url), style="success")]
+        rows = [
+            top_button,
+            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
+            [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🗓 Неделя")],
+            [KeyboardButton(text="👀 Чужое расписание"), KeyboardButton(text="⚙️ Настройки")],
+            [KeyboardButton(text="🔍 Сменить преподавателя")]
+        ]
+    else:
+        top_url = f"{WEB_APP_URL}?role=student&group={urllib.parse.quote(target_name)}"
+        top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=top_url), style="success")]
+        rows = [
+            top_button,
+            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
+            [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🔍 Где преподаватель?")],
+            [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="👀 Чужое расписание")],
+            [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
+        ]
     if is_admin:
         rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarkup:
+def schedule_inline_keyboard(date_str: str, wn_code: str, custom_prefix: str = None) -> InlineKeyboardMarkup:
     d = datetime.date.fromisoformat(date_str)
     prev_d = d - datetime.timedelta(days=1)
     next_d = d + datetime.timedelta(days=1)
     opp_wn = 'в' if wn_code == 'н' else 'н'
     opp_label = "Верхняя 🔼" if opp_wn == 'в' else "Нижняя 🔽"
 
+    prefix = custom_prefix if custom_prefix else "nav"
+
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}_{wn_code}"),
-            InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today"),
-            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}_{wn_code}")
+            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"{prefix}_{prev_d.isoformat()}_{wn_code}"),
+            InlineKeyboardButton(text="📅 Сегодня", callback_data=f"{prefix}_today"),
+            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"{prefix}_{next_d.isoformat()}_{wn_code}")
         ],
         [
-            InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"nav_{date_str}_{opp_wn}"),
-            InlineKeyboardButton(text="🗓 Вся неделя", callback_data=f"nav_week_{wn_code}")
+            InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"{prefix}_{date_str}_{opp_wn}"),
+            InlineKeyboardButton(text="🗓 Вся неделя", callback_data=f"{prefix}_week_{wn_code}")
         ],
         [
-            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}_{wn_code}")
+            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"{prefix}_{date_str}_{wn_code}")
         ]
     ])
 
@@ -602,16 +697,16 @@ def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 # --- ОТПРАВКА РАСПИСАНИЯ ---
-async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, is_callback: bool = False):
+async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, is_callback: bool = False, custom_role: str = None, custom_target: str = None, custom_prefix: str = None):
     user_row = get_user(target.from_user.id)
-    role = user_row[7] if user_row and len(user_row) > 7 else "student"
-    target_name = user_row[8] if role == "teacher" else (user_row[2] if user_row else DEFAULT_GROUP)
+    role = custom_role if custom_role else (user_row[7] if user_row and len(user_row) > 7 else "student")
+    target_name = custom_target if custom_target else (user_row[8] if role == "teacher" else (user_row[2] if user_row else DEFAULT_GROUP))
 
     day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
     sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
     lessons = sched.get(wn_code, {}).get(day_name, [])
     view_type = user_row[6] if user_row else 'text'
-    reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code)
+    reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code, custom_prefix=custom_prefix)
 
     sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
     caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n{sub_title}"
@@ -657,6 +752,8 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, i
 class RoleForm(StatesGroup):
     waiting_for_group = State()
     waiting_for_teacher = State()
+    waiting_for_locator = State()
+    waiting_for_friend = State()
 
 # --- ХЕНДЛЕРЫ СТАРТА И ВЫБОРА РОЛИ ---
 @dp.message(CommandStart())
@@ -664,6 +761,7 @@ async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
     user = get_user(msg.from_user.id)
     is_adm = (msg.from_user.id == ADMIN_ID)
+    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "guest", "/start")
     if not user or not (user[2] or (len(user) > 8 and user[8])):
         text = (
             "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
@@ -686,8 +784,22 @@ async def cmd_start(msg: Message, state: FSMContext):
     await msg.answer(text, reply_markup=main_keyboard(role, target_name, is_admin=is_adm))
 
 @dp.callback_query(F.data == "choose_role_student")
-@dp.callback_query(F.data == "change_group")
 async def cb_role_student(call: CallbackQuery, state: FSMContext):
+    user = get_user(call.from_user.id)
+    if user and user[2]:
+        register_user(call.from_user.id, call.from_user.username or "", role="student")
+        await state.clear()
+        _, wn_name = get_week_info()
+        is_adm = (call.from_user.id == ADMIN_ID)
+        await call.message.edit_text(
+            f"🎓 <b>Режим студента активирован!</b>\n"
+            f"👥 Ваша группа: <b>{user[2]}</b>\n"
+            f"⚡ Текущая неделя: <b>{wn_name}</b>"
+        )
+        await call.message.answer("Главное меню обновлено:", reply_markup=main_keyboard("student", user[2], is_admin=is_adm))
+        await call.answer()
+        return
+
     await state.set_state(RoleForm.waiting_for_group)
     text = (
         "🎓 <b>Режим студента</b>\n\n"
@@ -697,8 +809,22 @@ async def cb_role_student(call: CallbackQuery, state: FSMContext):
     await call.answer()
 
 @dp.callback_query(F.data == "choose_role_teacher")
-@dp.callback_query(F.data == "change_teacher")
 async def cb_role_teacher(call: CallbackQuery, state: FSMContext):
+    user = get_user(call.from_user.id)
+    if user and len(user) > 8 and user[8]:
+        register_user(call.from_user.id, call.from_user.username or "", role="teacher")
+        await state.clear()
+        _, wn_name = get_week_info()
+        is_adm = (call.from_user.id == ADMIN_ID)
+        await call.message.edit_text(
+            f"👨‍🏫 <b>Режим преподавателя активирован!</b>\n"
+            f"👤 Преподаватель: <b>{user[8]}</b>\n"
+            f"⚡ Текущая неделя: <b>{wn_name}</b>"
+        )
+        await call.message.answer("Главное меню обновлено:", reply_markup=main_keyboard("teacher", user[8], is_admin=is_adm))
+        await call.answer()
+        return
+
     await state.set_state(RoleForm.waiting_for_teacher)
     text = (
         "👨‍🏫 <b>Режим преподавателя</b>\n\n"
@@ -707,10 +833,22 @@ async def cb_role_teacher(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text)
     await call.answer()
 
+@dp.callback_query(F.data == "change_group")
+async def cb_change_group_explicit(call: CallbackQuery, state: FSMContext):
+    await state.set_state(RoleForm.waiting_for_group)
+    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
+    await call.answer()
+
+@dp.callback_query(F.data == "change_teacher")
+async def cb_change_teacher_explicit(call: CallbackQuery, state: FSMContext):
+    await state.set_state(RoleForm.waiting_for_teacher)
+    await call.message.answer("✍️ Напишите фамилию преподавателя:")
+    await call.answer()
+
 @dp.callback_query(F.data == "switch_role")
 async def cb_switch_role(call: CallbackQuery, state: FSMContext):
     await state.clear()
-    await call.message.answer("Выберите новую роль:", reply_markup=role_choice_keyboard())
+    await call.message.answer("Выберите роль:", reply_markup=role_choice_keyboard())
     await call.answer()
 
 # --- СТРОГАЯ ВАЛИДАЦИЯ ГРУППЫ ---
@@ -731,6 +869,7 @@ async def process_student_group(msg: Message, state: FSMContext):
     await state.clear()
     _, wn_name = get_week_info()
     is_adm = (msg.from_user.id == ADMIN_ID)
+    log_activity(msg.from_user.id, msg.from_user.username, "student", "Смена группы", matched)
     await msg.answer(
         f"✅ Отлично! Установлена группа: <b>{matched}</b>\n"
         f"🔔 Утреннее расписание в 07:30: <b>Включено</b>\n"
@@ -738,7 +877,7 @@ async def process_student_group(msg: Message, state: FSMContext):
         reply_markup=main_keyboard("student", matched, is_admin=is_adm)
     )
 
-# --- ПОИСК И ВЫБОР ПРЕПОДАВАТЕЛЯ ---
+# --- ВЫБОР ПРЕПОДАВАТЕЛЯ ---
 @dp.message(RoleForm.waiting_for_teacher)
 async def process_teacher_name(msg: Message, state: FSMContext):
     raw_query = msg.text.strip()
@@ -757,6 +896,7 @@ async def process_teacher_name(msg: Message, state: FSMContext):
         await state.clear()
         _, wn_name = get_week_info()
         is_adm = (msg.from_user.id == ADMIN_ID)
+        log_activity(msg.from_user.id, msg.from_user.username, "teacher", "Смена преподавателя", chosen)
         await msg.answer(
             f"✅ Здравствуйте, <b>{chosen}</b>!\n"
             f"Расписание ваших занятий успешно подключено.\n"
@@ -787,6 +927,7 @@ async def cb_pick_teacher(call: CallbackQuery, state: FSMContext):
         await state.clear()
         _, wn_name = get_week_info()
         is_adm = (call.from_user.id == ADMIN_ID)
+        log_activity(call.from_user.id, call.from_user.username, "teacher", "Выбор преподавателя", chosen)
         await call.message.edit_text(f"✅ Выбран преподаватель: <b>{chosen}</b>")
         await call.message.answer(
             f"Главное меню открыто. Текущая неделя: <b>{wn_name}</b>",
@@ -794,7 +935,169 @@ async def cb_pick_teacher(call: CallbackQuery, state: FSMContext):
         )
     await call.answer()
 
-# --- КНОПКИ СМЕНЫ ---
+# --- МОДУЛЬ: ГДЕ СЕЙЧАС ПРЕПОДАВАТЕЛЬ ---
+@dp.message(F.text.contains("Где преподаватель"))
+@dp.message(Command("locate"))
+@dp.message(Command("find"))
+async def cmd_start_locate(msg: Message, state: FSMContext):
+    await state.set_state(RoleForm.waiting_for_locator)
+    log_activity(msg.from_user.id, msg.from_user.username, "student", "Поиск преподавателя")
+    await msg.answer("✍️ Напишите фамилию преподавателя, чтобы узнать, в какой он аудитории прямо сейчас (например: <code>Волкова</code>, <code>Мельников</code>, <code>Хузин</code>):")
+
+@dp.message(RoleForm.waiting_for_locator)
+async def process_locator_query(msg: Message, state: FSMContext):
+    raw_query = msg.text.strip()
+    matches = find_teachers(raw_query)
+
+    if not matches:
+        await msg.answer(f"❌ Преподаватель с фамилией «{raw_query}» не найден в расписании. Проверьте правильность написания:")
+        return
+
+    now_msk = datetime.datetime.now(MSK_TZ)
+    wn_code, _ = get_week_info(now_msk.date())
+
+    if len(matches) == 1:
+        chosen = matches[0]
+        await state.clear()
+        log_activity(msg.from_user.id, msg.from_user.username, "student", "Локация найдена", chosen)
+        res_text = locate_teacher(chosen, now_msk, wn_code)
+        t_idx = TEACHERS_LIST.index(chosen)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📅 Всё расписание на сегодня", callback_data=f"v_t_{t_idx}_{now_msk.date().isoformat()}_{wn_code}")],
+            [InlineKeyboardButton(text="🔍 Найти другого", callback_data="btn_locate_again")]
+        ])
+        await msg.answer(res_text, reply_markup=kb)
+        return
+
+    # Несколько преподавателей
+    kb_rows = []
+    for t_name in matches[:8]:
+        real_idx = TEACHERS_LIST.index(t_name)
+        kb_rows.append([InlineKeyboardButton(text=f"📍 Где {t_name}?", callback_data=f"loc_{real_idx}")])
+    await msg.answer(f"🔍 Найдено несколько преподавателей по запросу «{raw_query}». Выберите нужного:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+@dp.callback_query(F.data.startswith("loc_"))
+async def cb_loc_chosen(call: CallbackQuery, state: FSMContext):
+    t_idx = int(call.data.replace("loc_", ""))
+    if 0 <= t_idx < len(TEACHERS_LIST):
+        chosen = TEACHERS_LIST[t_idx]
+        await state.clear()
+        now_msk = datetime.datetime.now(MSK_TZ)
+        wn_code, _ = get_week_info(now_msk.date())
+        log_activity(call.from_user.id, call.from_user.username, "student", "Локация выбрана", chosen)
+        res_text = locate_teacher(chosen, now_msk, wn_code)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📅 Всё расписание на сегодня", callback_data=f"v_t_{t_idx}_{now_msk.date().isoformat()}_{wn_code}")],
+            [InlineKeyboardButton(text="🔍 Найти другого", callback_data="btn_locate_again")]
+        ])
+        await call.message.edit_text(res_text, reply_markup=kb)
+    await call.answer()
+
+@dp.callback_query(F.data == "btn_locate_again")
+async def cb_locate_again(call: CallbackQuery, state: FSMContext):
+    await state.set_state(RoleForm.waiting_for_locator)
+    await call.message.answer("✍️ Напишите фамилию преподавателя:")
+    await call.answer()
+
+# --- МОДУЛЬ: ЧУЖОЕ РАСПИСАНИЕ / РАСПИСАНИЕ ДРУГА ---
+@dp.message(F.text.contains("Чужое расписание"))
+@dp.message(Command("friend"))
+@dp.message(Command("view"))
+async def cmd_start_friend(msg: Message, state: FSMContext):
+    await state.set_state(RoleForm.waiting_for_friend)
+    log_activity(msg.from_user.id, msg.from_user.username, "user", "Просмотр чужого расписания")
+    await msg.answer(
+        "👀 <b>Просмотр расписания друга или преподавателя</b>\n\n"
+        "✍️ Напиши номер группы (например: <code>18.2-545</code>, <code>7241453</code>) или фамилию преподавателя (например: <code>Мельников</code>):\n\n"
+        "<i>Твой профиль и настройки при этом не изменятся!</i>"
+    )
+
+@dp.message(RoleForm.waiting_for_friend)
+async def process_friend_query(msg: Message, state: FSMContext):
+    raw_query = msg.text.strip()
+    today = datetime.datetime.now(MSK_TZ).date()
+    wn_code, _ = get_week_info(today)
+
+    # 1. Проверяем группу
+    grp_match = find_group_strict(raw_query)
+    if grp_match:
+        await state.clear()
+        log_activity(msg.from_user.id, msg.from_user.username, "user", "Чужая группа", grp_match)
+        await send_or_edit_schedule(
+            msg, today, wn_code, is_callback=False,
+            custom_role="student", custom_target=grp_match,
+            custom_prefix=f"v_g_{grp_match}"
+        )
+        return
+
+    # 2. Проверяем преподавателя
+    teachers_match = find_teachers(raw_query)
+    if len(teachers_match) == 1:
+        chosen = teachers_match[0]
+        await state.clear()
+        t_idx = TEACHERS_LIST.index(chosen)
+        log_activity(msg.from_user.id, msg.from_user.username, "user", "Чужой преподаватель", chosen)
+        await send_or_edit_schedule(
+            msg, today, wn_code, is_callback=False,
+            custom_role="teacher", custom_target=chosen,
+            custom_prefix=f"v_t_{t_idx}"
+        )
+        return
+    elif len(teachers_match) > 1:
+        kb_rows = []
+        for t_name in teachers_match[:8]:
+            t_idx = TEACHERS_LIST.index(t_name)
+            kb_rows.append([InlineKeyboardButton(text=f"👨‍🏫 {t_name}", callback_data=f"v_t_{t_idx}_{today.isoformat()}_{wn_code}")])
+        await msg.answer(f"🔍 Найдено несколько преподавателей по запросу «{raw_query}»:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+        return
+
+    await msg.answer("❌ Ничего не найдено! Проверь номер группы (например: <code>7241452</code>) или фамилию преподавателя (например: <code>Волкова</code>):")
+
+# Навигация по чужому расписанию
+@dp.callback_query(F.data.startswith("v_"))
+async def cb_nav_viewer(call: CallbackQuery):
+    parts = call.data.split("_")
+    # v_g_{group}_{date}_{wn} или v_t_{idx}_{date}_{wn}
+    target_type = parts[1] # 'g' или 't'
+    target_val = parts[2]
+    action_or_date = parts[3]
+    wn_code = parts[4] if len(parts) > 4 else get_week_info()[0]
+
+    if target_type == 'g':
+        role = "student"
+        target_name = target_val
+        prefix = f"v_g_{target_val}"
+    else:
+        role = "teacher"
+        t_idx = int(target_val)
+        target_name = TEACHERS_LIST[t_idx]
+        prefix = f"v_t_{t_idx}"
+
+    if action_or_date == "today":
+        target_d = datetime.datetime.now(MSK_TZ).date()
+        wn_code, _ = get_week_info(target_d)
+        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True, custom_role=role, custom_target=target_name, custom_prefix=prefix)
+    elif action_or_date == "week":
+        wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
+        sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+        sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
+        msg_parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n{sub_title}\n"]
+        for day in DAYS_ORDER:
+            lessons = sched.get(wn_code, {}).get(day, [])
+            if lessons:
+                msg_parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
+        reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code, custom_prefix=prefix)
+        if call.message.photo:
+            await call.message.delete()
+            await call.message.answer("\n\n".join(msg_parts), reply_markup=reply_kb)
+        else:
+            await call.message.edit_text("\n\n".join(msg_parts), reply_markup=reply_kb)
+    else:
+        target_d = datetime.date.fromisoformat(action_or_date)
+        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True, custom_role=role, custom_target=target_name, custom_prefix=prefix)
+    await call.answer()
+
+# --- КНОПКИ СМЕНЫ ПРОФИЛЯ ---
 @dp.message(F.text.contains("Сменить группу"))
 @dp.message(F.text.contains("Сменить преподавателя"))
 @dp.message(Command("setgroup"))
@@ -814,6 +1117,8 @@ async def cmd_change_profile(msg: Message, state: FSMContext):
 async def cmd_today(msg: Message):
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
+    user = get_user(msg.from_user.id)
+    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "student", "📅 Сегодня")
     await send_or_edit_schedule(msg, today, wn_code, is_callback=False)
 
 @dp.message(F.text == "📅 Завтра")
@@ -821,6 +1126,8 @@ async def cmd_today(msg: Message):
 async def cmd_tomorrow(msg: Message):
     tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
     wn_code, _ = get_week_info(tomorrow)
+    user = get_user(msg.from_user.id)
+    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "student", "📅 Завтра")
     await send_or_edit_schedule(msg, tomorrow, wn_code, is_callback=False)
 
 @dp.callback_query(F.data.startswith("nav_"))
@@ -862,6 +1169,7 @@ async def cmd_now(msg: Message):
     user = get_user(msg.from_user.id)
     role = user[7] if user and len(user) > 7 else "student"
     target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    log_activity(msg.from_user.id, msg.from_user.username, role, "⏱ Сейчас")
 
     now_msk = datetime.datetime.now(MSK_TZ)
     if now_msk.weekday() == 6:
@@ -881,6 +1189,7 @@ async def cmd_week(msg: Message):
     user = get_user(msg.from_user.id)
     role = user[7] if user and len(user) > 7 else "student"
     target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    log_activity(msg.from_user.id, msg.from_user.username, role, "🗓 Неделя")
 
     wn_code, wn_name = get_week_info()
     sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
@@ -902,6 +1211,7 @@ async def cmd_settings(msg: Message):
         user = get_user(msg.from_user.id)
 
     is_adm = (msg.from_user.id == ADMIN_ID)
+    log_activity(msg.from_user.id, msg.from_user.username, user[7], "⚙️ Настройки")
     text = (
         "<b>Настройки профиля</b>\n\n"
         "<blockquote>"
@@ -960,8 +1270,15 @@ async def cb_admin_stats(call: CallbackQuery):
     if call.from_user.id != ADMIN_ID:
         await call.answer("Доступ запрещен", show_alert=True)
         return
-    total, active_notify = get_stats()
-    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n📚 Всего групп в базе: {len(SCHEDULE_DB)}\n👨‍🏫 Преподавателей: {len(TEACHERS_LIST)}", show_alert=True)
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("SELECT count(*) FROM users")
+        total = c.fetchone()[0]
+        c.execute("SELECT count(*) FROM users WHERE notify_morning = 1")
+        active_notify = c.fetchone()[0]
+        c.execute("SELECT count(*) FROM activity_logs")
+        total_clicks = c.fetchone()[0]
+    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n⚡ Кликов в боте: {total_clicks}\n📚 Групп: {len(SCHEDULE_DB)} | Преподавателей: {len(TEACHERS_LIST)}", show_alert=True)
 
 @dp.callback_query(F.data == "admin_test_push")
 async def cb_admin_test_push(call: CallbackQuery):
@@ -986,10 +1303,10 @@ async def cmd_web_admin(msg: Message):
     if msg.from_user.id != ADMIN_ID:
         await msg.answer("⛔ Доступ только для администратора.")
         return
-    admin_url = f"{WEB_APP_URL}?admin=true&token={ADMIN_TOKEN}"
+    admin_url = f"https://bot-1791299850-3323-degustatorvagin.bothost.tech/?token={ADMIN_TOKEN}"
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
-        [InlineKeyboardButton(text="📱 Открыть как Mini App", web_app=WebAppInfo(url=admin_url))]
+        [InlineKeyboardButton(text="🚀 Открыть панель управления", url=admin_url)],
+        [InlineKeyboardButton(text="📱 Открыть в Telegram", web_app=WebAppInfo(url=admin_url))]
     ])
     await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
 
@@ -1083,14 +1400,257 @@ async def background_scheduler():
             logging.error(f"Ошибка в планировщике: {e}")
         await asyncio.sleep(25)
 
-# --- ЗАПУСК ВЕБ-СЕРВЕРА ---
-async def handle_index(request):
-    return web.Response(text=f"<h1>Расписание НЧИ КФУ онлайн</h1><p>Групп: {len(SCHEDULE_DB)} | Преподавателей: {len(TEACHERS_LIST)}</p>", content_type='text/html')
+# --- ВЕБ-АДМИНКА НА BOTHOST ---
+ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Админ-панель • НЧИ КФУ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b1118;
+            --surface: #131c26;
+            --card: #182230;
+            --border: #223042;
+            --primary: #2563eb;
+            --primary-glow: rgba(37, 99, 235, 0.25);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 14px; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+        /* Шапка */
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 14px 18px; border-radius: 16px; flex-wrap: wrap; gap: 10px; }
+        .logo-title { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #fff; }
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--success); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+        /* KPI Карточки */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+        .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #fff; }
+        .stat-sub { font-size: 11px; color: var(--success); font-weight: 600; }
+
+        /* Разделы */
+        .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .section-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .search-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: #fff; font-size: 13px; outline: none; width: 100%; max-width: 260px; }
+
+        /* Таблица активности */
+        .table-responsive { overflow-x: auto; max-height: 420px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th { background: var(--card); color: var(--text-muted); font-weight: 600; padding: 10px 12px; position: sticky; top: 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: #cbd5e1; }
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+        .badge-student { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+        .badge-teacher { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-action { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+        .btn-refresh { background: var(--primary); color: #fff; border: none; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-refresh:active { transform: scale(0.97); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-title">
+                <span>📚 НЧИ КФУ</span>
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Админ-панель</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div class="status-badge"><div class="status-dot"></div> Онлайн</div>
+                <button class="btn-refresh" onclick="location.reload()">🔄 Обновить</button>
+            </div>
+        </div>
+
+        <!-- KPI Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">👥 Пользователи</div>
+                <div class="stat-value" id="val-total-users">{TOTAL_USERS}</div>
+                <div class="stat-sub">🎓 {STUDENTS_COUNT} ст. • 👨‍🏫 {TEACHERS_COUNT} пр.</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🔔 Утренняя рассылка</div>
+                <div class="stat-value">{NOTIFY_COUNT}</div>
+                <div class="stat-sub" style="color: var(--primary);">07:30 по МСК</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⚡ Кликов зафиксировано</div>
+                <div class="stat-value" id="val-total-clicks">{TOTAL_CLICKS}</div>
+                <div class="stat-sub">Активность в боте</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">📚 База расписания</div>
+                <div class="stat-value">{GROUPS_COUNT}</div>
+                <div class="stat-sub">групп • {TEACHERS_BASE_COUNT} препод.</div>
+            </div>
+        </div>
+
+        <!-- Живой фид активности -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">⚡ Лента активности (Кто какие кнопки нажимает)</div>
+                <input type="text" class="search-box" id="log-search" placeholder="Поиск по действиям..." oninput="filterLogs()">
+            </div>
+            <div class="table-responsive">
+                <table id="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Время (МСК)</th>
+                            <th>Пользователь</th>
+                            <th>Роль</th>
+                            <th>Действие</th>
+                            <th>Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {LOGS_ROWS}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Список зарегистрированных пользователей -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="section-title">👥 Зарегистрированные пользователи</div>
+                <input type="text" class="search-box" id="user-search" placeholder="Поиск пользователя..." oninput="filterUsers()">
+            </div>
+            <div class="table-responsive">
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Роль</th>
+                            <th>Группа / Преподаватель</th>
+                            <th>Пуши</th>
+                            <th>Регистрация</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {USERS_ROWS}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterLogs() {
+            const q = document.getElementById('log-search').value.toLowerCase();
+            document.querySelectorAll('#logs-table tbody tr').forEach(tr => {
+                tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            document.querySelectorAll('#users-table tbody tr').forEach(tr => {
+                tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
+"""
+
+async def handle_admin_dashboard(request):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            c = conn.cursor()
+            c.execute("SELECT count(*) FROM users")
+            total_users = c.fetchone()[0] or 0
+
+            c.execute("SELECT count(*) FROM users WHERE role = 'student'")
+            students_count = c.fetchone()[0] or 0
+
+            c.execute("SELECT count(*) FROM users WHERE role = 'teacher'")
+            teachers_count = c.fetchone()[0] or 0
+
+            c.execute("SELECT count(*) FROM users WHERE notify_morning = 1")
+            notify_count = c.fetchone()[0] or 0
+
+            c.execute("SELECT count(*) FROM activity_logs")
+            total_clicks = c.fetchone()[0] or 0
+
+            # Последние 60 действий
+            c.execute("""
+                SELECT strftime('%H:%M:%S', created_at, '+3 hours'), 
+                       user_id, username, role, action, details 
+                FROM activity_logs ORDER BY id DESC LIMIT 60
+            """)
+            logs = c.fetchall()
+
+            # Пользователи
+            c.execute("""
+                SELECT user_id, username, role, group_name, teacher_name, 
+                       notify_morning, strftime('%d.%m.%Y %H:%M', created_at, '+3 hours')
+                FROM users ORDER BY created_at DESC LIMIT 60
+            """)
+            users = c.fetchall()
+
+        logs_rows = ""
+        for t_time, uid, uname, urole, uaction, udet in logs:
+            uname_str = f"@{uname}" if uname else f"ID: {uid}"
+            role_badge = f'<span class="badge badge-teacher">👨‍🏫 Преподаватель</span>' if urole == 'teacher' else f'<span class="badge badge-student">🎓 Студент</span>'
+            logs_rows += f"""
+            <tr>
+                <td style="color:var(--text-muted); font-size:12px;">{t_time}</td>
+                <td style="font-weight:600;">{uname_str}</td>
+                <td>{role_badge}</td>
+                <td><span class="badge badge-action">{uaction}</span></td>
+                <td><code>{udet or '—'}</code></td>
+            </tr>
+            """
+
+        users_rows = ""
+        for uid, uname, urole, grp, teach, notif, reg_d in users:
+            uname_str = f"@{uname}" if uname else f"ID: {uid}"
+            target_str = teach if urole == 'teacher' else grp
+            role_badge = f'<span class="badge badge-teacher">Преподаватель</span>' if urole == 'teacher' else f'<span class="badge badge-student">Студент</span>'
+            notif_str = "🔔 Вкл" if notif else "🔕 Выкл"
+            users_rows += f"""
+            <tr>
+                <td><code>{uid}</code></td>
+                <td style="font-weight:600;">{uname_str}</td>
+                <td>{role_badge}</td>
+                <td><b>{target_str}</b></td>
+                <td>{notif_str}</td>
+                <td style="color:var(--text-muted); font-size:12px;">{reg_d}</td>
+            </tr>
+            """
+
+        html = ADMIN_HTML_TEMPLATE \
+            .replace("{TOTAL_USERS}", str(total_users)) \
+            .replace("{STUDENTS_COUNT}", str(students_count)) \
+            .replace("{TEACHERS_COUNT}", str(teachers_count)) \
+            .replace("{NOTIFY_COUNT}", str(notify_count)) \
+            .replace("{TOTAL_CLICKS}", str(total_clicks)) \
+            .replace("{GROUPS_COUNT}", str(len(SCHEDULE_DB))) \
+            .replace("{TEACHERS_BASE_COUNT}", str(len(TEACHERS_LIST))) \
+            .replace("{LOGS_ROWS}", logs_rows or "<tr><td colspan='5' style='text-align:center;'>Нет активности</td></tr>") \
+            .replace("{USERS_ROWS}", users_rows or "<tr><td colspan='6' style='text-align:center;'>Нет пользователей</td></tr>")
+
+        return web.Response(text=html, content_type='text/html')
+    except Exception as e:
+        return web.Response(text=f"<h1>Ошибка админки: {e}</h1>", content_type='text/html')
 
 def create_web_app():
     app = web.Application()
-    app.router.add_get('/', handle_index)
-    app.router.add_get('/admin', handle_index)
+    app.router.add_get('/', handle_admin_dashboard)
+    app.router.add_get('/admin', handle_admin_dashboard)
     return app
 
 async def main():
