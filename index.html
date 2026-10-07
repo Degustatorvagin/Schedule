@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Расписание НЧИ КФУ</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0e1621;
@@ -21,10 +21,10 @@
         body { background: var(--bg); color: var(--text); padding: 12px; min-height: 100vh; display: flex; flex-direction: column; }
         
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
-        .target-info { display: flex; flex-direction: column; cursor: pointer; }
-        .target-title { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
-        .target-change-badge { font-size: 11px; background: rgba(36, 129, 204, 0.2); color: #40a7e3; padding: 2px 6px; border-radius: 6px; }
-        .target-sub { font-size: 12px; color: var(--text-muted); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .group-info { display: flex; flex-direction: column; cursor: pointer; }
+        .group-title { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+        .group-change-badge { font-size: 11px; background: rgba(36, 129, 204, 0.2); color: #40a7e3; padding: 2px 6px; border-radius: 6px; }
+        .group-sub { font-size: 12px; color: var(--text-muted); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .week-pill { background: rgba(36, 129, 204, 0.15); border: 1px solid rgba(36, 129, 204, 0.4); color: #40a7e3; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 
         .day-switcher { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px 8px; margin-bottom: 12px; }
@@ -46,7 +46,7 @@
         .type-lab { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
         .lesson-title { font-size: 15px; font-weight: 600; line-height: 1.35; color: #fff; }
         .lesson-place { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-        .lesson-meta-badge { font-size: 13px; color: #cbd5e1; font-weight: 500; }
+        .lesson-teacher { font-size: 13px; color: var(--text-muted); }
 
         .break-card { text-align: center; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
         .break-lunch { background: rgba(245, 158, 11, 0.12); border: 1px dashed rgba(245, 158, 11, 0.4); color: #fbbf24; }
@@ -54,6 +54,7 @@
         .break-short { background: rgba(127, 145, 164, 0.08); color: var(--text-muted); font-weight: 500; }
         .empty-day { text-align: center; padding: 40px 10px; color: var(--text-muted); font-size: 15px; }
 
+        /* Модалка с табами */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 100; }
         .modal-sheet { background: var(--surface); width: 100%; max-height: 85vh; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border); padding: 18px 14px; display: flex; flex-direction: column; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -61,26 +62,26 @@
         .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
         
         .modal-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-        .modal-tab-btn { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-weight: 600; font-size: 13px; cursor: pointer; text-align: center; }
+        .modal-tab-btn { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); font-weight: 600; font-size: 13px; cursor: pointer; }
         .modal-tab-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
 
         .search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; outline: none; }
         .search-input:focus { border-color: var(--primary); }
-        .items-list { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 6px; }
-        .item-card { background: var(--bg); border: 1px solid var(--border); padding: 10px 14px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .item-card:active { background: rgba(36, 129, 204, 0.2); }
-        .item-title { font-weight: 700; color: #fff; font-size: 15px; }
-        .item-sub { font-size: 12px; color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .group-list { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 6px; }
+        .group-item { background: var(--bg); border: 1px solid var(--border); padding: 10px 14px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .group-item:active { background: rgba(36, 129, 204, 0.2); }
+        .group-item-num { font-weight: 700; color: #fff; font-size: 15px; }
+        .group-item-spec { font-size: 12px; color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
     <div class="top-bar">
-        <div class="target-info" onclick="openModal()">
-            <div class="target-title">
-                <span id="display-target">Загрузка...</span>
-                <span class="target-change-badge">🔍 Сменить</span>
+        <div class="group-info" onclick="openGroupModal()">
+            <div class="group-title">
+                <span id="display-group">Загрузка...</span>
+                <span class="group-change-badge">🔍 Сменить</span>
             </div>
-            <div class="target-sub" id="display-sub">НЧИ КФУ</div>
+            <div class="group-sub" id="display-spec">НЧИ КФУ</div>
         </div>
         <button class="week-pill" id="btn-week-toggle" onclick="toggleWeek()">Нижняя неделя 🔽</button>
     </div>
@@ -97,18 +98,19 @@
     <div class="days-scroll" id="days-tabs"></div>
     <div id="lessons-list"></div>
 
-    <div class="modal-overlay" id="selection-modal" onclick="closeModal(event)">
+    <!-- Модалка выбора с вкладками -->
+    <div class="modal-overlay" id="group-modal" onclick="closeGroupModal(event)">
         <div class="modal-sheet" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div class="modal-title">Выбор расписания</div>
-                <button class="modal-close" onclick="closeModal()">✕</button>
+                <button class="modal-close" onclick="closeGroupModal()">✕</button>
             </div>
             <div class="modal-tabs">
                 <button class="modal-tab-btn active" id="tab-btn-groups" onclick="switchModalTab('groups')">👥 Группы (156)</button>
                 <button class="modal-tab-btn" id="tab-btn-teachers" onclick="switchModalTab('teachers')">👨‍🏫 Преподаватели (286)</button>
             </div>
-            <input type="text" class="search-input" id="search-input" placeholder="Поиск по номеру или фамилии..." oninput="filterModalItems()">
-            <div class="items-list" id="modal-items-list"></div>
+            <input type="text" class="search-input" id="group-search" placeholder="Поиск по номеру или фамилии..." oninput="filterModalItems()">
+            <div class="group-list" id="modal-group-list"></div>
         </div>
     </div>
 
@@ -120,19 +122,19 @@
         }
 
         const BELLS = {
-            "08:00": "09:30", "09:40": "11:10", "11:50": "13:20", "13:30": "15:00", "15:40": "17:10", "17:20": "18:50", "19:00": "20:30",
-            "08:30": "10:00", "10:20": "11:50", "12:30": "14:00", "14:20": "15:50", "16:00": "17:30", "17:40": "19:10", "19:20": "20:50"
+            "08:00": "09:30", "09:40": "11:10", "11:50": "13:20", "13:30": "15:00", "15:40": "17:10", "17:20": "18:50",
+            "08:30": "10:00", "10:20": "11:50", "12:30": "14:00", "14:20": "15:50", "16:00": "17:30", "17:40": "19:10"
         };
         const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
         const SHORT_DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
         let DB = {};
         let ALL_TEACHERS = [];
-        let curRole = 'student'; // 'student' или 'teacher'
+        let curMode = 'student'; // 'student' или 'teacher'
         let curTarget = '7241452';
         let curWN = 'н';
         let curDayIdx = new Date().getDay() === 0 ? 0 : new Date().getDay() - 1;
-        let activeTab = 'groups';
+        let activeModalTab = 'groups';
 
         async function initApp() {
             const params = new URLSearchParams(window.location.search);
@@ -141,96 +143,64 @@
             const groupParam = params.get('group');
 
             if (roleParam === 'teacher' || teacherParam) {
-                curRole = 'teacher';
-                curTarget = teacherParam || localStorage.getItem('kfu_target_teacher') || 'Мельников А.Е.';
-            } else if (groupParam) {
-                curRole = 'student';
-                curTarget = groupParam;
+                curMode = 'teacher';
+                curTarget = teacherParam || localStorage.getItem('kfu_target') || 'Мельников А.Е.';
             } else {
-                curRole = localStorage.getItem('kfu_role') || 'student';
-                curTarget = (curRole === 'teacher')
-                    ? (localStorage.getItem('kfu_target_teacher') || 'Мельников А.Е.')
-                    : (localStorage.getItem('kfu_target_group') || '7241452');
-            }
-
-            // Запрос актуальной роли с сервера Bothost при открытии через меню
-            if (!roleParam && !teacherParam && !groupParam && tg?.initDataUnsafe?.user?.id) {
-                try {
-                    const apiRes = await fetch(`https://bot-1791299850-3323-degustatorvagin.bothost.tech/api/user_info?user_id=${tg.initDataUnsafe.user.id}`);
-                    if (apiRes.ok) {
-                        const info = await apiRes.json();
-                        if (info.target) {
-                            curRole = info.role || 'student';
-                            curTarget = info.target;
-                            saveCurrentTarget();
-                        }
-                    }
-                } catch (e) {
-                    console.log('Bothost offline, using local storage');
-                }
+                curMode = 'student';
+                curTarget = groupParam || localStorage.getItem('kfu_target') || '7241452';
             }
 
             try {
                 const res = await fetch('./schedule.json');
                 if (res.ok) {
                     DB = await res.json();
-                    extractTeachers();
+                    extractTeachersList();
                 }
             } catch (e) {
-                console.warn('schedule.json load error', e);
+                console.warn('Ошибка загрузки schedule.json', e);
             }
 
-            saveCurrentTarget();
             renderTabs();
             renderSchedule();
         }
 
-        function saveCurrentTarget() {
-            localStorage.setItem('kfu_role', curRole);
-            if (curRole === 'teacher') {
-                localStorage.setItem('kfu_target_teacher', curTarget);
-            } else {
-                localStorage.setItem('kfu_target_group', curTarget);
-            }
-        }
-
-        function extractTeachers() {
-            const tSet = new Set();
+        function extractTeachersList() {
+            const set = new Set();
             for (let grp in DB) {
                 const sched = DB[grp].schedule || {};
                 for (let wn of ['в', 'н']) {
                     for (let day in (sched[wn] || {})) {
                         for (let l of sched[wn][day]) {
-                            const raw = (l.teacher || '').trim();
-                            if (raw && raw !== '—') {
-                                const parts = raw.split(/\s{2,}|\n|,/);
+                            const rawT = (l.teacher || '').trim();
+                            if (rawT && rawT !== '—') {
+                                const parts = rawT.split(/\s{2,}|\n|,/);
                                 parts.forEach(p => {
                                     const clean = p.trim();
-                                    if (clean.length > 3 && !/^\d+$/.test(clean)) tSet.add(clean);
+                                    if (clean.length > 3) set.add(clean);
                                 });
                             }
                         }
                     }
                 }
             }
-            ALL_TEACHERS = Array.from(tSet).sort();
+            ALL_TEACHERS = Array.from(set).sort();
         }
 
         function getTeacherLessons(teacherName, wn, dayName) {
-            const list = [];
+            const lessons = [];
             const tClean = teacherName.toLowerCase().trim();
             for (let grp in DB) {
                 const gLessons = (DB[grp].schedule && DB[grp].schedule[wn] && DB[grp].schedule[wn][dayName]) ? DB[grp].schedule[wn][dayName] : [];
                 for (let l of gLessons) {
                     if ((l.teacher || '').toLowerCase().includes(tClean)) {
-                        list.push({ ...l, group: grp });
+                        lessons.push({ ...l, group: grp });
                     }
                 }
             }
-            list.sort((a, b) => a.time.localeCompare(b.time));
-            
+            lessons.sort((a, b) => a.time.localeCompare(b.time));
+            // Объединяем поточные группы
             const merged = [];
-            list.forEach(l => {
+            lessons.forEach(l => {
                 const exist = merged.find(m => m.time === l.time && m.subject === l.subject && m.room === l.room);
                 if (exist) {
                     if (!exist.group.includes(l.group)) exist.group += `, ${l.group}`;
@@ -278,5 +248,144 @@
             const dayName = DAYS[curDayIdx];
             document.getElementById('label-day').innerText = dayName;
 
-            if (curRole === 'teacher') {
-                document.
+            if (curMode === 'teacher') {
+                document.getElementById('display-group').innerText = `👨‍🏫 ${curTarget}`;
+                document.getElementById('display-spec').innerText = "Преподаватель НЧИ КФУ";
+            } else {
+                document.getElementById('display-group').innerText = curTarget;
+                document.getElementById('display-spec').innerText = (DB[curTarget] && DB[curTarget].spec) ? DB[curTarget].spec : 'НЧИ КФУ';
+            }
+
+            const list = document.getElementById('lessons-list');
+            list.innerHTML = '';
+
+            let dayLessons = [];
+            if (curMode === 'teacher') {
+                dayLessons = getTeacherLessons(curTarget, curWN, dayName);
+            } else {
+                dayLessons = (DB[curTarget] && DB[curTarget].schedule && DB[curTarget].schedule[curWN]) 
+                    ? (DB[curTarget].schedule[curWN][dayName] || []) 
+                    : [];
+            }
+
+            if (dayLessons.length === 0) {
+                list.innerHTML = '<div class="empty-day">🎉 В этот день занятий нет!<br>Можно отдыхать.</div>';
+                return;
+            }
+
+            dayLessons.forEach((l, i) => {
+                const startT = l.time.substring(0, 5);
+                const endT = BELLS[startT] || '';
+
+                if (i > 0) {
+                    const prevEndT = BELLS[dayLessons[i-1].time.substring(0, 5)];
+                    if (prevEndT) {
+                        const diff = parseMins(startT) - parseMins(prevEndT);
+                        const h = Math.floor(diff / 60);
+                        const m = diff % 60;
+                        const tText = (h > 0 ? `${h} ч ` : '') + (m > 0 ? `${m} мин` : '');
+
+                        if ((prevEndT === '11:50' && startT === '12:30') || (prevEndT === '11:10' && startT === '11:50')) {
+                            list.innerHTML += `<div class="break-card break-lunch">🥪 Обед ${tText} (${prevEndT} – ${startT})</div>`;
+                        } else if (diff >= 45) {
+                            list.innerHTML += `<div class="break-card break-window">🕳 Окно ${tText} (${prevEndT} – ${startT})</div>`;
+                        } else if (diff > 0) {
+                            list.innerHTML += `<div class="break-card break-short">☕ Перерыв ${tText} (${prevEndT} – ${startT})</div>`;
+                        }
+                    }
+                }
+
+                let typeClass = 'type-pr';
+                const typ = (l.type || '').toLowerCase();
+                if (typ.includes('лек')) typeClass = 'type-lek';
+                else if (typ.includes('лаб')) typeClass = 'type-lab';
+
+                const card = document.createElement('div');
+                card.className = 'lesson-card';
+                const extraLabel = curMode === 'teacher' ? `👥 Группа: <b>${l.group}</b>` : `👤 ${l.teacher || 'Преподаватель'}`;
+
+                card.innerHTML = `
+                    <div class="lesson-header">
+                        <span class="lesson-time">⏰ ${startT}${endT ? ' – ' + endT : ''}</span>
+                        <span class="lesson-type ${typeClass}">${l.type || 'Пара'}</span>
+                    </div>
+                    <div class="lesson-title">${l.subject}</div>
+                    <div class="lesson-place">📍 ${l.building} ${l.room ? ', ауд. ' + l.room : ''}</div>
+                    <div class="lesson-teacher">${extraLabel}</div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        // Модальное окно выбора
+        function openGroupModal() {
+            document.getElementById('group-modal').style.display = 'flex';
+            filterModalItems();
+        }
+
+        function closeGroupModal() {
+            document.getElementById('group-modal').style.display = 'none';
+        }
+
+        function switchModalTab(tab) {
+            activeModalTab = tab;
+            document.getElementById('tab-btn-groups').className = 'modal-tab-btn' + (tab === 'groups' ? ' active' : '');
+            document.getElementById('tab-btn-teachers').className = 'modal-tab-btn' + (tab === 'teachers' ? ' active' : '');
+            document.getElementById('group-search').placeholder = tab === 'groups' ? 'Поиск группы (724..., 545)...' : 'Поиск преподавателя (Мельников, Волкова)...';
+            filterModalItems();
+        }
+
+        function filterModalItems() {
+            const query = document.getElementById('group-search').value.toLowerCase().trim();
+            const list = document.getElementById('modal-group-list');
+            list.innerHTML = '';
+
+            if (activeModalTab === 'groups') {
+                const keys = Object.keys(DB);
+                const filtered = keys.filter(k => {
+                    const spec = (DB[k].spec || '').toLowerCase();
+                    return k.toLowerCase().includes(query) || spec.includes(query);
+                });
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:14px;">Группа не найдена</div>';
+                    return;
+                }
+                filtered.slice(0, 30).forEach(k => {
+                    const item = document.createElement('div');
+                    item.className = 'group-item';
+                    item.innerHTML = `<div class="group-item-num">${k}</div><div class="group-item-spec">${DB[k].spec || ''}</div>`;
+                    item.onclick = () => {
+                        curMode = 'student';
+                        curTarget = k;
+                        localStorage.setItem('kfu_target', curTarget);
+                        closeGroupModal();
+                        renderSchedule();
+                    };
+                    list.appendChild(item);
+                });
+            } else {
+                const filtered = ALL_TEACHERS.filter(t => t.toLowerCase().includes(query));
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:14px;">Преподаватель не найден</div>';
+                    return;
+                }
+                filtered.slice(0, 30).forEach(t => {
+                    const item = document.createElement('div');
+                    item.className = 'group-item';
+                    item.innerHTML = `<div class="group-item-num">👨‍🏫 ${t}</div><div class="group-item-spec">Преподаватель</div>`;
+                    item.onclick = () => {
+                        curMode = 'teacher';
+                        curTarget = t;
+                        localStorage.setItem('kfu_target', curTarget);
+                        closeGroupModal();
+                        renderSchedule();
+                    };
+                    list.appendChild(item);
+                });
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
