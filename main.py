@@ -11,6 +11,7 @@ from aiohttp import web, ClientSession
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
+    BotCommand,
     ReplyKeyboardMarkup,
     KeyboardButton,
     InlineKeyboardMarkup,
@@ -36,7 +37,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 # --- КОНФИГУРАЦИЯ ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
-TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
+TOKEN = os.getenv("BOT_TOKEN", "")
+if not TOKEN:
+    raise SystemExit("Задай переменную окружения BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
@@ -506,6 +509,11 @@ async def cmd_start(msg: Message, state: FSMContext):
     parts = msg.text.split(maxsplit=1)
     args = parts[1].strip() if len(parts) > 1 else ""
 
+    # Вход с сайта: /start login и /start profile ведут туда же, куда команды /login и /profile
+    if args in ("login", "profile"):
+        await cmd_profile(msg, state)
+        return
+
     # Авторизация по ссылке
     if args.startswith("auth_"):
         auth_code = args.replace("auth_", "").strip()
@@ -564,7 +572,7 @@ async def cmd_profile(msg: Message, state: FSMContext):
     ])
     await msg.answer(
         f"🔐 <b>Код авторизации готов:</b> <code>{auth_code}</code>\n\n"
-        f"Нажмите кнопку ниже, чтобы автоматически войти в аккаунт на сайте:",
+        f"Введите этот код на сайте в окне «Войти через Telegram» или нажмите кнопку ниже.\n⏳ Код действует 15 минут.",
         reply_markup=kb
     )
 
@@ -805,11 +813,11 @@ async def handle_options(request):
     return web.Response(headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"})
 
 async def handle_api_auth_poll(request):
-    code = request.query.get('code', '')
+    code = request.query.get('code', '').strip().upper()
     if not code: return cors_response({"status": "error"})
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
-        c.execute("SELECT user_id, username, first_name, group_name, status FROM auth_sessions WHERE auth_code = ?", (code,))
+        c.execute("SELECT user_id, username, first_name, group_name, status FROM auth_sessions WHERE auth_code = ? AND created_at >= datetime('now', '-15 minutes')", (code,))
         row = c.fetchone()
     if row and row[4] == 'confirmed':
         return cors_response({"status": "confirmed", "user_id": row[0], "username": row[1], "first_name": row[2], "target": row[3]})
@@ -880,6 +888,14 @@ async def main():
         logging.info(f"Веб-сервер запущен на порту {PORT}")
     except Exception as e: logging.warning(e)
 
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Начать"),
+        BotCommand(command="login", description="Код для входа на сайте"),
+        BotCommand(command="profile", description="Профиль и вход на сайте"),
+        BotCommand(command="today", description="Расписание на сегодня"),
+        BotCommand(command="tomorrow", description="Расписание на завтра"),
+        BotCommand(command="settings", description="Настройки"),
+    ])
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
