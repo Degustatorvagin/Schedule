@@ -421,7 +421,7 @@ async def handle_api_ai_compress(request):
                 instruction += "\nОбъясни смысл этого текста максимально простыми словами, на бытовых аналогиях."
 
             payload = {
-                "model": "llama-3.1-8b-instant",
+                "model": "openai/gpt-oss-120b",
                 "messages": [
                     {"role": "system", "content": instruction},
                     {"role": "user", "content": f"Материал для обработки:\n{raw_text}"}
