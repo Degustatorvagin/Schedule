@@ -143,7 +143,6 @@ if (window.Telegram && window.Telegram.WebApp) {
   window.Telegram.WebApp.expand();
 }
 
-// Запасные группы в коде, чтобы экран никогда не был черным даже без сети
 let DATA = {
   "7241452": {
     "spec": "Информационные системы и программирование",
@@ -353,7 +352,7 @@ function go(t) {
 
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
-// Главная страница: компактный аккуратный вид
+// Главная: минималистичный стиль с автоматическим переходом на завтра
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -377,7 +376,7 @@ function home() {
     const l = s.next.l;
     h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
   } else if (isFinished) {
-    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать</div></div>`;
+    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div></div>`;
   } else {
     h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и набираемся сил</div></div>`;
   }
@@ -406,7 +405,7 @@ function dayHtml(t, d, click) {
   const now = NOW(), w = getWeek(d), gi = d.getDay();
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   const today = same(d, now), nm = now.getHours() * 60 + now.getMinutes();
-  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий не запланировано</div>`;
+  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий по расписанию не запланировано</div>`;
 
   const f = span(L[L.length - 1]);
   let h = `<div class="mu" style="margin:0 4px 12px">${L.length} пар · до ${hm(f[1])}</div>`;
@@ -478,7 +477,7 @@ function drawWho() {
 
 function lesOpen(i) {
   const l = CUR[i], k = nk(date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
-  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Заметка</div><textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
+  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Личная заметка</div><textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
@@ -538,7 +537,8 @@ function ai() {
 }
 
 async function runAiCompress() {
-  const txt = $('lecture_text') ?$('lecture_text').value.trim() : '';
+  const el = $('lecture_text');
+  const txt = el ? el.value.trim() : '';
   if (!txt) return toast('Вставьте текст лекции');
   const btn = $('btn_compress_ai'), resBox = $('ai_summary_result'), resContent =$('ai_summary_content');
   btn.disabled = true; btn.textContent = '🦉 Совёнок думает...'; resBox.style.display = 'none';
@@ -740,6 +740,27 @@ function startTgAuth() {
   }, 2000);
 }
 
+// Проверка кода из адресной строки (если перешли по ссылке из бота)
+function checkUrlAuth() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('auth_code');
+  if (code) {
+    fetch(`${API_URL}/api/auth_poll?code=${code}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'confirmed') {
+          me = me || { org: 'НЧИ КФУ', fav: [] };
+          me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
+          if (data.target && DATA[data.target]) me.target = { k: 'g', n: data.target };
+          sv('me', me);
+          toast(`Вход: ${data.first_name}`, '✓');
+          go('a');
+        }
+      })
+      .catch(() => {});
+  }
+}
+
 const A = {
   tab: v => go(v), role: v => pickRole(v, true), close: () => closeS(),
   day: v => { const m = mon(date); m.setDate(m.getDate() + +v); date = m; sched(); },
@@ -751,7 +772,8 @@ const A = {
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
   savenote: async v => {
-    const val = $('note') ?$('note').value.trim() : '';
+    const el = $('note');
+    const val = el ? el.value.trim() : '';
     if (val) NOTES[v] = val; else delete NOTES[v];
     sv('notes', NOTES);
     if (me && me.tgUser && me.tgUser.id) {
@@ -773,7 +795,7 @@ const A = {
   },
   pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate()+ +v); drawWho(); },
   seg: v => { seg = v; find(); }, chg: () => pickRole(me.role, false), favs: () => { seg='f'; go('f'); },
-  edit: editOpen, save: () => { me.nick = $('nick').value.trim(); me.org = 'НЧИ КФУ'; sv('me',me); closeS(); prof(); },
+  edit: editOpen, save: () => { const el = $('nick'); me.nick = el ? el.value.trim() : ''; me.org = 'НЧИ КФУ'; sv('me',me); closeS(); prof(); },
   look: lookOpen,
   acc: v => { cfg.ac = +v; sv('cfg', cfg); look(); lookOpen(); },
   th: v => { cfg.theme = v; sv('cfg', cfg); look(); lookOpen(); },
@@ -798,10 +820,7 @@ function initSheetGestures() {
   });
 }
 
-function adminOpen() {
-  $('apnl').innerHTML = `<h1 style="font-size:22px">Админка</h1><div class="box g">Групп в базе: ${Object.keys(DATA).length}</div>`;
-  $('adm').classList.add('on'); $('ascrim').onclick = () =>$('adm').classList.remove('on');
-}
+function adminOpen() { $('apnl').innerHTML = `<h1 style="font-size:22px">Админка</h1><div class="box g">Групп в базе: ${Object.keys(DATA).length}</div>`; $('adm').classList.add('on'); }
 
 function init() {
   build(); look(); initSheetGestures();
@@ -809,6 +828,7 @@ function init() {
   const urlGrp = params.get('group');
   if (urlGrp && DATA[urlGrp]) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', role:'g', target:{k:'g', n:urlGrp}, fav:me?.fav||[] };
   if (!me) onboard(); else go();
+  checkUrlAuth();
 }
 
 // Запуск со встроенными данными и асинхронное обновление всех 156 групп
