@@ -34,6 +34,7 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
+# --- КОНФИГУРАЦИЯ ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
 TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
@@ -46,7 +47,7 @@ AI_SYSTEM_PROMPT = """Ты — учебный ассистент «Совёно�
 Правила:
 1. Пиши кратко, по делу, без воды и вводных фраз.
 2. Выделяй 3-4 главных тезиса и ключевые термины.
-3. Форматируй списки без использования двойных звездочек (**), используй дефисы и эмодзи (📌, 💡, ⚡).
+3. Форматируй списки БЕЗ использования двойных звездочек (**), используй дефисы и эмодзи (📌, 💡, ⚡).
 4. Объем результата должен быть сжатым, легко умещающимся на 2-3 страницы тетради."""
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -86,14 +87,14 @@ BELLS_TABLE = {
     "19:20": ("19:20", "20:50", 7)
 }
 
-class Form(StatesGroup):
-    waiting_for_group = State()
-
 def normalize_type(typ: str) -> str:
     t = str(typ).lower().strip()
-    if 'лек' in t: return "Лекция"
-    elif 'пр' in t or 'сем' in t: return "Практика"
-    elif 'лаб' in t: return "Лабораторная"
+    if 'лек' in t:
+        return "Лекция"
+    elif 'пр' in t or 'сем' in t:
+        return "Практика"
+    elif 'лаб' in t:
+        return "Лабораторная"
     return str(typ).capitalize() if typ else ""
 
 def get_slot_info(time_str: str):
@@ -110,8 +111,10 @@ def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr
         p_h, p_m = map(int, prev_end_str.split(':'))
         c_h, c_m = map(int, curr_start_str.split(':'))
         diff_m = (c_h * 60 + c_m) - (p_h * 60 + p_m)
-        if diff_m <= 0: return ""
-        h, m = diff_m // 60, diff_m % 60
+        if diff_m <= 0:
+            return ""
+        h = diff_m // 60
+        m = diff_m % 60
         time_txt = f"{h} ч {m} мин" if (h > 0 and m > 0) else (f"{h} ч" if h > 0 else f"{m} мин")
         if (prev_end_str == "11:50" and curr_start_str == "12:30") or (prev_end_str == "11:10" and curr_start_str == "11:50"):
             return f"\n🥪 <i>Обед {time_txt} ({prev_end_str} – {curr_start_str})</i>\n"
@@ -123,122 +126,320 @@ def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr
         return ""
 
 def get_cyrillic_font(size=13):
-    for p in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", os.path.join(DATA_DIR, "font.ttf"), "font.ttf"]:
-        if os.path.exists(p):
-            try: return ImageFont.truetype(p, size)
-            except Exception: pass
+    candidate_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        os.path.join(DATA_DIR, "font.ttf"),
+        "font.ttf"
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p) and os.path.getsize(p) > 10000:
+            try:
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
     return None
+
+# --- ВСТРОЕННАЯ РЕЗЕРВНАЯ БАЗА ---
+BUILTIN_SCHEDULES = {
+    "18.2-545": {
+        "spec": "Филология (ВШЭиП, УЛК-7)",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Вторник": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "11:50", "subject": "Иностранный язык", "building": "УЛК-7", "room": "307", "type": "Практика", "teacher": "Петунина А.Р."},
+                    {"time": "13:30", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "302", "type": "Практика", "teacher": "Хузин И.Р."}
+                ],
+                "Среда": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "201", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "11:50", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "202", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:00", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Лекция", "teacher": "Айдарова А.М."},
+                    {"time": "09:40", "subject": "Теоретическая и практическая фонетика", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Айдарова А.М."},
+                    {"time": "11:50", "subject": "Практический курс английского языка", "building": "УЛК-7", "room": "312", "type": "Практика", "teacher": "Хузин И.Р."},
+                    {"time": "13:30", "subject": "Русский язык", "building": "УЛК-7", "room": "204", "type": "Практика", "teacher": "Родионова Н.Л."}
+                ],
+                "Пятница": [
+                    {"time": "09:40", "subject": "Элективные курсы по физической культуре", "building": "сп.комп-кс", "room": "сп.зал", "type": "Практика", "teacher": "Нихорошкина А.В."},
+                    {"time": "13:30", "subject": "Практический курс второго иностранного языка", "building": "УЛК-7", "room": "306", "type": "Практика", "teacher": "Лядова О.Н."}
+                ],
+                "Суббота": []
+            }
+        }
+    },
+    "7241452": {
+        "spec": "ИСиП (Колледж)",
+        "schedule": {
+            "в": {
+                "Понедельник": [
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Сайханов М.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": []
+            },
+            "н": {
+                "Понедельник": [
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Численные Методы", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Рязанова А.Н."},
+                    {"time": "17:40", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."}
+                ],
+                "Вторник": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "405", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Волкова А.А."},
+                    {"time": "12:30", "subject": "Системное программирование", "building": "УЛК-1", "room": "314", "type": "Практика", "teacher": "Сайханов М.А."}
+                ],
+                "Среда": [
+                    {"time": "08:30", "subject": "Архитектура аппаратных средств", "building": "УЛК-1", "room": "360", "type": "Практика", "teacher": "Волкова А.А."},
+                    {"time": "10:20", "subject": "Иностранный язык", "building": "УЛК-1", "room": "109", "type": "Практика", "teacher": "Кошенкова А.А."},
+                    {"time": "12:30", "subject": "Численные Методы", "building": "УЛК-1", "room": "350", "type": "Практика", "teacher": "Рязанова А.Н."}
+                ],
+                "Четверг": [
+                    {"time": "08:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "417", "type": "Лекция", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Физическая культура", "building": "УЛК-6/Спортманеж", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ],
+                "Пятница": [
+                    {"time": "10:20", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "12:30", "subject": "Разработка мобильных приложений", "building": "УЛК-1", "room": "316", "type": "Практика", "teacher": "Сулейманов А.И."},
+                    {"time": "14:20", "subject": "Численные Методы", "building": "УЛК-1", "room": "363", "type": "Практика", "teacher": "Рязанова А.Н."},
+                    {"time": "16:00", "subject": "Системное программирование", "building": "УЛК-1", "room": "421", "type": "Лекция", "teacher": "Сайханов М.А."}
+                ],
+                "Суббота": [
+                    {"time": "10:20", "subject": "Физическая культура", "building": "Спорткомплекс", "room": "", "type": "Практика", "teacher": "Фатыхов И.Ф."}
+                ]
+            }
+        }
+    }
+}
+
+class Form(StatesGroup):
+    waiting_for_group = State()
 
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("""CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY, username TEXT, group_name TEXT DEFAULT '7241452',
-                notify_morning INTEGER DEFAULT 1, notify_remind INTEGER DEFAULT 1, notify_hw INTEGER DEFAULT 1,
-                view_type TEXT DEFAULT 'text', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-            c.execute("""CREATE TABLE IF NOT EXISTS auth_sessions (
-                auth_code TEXT PRIMARY KEY, user_id INTEGER, username TEXT, first_name TEXT,
-                group_name TEXT, status TEXT DEFAULT 'pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-            c.execute("""CREATE TABLE IF NOT EXISTS user_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, note_key TEXT, note_text TEXT,
-                UNIQUE(user_id, note_key))""")
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    group_name TEXT DEFAULT '7241452',
+                    notify_morning INTEGER DEFAULT 1,
+                    notify_remind INTEGER DEFAULT 1,
+                    notify_hw INTEGER DEFAULT 1,
+                    view_type TEXT DEFAULT 'text',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS auth_sessions (
+                    auth_code TEXT PRIMARY KEY,
+                    user_id INTEGER,
+                    username TEXT,
+                    first_name TEXT,
+                    group_name TEXT,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    note_key TEXT,
+                    note_text TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, note_key)
+                )
+            """)
             conn.commit()
     except Exception as e:
-        logging.error(f"БД ошибка: {e}")
+        logging.error(f"Ошибка БД: {e}")
 
 def get_user(user_id: int):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
-            return c.fetchone()
-    except Exception: return None
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
+            return cursor.fetchone()
+    except Exception:
+        return None
 
 def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("""INSERT OR REPLACE INTO users (user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type)
-                VALUES (?, ?, ?, COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
-                COALESCE((SELECT notify_remind FROM users WHERE user_id = ?), 1),
-                COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
-                COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text'))""",
-                (user_id, username, group_name, user_id, user_id, user_id, user_id))
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO users (user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type)
+                VALUES (?, ?, ?, 
+                    COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
+                    COALESCE((SELECT notify_remind FROM users WHERE user_id = ?), 1),
+                    COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
+                    COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text')
+                )
+            """, (user_id, username, group_name, user_id, user_id, user_id, user_id))
             conn.commit()
-    except Exception as e: logging.error(e)
+    except Exception as e:
+        logging.error(f"Ошибка регистрации: {e}")
 
 def update_user_field(user_id: int, field: str, value):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute(f"UPDATE users SET {field} = ? WHERE user_id = ?", (value, user_id))
+            cursor = conn.cursor()
+            cursor.execute(f"UPDATE users SET {field} = ? WHERE user_id = ?", (value, user_id))
             conn.commit()
-    except Exception: pass
+    except Exception as e:
+        logging.error(f"Ошибка обновления {field}: {e}")
 
 def get_subscribers(field: str = "notify_morning"):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1")
-            return c.fetchall()
-    except Exception: return []
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1")
+            return cursor.fetchall()
+    except Exception:
+        return []
+
+def get_stats():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT count(*), sum(notify_morning) FROM users")
+            row = cursor.fetchone()
+            return (row[0] or 0), (row[1] or 0)
+    except Exception:
+        return 0, 0
 
 def load_schedule() -> dict:
+    db = dict(BUILTIN_SCHEDULES)
     if os.path.exists(JSON_FILE):
         try:
             with open(JSON_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception: pass
-    return {}
+                disk_db = json.load(f)
+                db.update(disk_db)
+        except Exception:
+            pass
+    return db
 
 SCHEDULE_DB = load_schedule()
 
 def find_group(query: str):
     clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
-    if not clean_q: return None
+    if not clean_q:
+        return None
     for grp in SCHEDULE_DB.keys():
-        if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower(): return grp
+        if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
+            return grp
     for grp in SCHEDULE_DB.keys():
-        if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower(): return grp
+        if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
+            return grp
     return None
 
 def get_group_schedule(group_name: str) -> dict:
     data = SCHEDULE_DB.get(group_name)
     if not data:
         matched = find_group(group_name)
-        if matched: data = SCHEDULE_DB.get(matched)
-    if isinstance(data, dict) and "schedule" in data: return data["schedule"]
+        if matched:
+            data = SCHEDULE_DB.get(matched)
+    if isinstance(data, dict) and "schedule" in data:
+        return data["schedule"]
     return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
 
 def get_week_info(target_date: datetime.date = None):
-    if target_date is None: target_date = datetime.datetime.now(MSK_TZ).date()
+    if target_date is None:
+        target_date = datetime.datetime.now(MSK_TZ).date()
     weeks_diff = (target_date - ANCHOR_MONDAY).days // 7
-    return ('в', 'Верхняя неделя 🔼') if weeks_diff % 2 == 0 else ('н', 'Нижняя неделя 🔽')
+    if weeks_diff % 2 == 0:
+        return 'в', 'Верхняя неделя 🔼'
+    return 'н', 'Нижняя неделя 🔽'
 
 def render_table_png(lessons: list, day_name: str, group_name: str):
-    if not HAS_PILLOW: return None
+    if not HAS_PILLOW:
+        return None
     font_header = get_cyrillic_font(13)
     font_bold = get_cyrillic_font(13)
     font_cell = get_cyrillic_font(12)
     font_time = get_cyrillic_font(12)
     font_sub = get_cyrillic_font(11)
-    if not font_header: return None
 
-    width, header_h, row_h, padding = 760, 44, 76, 14
+    if not font_header:
+        return None
+
+    width = 760
+    header_h = 44
+    row_h = 76
+    padding = 14
     total_h = padding * 2 + header_h + max(1, len(lessons)) * row_h
+    
     img = Image.new('RGB', (width, total_h), color='#0e1621')
     draw = ImageDraw.Draw(img)
     
-    x0, y0, x1, y1 = padding, padding, width - padding, total_h - padding
+    x0, y0 = padding, padding
+    x1, y1 = width - padding, total_h - padding
     draw.rectangle([x0, y0, x1, y1], fill='#17212b', outline='#242f3d', width=2)
+    
     cols = [x0, x0 + 130, x0 + 410, x0 + 590, x1]
     draw.rectangle([x0, y0, x1, y0 + header_h], fill='#1c2736', outline='#242f3d', width=1)
     
     headers = ["Пара", "Предмет", "Преподаватель", "Аудитория"]
     for i, h in enumerate(headers):
         draw.text((cols[i] + 12, y0 + 14), h, fill='#7f91a4', font=font_header)
-        if i > 0: draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
+        if i > 0:
+            draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
             
     cy = y0 + header_h
     for idx, l in enumerate(lessons):
@@ -252,17 +453,21 @@ def render_table_png(lessons: list, day_name: str, group_name: str):
         
         subj = l.get('subject', '')
         typ = normalize_type(l.get('type', ''))
-        if len(subj) > 34: subj = subj[:32] + "..."
+        if len(subj) > 34:
+            subj = subj[:32] + "..."
         draw.text((cols[1] + 12, cy + 17), subj, fill='#ffffff', font=font_bold)
         if typ:
             type_color = '#4ade80' if 'практ' in typ.lower() else '#60a5fa'
             draw.text((cols[1] + 12, cy + 39), f"({typ})", fill=type_color, font=font_sub)
             
         teach = l.get('teacher', '—')
-        if len(teach) > 22: teach = teach[:20] + "..."
+        if len(teach) > 22:
+            teach = teach[:20] + "..."
         draw.text((cols[2] + 12, cy + 27), teach, fill='#cbd5e1', font=font_cell)
         
-        place = f"{l.get('building','')}, {l.get('room','')}" if l.get('room') else l.get('building','')
+        bld = l.get('building', '')
+        room = l.get('room', '')
+        place = f"{bld}, {room}" if room else bld
         draw.text((cols[3] + 12, cy + 27), place[:18], fill='#94a3b8', font=font_cell)
         cy += row_h
         
@@ -273,28 +478,115 @@ def render_table_png(lessons: list, day_name: str, group_name: str):
 
 def format_day_text(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
-    header_title = f"📅 <b>{day_name}</b>" + (f" ({date_str})" if date_str else "") + f" — <i>{wn_label}</i>"
+    header_title = f"📅 <b>{day_name}</b>"
+    if date_str:
+        header_title += f" ({date_str})"
+    header_title += f" — <i>{wn_label}</i>"
+
     lines = [header_title]
-    if group_name: lines.append(f"👥 Группа: <code>{group_name}</code>")
+    if group_name:
+        lines.append(f"👥 Группа: <code>{group_name}</code>")
     lines.append("━━━━━━━━━━━━━━━━━━━━")
 
     if not lessons:
         lines.append("\n🎉 <b>Пар нет! Можно отдыхать.</b>")
         return "\n".join(lines)
 
-    for i, l in enumerate(lessons):
-        start_str = l.get('time', '')[:5]
-        slot, s_str, e_str, _, _ = get_slot_info(start_str)
-        t_range = f"{s_str} – {e_str}" if e_str else start_str
-        typ = normalize_type(l.get('type', ''))
-        lines.append(f"\n⏰ <b>{t_range}</b> | <b>{typ}</b>")
-        lines.append(f"📘 <b>{l.get('subject')}</b>")
-        if l.get('building') or l.get('room'):
-            lines.append(f"📍 {l.get('building', '')}, ауд. <b>{l.get('room', '')}</b>")
+    enriched = []
+    for l in lessons:
+        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
+        enriched.append({**l, "slot": slot, "s_str": s_str, "e_str": e_str, "st": st, "et": et})
+
+    enriched.sort(key=lambda x: x["st"] if x["st"] else datetime.time(0, 0))
+
+    for i, l in enumerate(enriched):
+        if i > 0:
+            prev = enriched[i-1]
+            break_or_window = calculate_break_or_window(prev["e_str"], l["s_str"], prev["slot"], l["slot"])
+            if break_or_window:
+                lines.append(break_or_window)
+
+        time_range = f"{l['s_str']} – {l['e_str']}" if l.get('e_str') else l.get('time')
+        typ_full = normalize_type(l.get('type', ''))
+        type_badge = f" | <b>{typ_full}</b>" if typ_full else ""
+
+        sub_emoji = "📘"
+        if "практ" in typ_full.lower():
+            sub_emoji = "📗"
+        elif "физ" in l.get('subject', '').lower():
+            sub_emoji = "🏃"
+
+        lines.append(f"\n⏰ <b>{time_range}</b>{type_badge}")
+        lines.append(f"{sub_emoji} <b>{l['subject']}</b>")
+
+        place_parts = []
+        if l.get('building'):
+            place_parts.append(f"<b>{l['building']}</b>")
+        if l.get('room'):
+            place_parts.append(f"ауд. <b>{l['room']}</b>")
+        if place_parts:
+            lines.append(f"📍 {', '.join(place_parts)}")
         if l.get('teacher'):
-            lines.append(f"👤 <i>{l.get('teacher')}</i>")
+            lines.append(f"👤 <i>{l['teacher']}</i>")
+        lines.append("")
+
     return "\n".join(lines).strip()
 
+def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str = "") -> str:
+    if not lessons:
+        return "🎉 <b>Сегодня занятий нет!</b> Можно отдыхать."
+
+    enriched = []
+    for l in lessons:
+        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
+        if st and et:
+            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str, "slot": slot})
+
+    if not enriched:
+        return "🎉 <b>Сегодня пар нет!</b>"
+
+    enriched.sort(key=lambda x: x["st"])
+    curr_t = check_dt.time()
+    first_st = enriched[0]["st"]
+    last_et = enriched[-1]["et"]
+
+    if curr_t < first_st:
+        diff_m = (first_st.hour * 60 + first_st.minute) - (curr_t.hour * 60 + curr_t.minute)
+        f = enriched[0]
+        return (f"⏰ <b>Пары ещё не начались</b>\n\n"
+                f"⏳ До первой пары осталось: <b>{diff_m} мин</b>\n"
+                f"В <b>{f['s_str']}</b> — <b>{f['subject']}</b>\n"
+                f"📍 {f.get('building', '')} {f.get('room', '')}")
+
+    if curr_t > last_et:
+        return "🎉 <b>Все пары на сегодня завершились!</b> Можно отдыхать."
+
+    for i, l in enumerate(enriched):
+        if l["st"] <= curr_t <= l["et"]:
+            diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
+            nxt = enriched[i+1] if i + 1 < len(enriched) else None
+            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} ({nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
+            typ_f = normalize_type(l.get('type', ''))
+            return (f"⚡ <b>Сейчас идёт занятие:</b>\n\n"
+                    f"⏰ <b>{l['s_str']} – {l['e_str']}</b>\n"
+                    f"📘 <b>{l['subject']}</b> ({typ_f})\n"
+                    f"📍 {l.get('building', '')} {l.get('room', '')} | 👤 <i>{l.get('teacher', '')}</i>\n\n"
+                    f"⏳ До конца пары: <b>{diff_m} мин</b>{nxt_str}")
+
+        if i + 1 < len(enriched):
+            nxt = enriched[i+1]
+            if l["et"] < curr_t < nxt["st"]:
+                diff_m = (nxt["st"].hour * 60 + nxt["st"].minute) - (curr_t.hour * 60 + curr_t.minute)
+                is_lunch = (l["e_str"] == "11:50" and nxt["s_str"] == "12:30") or (l["e_str"] == "11:10" and nxt["s_str"] == "11:50")
+                break_title = "🥪 <b>Сейчас обеденный перерыв (40 мин)</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
+                return (f"{break_title}\n\n"
+                        f"⏳ До звонка на пару осталось: <b>{diff_m} мин</b>\n"
+                        f"➡️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
+                        f"📍 {nxt.get('building', '')} {nxt.get('room', '')}")
+
+    return "ℹ️ Нет информации о текущей паре."
+
+# --- КЛАВИАТУРЫ ---
 def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
     web_url = f"{WEB_APP_URL}?group={user_group}"
     top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
@@ -304,12 +596,104 @@ def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> Re
         [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")],
         [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
     ]
-    if is_admin: rows.append([KeyboardButton(text="🌐 Веб-Админка")])
+    if is_admin:
+        rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
+def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarkup:
+    d = datetime.date.fromisoformat(date_str)
+    prev_d = d - datetime.timedelta(days=1)
+    next_d = d + datetime.timedelta(days=1)
+    opp_wn = 'в' if wn_code == 'н' else 'н'
+    opp_label = "Верхняя 🔼" if opp_wn == 'в' else "Нижняя 🔽"
 
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}_{wn_code}"),
+            InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today"),
+            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}_{wn_code}")
+        ],
+        [
+            InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"nav_{date_str}_{opp_wn}"),
+            InlineKeyboardButton(text="🗓 Вся неделя", callback_data=f"nav_week_{wn_code}")
+        ],
+        [
+            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"nav_{date_str}_{wn_code}")
+        ]
+    ])
+
+def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
+    grp = user_row[2] if user_row else DEFAULT_GROUP
+    m_val = user_row[3] if user_row else 1
+    r_val = user_row[4] if user_row else 1
+    hw_val = user_row[5] if user_row else 1
+    view_val = user_row[6] if user_row else "text"
+
+    view_txt = "Таблица 📊" if view_val == "table" else "Текст 📝"
+    m_txt = "Вкл" if m_val else "Выкл"
+    r_txt = "Вкл" if r_val else "Выкл"
+    hw_txt = "Вкл" if hw_val else "Выкл"
+
+    kb = [
+        [InlineKeyboardButton(text=f"🎨 Вид расписания: {view_txt}", callback_data="toggle_view")],
+        [InlineKeyboardButton(text=f"🔔 Утреннее расписание (07:30): {m_txt}", callback_data="toggle_morning")],
+        [InlineKeyboardButton(text=f"⏰ Напоминание (1-я пара и после обеда): {r_txt}", callback_data="toggle_remind")],
+        [InlineKeyboardButton(text=f"📚 Напоминание о ДЗ (17:00): {hw_txt}", callback_data="toggle_hw")],
+        [InlineKeyboardButton(text=f"👥 Группа: {grp}", callback_data="change_group")]
+    ]
+    if is_admin:
+        kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push")])
+        kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, grp: str, is_callback: bool = False):
+    day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    user_row = get_user(target.from_user.id)
+    view_type = user_row[6] if user_row else 'text'
+    reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code)
+    
+    caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n👥 <i>Группа: <code>{grp}</code></i>"
+
+    if date_obj.weekday() == 6:
+        text = f"📅 <b>Воскресенье</b> ({date_obj.strftime('%d.%m.%Y')})\n👥 Группа: <code>{grp}</code>\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
+        if is_callback:
+            if target.message.photo:
+                await target.message.delete()
+                await target.message.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
+        return
+
+    png_buf = None
+    if view_type == 'table' and HAS_PILLOW:
+        png_buf = render_table_png(lessons, day_name, grp)
+
+    if png_buf:
+        file_input = BufferedInputFile(png_buf.getvalue(), filename="schedule.png")
+        if is_callback:
+            if target.message.photo:
+                await target.message.edit_media(InputMediaPhoto(media=file_input, caption=caption_header), reply_markup=reply_kb)
+            else:
+                await target.message.delete()
+                await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+        else:
+            await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+    else:
+        text = format_day_text(day_name, wn_code, lessons, grp, date_obj.strftime('%d.%m.%Y'))
+        if is_callback:
+            if target.message.photo:
+                await target.message.delete()
+                await target.message.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
+
+# --- ХЕНДЛЕРЫ ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
@@ -321,58 +705,354 @@ async def cmd_start(msg: Message, state: FSMContext):
         grp = user[2] if user else DEFAULT_GROUP
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
-            c.execute("""INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, group_name, status)
-                VALUES (?, ?, ?, ?, ?, 'confirmed')""", (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
+            c.execute("""
+                INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, group_name, status)
+                VALUES (?, ?, ?, ?, ?, 'confirmed')
+            """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
             conn.commit()
-        await msg.answer(f"✅ <b>Вход подтверждён, {msg.from_user.first_name}!</b>\nВернитесь в приложение.")
+
+        await msg.answer(
+            f"✅ <b>Вход подтверждён, {msg.from_user.first_name}!</b>\n\n"
+            f"👥 Расписание для группы: <code>{grp}</code>\n\n"
+            f"Вернитесь в браузер — Совёнок AI разблокирован, а заметки синхронизированы."
+        )
+        return
+
+    if args == "support":
+        await msg.answer(f"💬 Техподдержка бота и расписания: {SUPPORT_USERNAME}")
         return
 
     user = get_user(msg.from_user.id)
+    is_adm = (msg.from_user.id == ADMIN_ID)
     if not user:
         await state.set_state(Form.waiting_for_group)
-        await msg.answer("👋 <b>Добро пожаловать в бот НЧИ КФУ!</b>\n\nНапиши номер своей группы:")
+        text = (
+            "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
+            "Напиши номер своей группы (например: <code>7241452</code> или <code>18.2-545</code>):"
+        )
+        await msg.answer(text)
         return
 
     _, wn_name = get_week_info()
-    await msg.answer(f"👋 С возвращением! Группа: <code>{user[2]}</code>\n⚡ Неделя: <b>{wn_name}</b>", reply_markup=main_keyboard(user[2], is_admin=(msg.from_user.id == ADMIN_ID)))
+    text = (
+        f"👋 С возвращением! Группа: <code>{user[2]}</code>\n"
+        f"⚡ Сейчас идет: <b>{wn_name}</b>\n\n"
+        f"Используй кнопки внизу экрана:"
+    )
+    if is_adm:
+        text += "\n\n👑 <i>Ты администратор. Доступна кнопка «🌐 Веб-Админка».</i>"
+    await msg.answer(text, reply_markup=main_keyboard(user[2], is_admin=is_adm))
 
 @dp.message(Form.waiting_for_group)
 async def process_custom_group(msg: Message, state: FSMContext):
-    matched = find_group(msg.text.strip()) or msg.text.strip()
-    register_user(msg.from_user.id, msg.from_user.username or "", matched)
+    raw_query = msg.text.strip()
+    matched = find_group(raw_query)
+    final_grp = matched if matched else raw_query
+    register_user(msg.from_user.id, msg.from_user.username or "", final_grp)
     await state.clear()
+    is_adm = (msg.from_user.id == ADMIN_ID)
     _, wn_name = get_week_info()
-    await msg.answer(f"✅ Установлена группа: <b>{matched}</b>\n⚡ Неделя: <b>{wn_name}</b>", reply_markup=main_keyboard(matched, is_admin=(msg.from_user.id == ADMIN_ID)))
+    await msg.answer(
+        f"✅ Отлично! Установлена группа: <b>{final_grp}</b>\n"
+        f"🔔 Утреннее расписание в 07:30: <b>Включено</b>\n"
+        f"⚡ Текущая неделя: <b>{wn_name}</b>",
+        reply_markup=main_keyboard(final_grp, is_admin=is_adm)
+    )
+
+@dp.message(F.text.contains("Сменить группу"))
+@dp.message(Command("setgroup"))
+async def cmd_change_group(msg: Message, state: FSMContext):
+    await state.set_state(Form.waiting_for_group)
+    await msg.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
+
+@dp.callback_query(F.data == "change_group")
+async def cb_change_group(call: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.waiting_for_group)
+    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
+    await call.answer()
 
 @dp.message(F.text == "📅 Сегодня")
+@dp.message(Command("today"))
 async def cmd_today(msg: Message):
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
-    lessons = get_group_schedule(grp).get(wn_code, {}).get(DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник', [])
-    await msg.answer(format_day_text("Сегодня", wn_code, lessons, grp, today.strftime('%d.%m.%Y')))
+    await send_or_edit_schedule(msg, today, wn_code, grp, is_callback=False)
 
 @dp.message(F.text == "📅 Завтра")
+@dp.message(Command("tomorrow"))
 async def cmd_tomorrow(msg: Message):
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
-    tom = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
-    wn_code, _ = get_week_info(tom)
-    lessons = get_group_schedule(grp).get(wn_code, {}).get(DAYS_MAP[tom.weekday()] if tom.weekday() < 6 else 'Понедельник', [])
-    await msg.answer(format_day_text("Завтра", wn_code, lessons, grp, tom.strftime('%d.%m.%Y')))
+    tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
+    wn_code, _ = get_week_info(tomorrow)
+    await send_or_edit_schedule(msg, tomorrow, wn_code, grp, is_callback=False)
 
-@dp.message(F.text.contains("Сменить группу"))
-async def cmd_change_group(msg: Message, state: FSMContext):
-    await state.set_state(Form.waiting_for_group)
-    await msg.answer("✍️ Напиши номер новой группы:")
+@dp.callback_query(F.data.startswith("nav_"))
+async def cb_nav_schedule(call: CallbackQuery):
+    data_parts = call.data.split("_")
+    user = get_user(call.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
 
-# --- API ИИ И СИНХРОНИЗАЦИИ ---
+    if data_parts[1] == "today":
+        target_d = datetime.datetime.now(MSK_TZ).date()
+        wn_code, _ = get_week_info(target_d)
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
+    elif data_parts[1] == "week":
+        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info()[0]
+        wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
+        sched = get_group_schedule(grp)
+        parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n👥 Группа: <code>{grp}</code>\n"]
+        for day in DAYS_ORDER:
+            lessons = sched.get(wn_code, {}).get(day, [])
+            if lessons:
+                parts.append(format_day_text(day, wn_code, lessons))
+        reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code)
+        if call.message.photo:
+            await call.message.delete()
+            await call.message.answer("\n\n".join(parts), reply_markup=reply_kb)
+        else:
+            await call.message.edit_text("\n\n".join(parts), reply_markup=reply_kb)
+    else:
+        target_d = datetime.date.fromisoformat(data_parts[1])
+        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info(target_d)[0]
+        await send_or_edit_schedule(call, target_d, wn_code, grp, is_callback=True)
+    await call.answer()
+
+@dp.message(F.text == "⏱ Сейчас")
+@dp.message(Command("now"))
+async def cmd_now(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
+    now_msk = datetime.datetime.now(MSK_TZ)
+    if now_msk.weekday() == 6:
+        await msg.answer("🎉 Сегодня воскресенье! Пар нет.")
+        return
+
+    wn_code, _ = get_week_info(now_msk.date())
+    day_name = DAYS_MAP[now_msk.weekday()]
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    res = get_now_status(lessons, now_msk, grp)
+    await msg.answer(res)
+
+@dp.message(F.text == "🗓 Неделя")
+@dp.message(Command("week"))
+async def cmd_week(msg: Message):
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
+    wn_code, wn_name = get_week_info()
+    sched = get_group_schedule(grp)
+    parts = [f"🗓 <b>Расписание на текущую неделю ({wn_name})</b>\n👥 Группа: <code>{grp}</code>\n"]
+    for day in DAYS_ORDER:
+        lessons = sched.get(wn_code, {}).get(day, [])
+        if lessons:
+            parts.append(format_day_text(day, wn_code, lessons))
+    await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code))
+
+@dp.message(F.text.contains("Настройки"))
+@dp.message(Command("settings"))
+async def cmd_settings(msg: Message):
+    user = get_user(msg.from_user.id)
+    if not user:
+        register_user(msg.from_user.id, msg.from_user.username or "", DEFAULT_GROUP)
+        user = get_user(msg.from_user.id)
+
+    is_adm = (msg.from_user.id == ADMIN_ID)
+    text = (
+        "<b>Настройки</b>\n\n"
+        "<blockquote>"
+        "• 🎨 <b>Вид расписания</b> — переключение между таблицей и простым текстом\n"
+        "• 🔔 <b>Утреннее расписание (07:30)</b> — рассылка расписания каждое утро\n"
+        "• ⏰ <b>Напоминание за 15 минут</b> — перед первой парой и занятием после обеда\n"
+        "• 📚 <b>Напоминание о ДЗ (17:00)</b> — вечерняя сводка заданий на завтра"
+        "</blockquote>\n\n"
+        "Нажимайте на кнопки для переключения:"
+    )
+    await msg.answer(text, reply_markup=settings_keyboard(user, is_admin=is_adm))
+
+@dp.callback_query(F.data == "toggle_view")
+async def cb_toggle_view(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    cur = user[6] if user else "text"
+    new_v = "table" if cur == "text" else "text"
+    update_user_field(call.from_user.id, "view_type", new_v)
+    user = get_user(call.from_user.id)
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
+    await call.answer()
+
+@dp.callback_query(F.data == "toggle_morning")
+async def cb_toggle_morning(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    cur = user[3] if user else 1
+    new_v = 0 if cur else 1
+    update_user_field(call.from_user.id, "notify_morning", new_v)
+    user = get_user(call.from_user.id)
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
+    await call.answer()
+
+@dp.callback_query(F.data == "toggle_remind")
+async def cb_toggle_remind(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    cur = user[4] if user else 1
+    new_v = 0 if cur else 1
+    update_user_field(call.from_user.id, "notify_remind", new_v)
+    user = get_user(call.from_user.id)
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
+    await call.answer()
+
+@dp.callback_query(F.data == "toggle_hw")
+async def cb_toggle_hw(call: CallbackQuery):
+    user = get_user(call.from_user.id)
+    cur = user[5] if user else 1
+    new_v = 0 if cur else 1
+    update_user_field(call.from_user.id, "notify_hw", new_v)
+    user = get_user(call.from_user.id)
+    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
+    await call.answer()
+
+@dp.callback_query(F.data == "admin_stats")
+async def cb_admin_stats(call: CallbackQuery):
+    if call.from_user.id != ADMIN_ID:
+        await call.answer("Доступ запрещен", show_alert=True)
+        return
+    total, active_notify = get_stats()
+    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n📚 Всего групп в базе: {len(SCHEDULE_DB)}", show_alert=True)
+
+@dp.callback_query(F.data == "admin_test_push")
+async def cb_admin_test_push(call: CallbackQuery):
+    if call.from_user.id != ADMIN_ID:
+        await call.answer("Доступ запрещен", show_alert=True)
+        return
+    user = get_user(call.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
+    today = datetime.datetime.now(MSK_TZ).date()
+    wn_code, _ = get_week_info(today)
+    day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
+    sched = get_group_schedule(grp)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y'))
+    await call.message.answer(demo_text)
+    await call.answer("Тестовое уведомление отправлено!")
+
+@dp.message(F.text == "🌐 Веб-Админка")
+@dp.message(Command("web"))
+async def cmd_web_admin(msg: Message):
+    if msg.from_user.id != ADMIN_ID:
+        await msg.answer("⛔ Доступ только для администратора.")
+        return
+    admin_url = f"{WEB_APP_URL}?admin=true&token={ADMIN_TOKEN}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Открыть в браузере", url=admin_url)],
+        [InlineKeyboardButton(text="📱 Открыть как Mini App", web_app=WebAppInfo(url=admin_url))]
+    ])
+    await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
+
+# --- АВТОМАТИЧЕСКИЕ НАПОМИНАНИЯ И РАССЫЛКИ ---
+async def background_scheduler():
+    last_morning_date = None
+    last_evening_date = None
+    sent_reminders = set()
+
+    while True:
+        try:
+            now_msk = datetime.datetime.now(MSK_TZ)
+            today_date = now_msk.date()
+            cur_hhmm = now_msk.strftime("%H:%M")
+
+            # 1. Утренняя рассылка в 07:30
+            if cur_hhmm == "07:30" and last_morning_date != today_date:
+                last_morning_date = today_date
+                if today_date.weekday() != 6:
+                    wn_code, _ = get_week_info(today_date)
+                    day_name = DAYS_MAP[today_date.weekday()]
+                    for uid, grp in get_subscribers("notify_morning"):
+                        try:
+                            sched = get_group_schedule(grp)
+                            lessons = sched.get(wn_code, {}).get(day_name, [])
+                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, today_date.strftime('%d.%m.%Y'))
+                            await bot.send_message(uid, msg_text)
+                            await asyncio.sleep(0.05)
+                        except Exception:
+                            pass
+
+            # 2. Вечерняя сводка ДЗ в 17:00
+            if cur_hhmm == "17:00" and last_evening_date != today_date:
+                last_evening_date = today_date
+                tom_date = today_date + datetime.timedelta(days=1)
+                if tom_date.weekday() != 6:
+                    wn_code, _ = get_week_info(tom_date)
+                    day_name = DAYS_MAP[tom_date.weekday()]
+                    for uid, grp in get_subscribers("notify_hw"):
+                        try:
+                            sched = get_group_schedule(grp)
+                            lessons = sched.get(wn_code, {}).get(day_name, [])
+                            if lessons:
+                                msg_text = "📚 <b>Вечерняя сводка: расписание на завтра:</b>\n\n" + format_day_text(day_name, wn_code, lessons, grp, tom_date.strftime('%d.%m.%Y'))
+                                await bot.send_message(uid, msg_text)
+                                await asyncio.sleep(0.05)
+                        except Exception:
+                            pass
+
+            # 3. Напоминания за 15 минут до пары
+            if today_date.weekday() != 6:
+                wn_code, _ = get_week_info(today_date)
+                day_name = DAYS_MAP[today_date.weekday()]
+                
+                for uid, grp in get_subscribers("notify_remind"):
+                    sched = get_group_schedule(grp)
+                    lessons = sched.get(wn_code, {}).get(day_name, [])
+                    if not lessons:
+                        continue
+                    
+                    targets = []
+                    if len(lessons) > 0:
+                        targets.append(lessons[0])
+                    for idx_l in range(1, len(lessons)):
+                        prev_l = lessons[idx_l - 1]
+                        cur_l = lessons[idx_l]
+                        if ("11:50" in prev_l.get('time', '') and "12:30" in cur_l.get('time', '')) or \
+                           ("11:10" in prev_l.get('time', '') and "11:50" in cur_l.get('time', '')):
+                            targets.append(cur_l)
+                            
+                    for t_l in targets:
+                        start_str = t_l.get('time', '')[:5]
+                        try:
+                            h, m = map(int, start_str.split(':'))
+                            rem_m = h * 60 + m - 15
+                            rem_str = f"{rem_m // 60:02d}:{rem_m % 60:02d}"
+                            rem_key = f"{uid}_{today_date}_{start_str}"
+                            if cur_hhmm == rem_str and rem_key not in sent_reminders:
+                                sent_reminders.add(rem_key)
+                                typ_f = normalize_type(t_l.get('type', ''))
+                                alert_msg = (
+                                    f"⏰ <b>Напоминание: через 15 минут пара!</b>\n\n"
+                                    f"В <b>{start_str}</b>: <b>{t_l.get('subject')}</b> ({typ_f})\n"
+                                    f"📍 {t_l.get('building')}, ауд. <b>{t_l.get('room')}</b>\n"
+                                    f"👤 <i>{t_l.get('teacher')}</i>"
+                                )
+                                await bot.send_message(uid, alert_msg)
+                        except Exception:
+                            pass
+        except Exception as e:
+            logging.error(f"Ошибка в планировщике: {e}")
+        await asyncio.sleep(25)
+
+# --- ВЕБ-СЕРВЕР И API (ДЛЯ WEBAPP И «СОВЁНОК AI») ---
 def cors_response(data: dict):
-    return web.json_response(data, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"})
+    return web.json_response(data, headers={
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+    })
 
 async def handle_options(request):
-    return web.Response(headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"})
+    return web.Response(headers={
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+    })
 
 async def handle_api_auth_poll(request):
     code = request.query.get('code', '')
@@ -382,7 +1062,13 @@ async def handle_api_auth_poll(request):
         c.execute("SELECT user_id, username, first_name, group_name, status FROM auth_sessions WHERE auth_code = ?", (code,))
         row = c.fetchone()
     if row and row[4] == 'confirmed':
-        return cors_response({"status": "confirmed", "user_id": row[0], "username": row[1], "first_name": row[2], "target": row[3]})
+        return cors_response({
+            "status": "confirmed",
+            "user_id": row[0],
+            "username": row[1],
+            "first_name": row[2],
+            "target": row[3]
+        })
     return cors_response({"status": "pending"})
 
 async def handle_api_ai_compress(request):
@@ -390,45 +1076,76 @@ async def handle_api_ai_compress(request):
         data = await request.json()
         raw_text = data.get("text", "").strip()
         custom_task = data.get("task", "summary")
-        if not raw_text: return cors_response({"status": "error", "message": "Пустой текст"})
+
+        if not raw_text:
+            return cors_response({"status": "error", "message": "Вставьте текст для обработки"})
 
         active_key = os.getenv("GROQ_API_KEY", "").strip()
+
         if active_key:
             instruction = AI_SYSTEM_PROMPT
-            if custom_task == 'cards': instruction += "\nСделай шпаргалку Вопрос-Ответ."
-            elif custom_task == 'simple': instruction += "\nОбъясни простыми словами."
+            if custom_task == 'cards':
+                instruction += "\nСделай шпаргалку в формате Вопрос — Ответ."
+            elif custom_task == 'simple':
+                instruction += "\nОбъясни материал простыми словами."
 
             payload = {
                 "model": "openai/gpt-oss-120b",
-                "messages": [{"role": "system", "content": instruction}, {"role": "user", "content": f"Текст:\n{raw_text}"}],
-                "temperature": 0.3, "max_tokens": 1200
+                "messages": [
+                    {"role": "system", "content": instruction},
+                    {"role": "user", "content": f"Лекция для сжатия:\n{raw_text}"}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1200
             }
+
             async with ClientSession() as session:
-                async with session.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {active_key}", "Content-Type": "application/json"}, json=payload, timeout=25) as resp:
+                async with session.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {active_key}", "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=25
+                ) as resp:
                     if resp.status == 200:
                         res_json = await resp.json()
-                        return cors_response({"status": "ok", "result": res_json['choices'][0]['message']['content']})
+                        ai_text = res_json['choices'][0]['message']['content'].replace('**', '')
+                        return cors_response({"status": "ok", "result": ai_text})
+                    else:
+                        logging.error(f"Ошибка Groq API: {resp.status}")
 
         sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 5]
-        return cors_response({"status": "ok", "result": "📌 Главные тезисы:\n\n" + "\n".join([f"- {s}." for s in sentences[:5]])})
+        top_sentences = sentences[:5] if len(sentences) >= 5 else sentences
+        fallback = "📌 Главные тезисы материала:\n\n" + "\n".join([f"- {s}." for s in top_sentences])
+        return cors_response({"status": "ok", "result": fallback})
     except Exception as e:
         return cors_response({"status": "error", "message": str(e)})
 
 async def handle_api_save_note(request):
     try:
         data = await request.json()
-        uid, n_key, n_text = int(data.get("user_id", 0)), data.get("note_key", ""), data.get("note_text", "").strip()
-        if not uid or not n_key: return cors_response({"status": "error"})
+        uid = int(data.get("user_id", 0))
+        n_key = data.get("note_key", "")
+        n_text = data.get("note_text", "").strip()
+        if not uid or not n_key:
+            return cors_response({"status": "error"})
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
-            if n_text: c.execute("INSERT OR REPLACE INTO user_notes (user_id, note_key, note_text) VALUES (?, ?, ?)", (uid, n_key, n_text))
-            else: c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
+            if n_text:
+                c.execute("INSERT OR REPLACE INTO user_notes (user_id, note_key, note_text) VALUES (?, ?, ?)", (uid, n_key, n_text))
+            else:
+                c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
             conn.commit()
         return cors_response({"status": "ok"})
-    except Exception: return cors_response({"status": "error"})
+    except Exception:
+        return cors_response({"status": "error"})
+
+async def handle_index(request):
+    return web.Response(text=f"<h1>Расписание НЧИ КФУ онлайн</h1><p>Групп в базе: {len(SCHEDULE_DB)}</p>", content_type='text/html')
 
 def create_web_app():
     app = web.Application()
+    app.router.add_get('/', handle_index)
+    app.router.add_get('/admin', handle_index)
     app.router.add_get('/api/auth_poll', handle_api_auth_poll)
     app.router.add_post('/api/ai_compress', handle_api_ai_compress)
     app.router.add_post('/api/save_note', handle_api_save_note)
@@ -437,13 +1154,17 @@ def create_web_app():
 
 async def main():
     init_db()
+    asyncio.create_task(background_scheduler())
+
     app = create_web_app()
     runner = web.AppRunner(app)
     await runner.setup()
     try:
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
-    except Exception: pass
+        logging.info(f"Веб-сервер запущен на 0.0.0.0:{PORT}")
+    except Exception as e:
+        logging.warning(f"Порт не поднят: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
