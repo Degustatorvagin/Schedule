@@ -10,54 +10,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #E6EEF5;
-  --gl: rgba(255,255,255,.7);
-  --gb: rgba(255,255,255,.95);
-  --ln: rgba(12,26,42,.1);
-  --tx: #0C1A2A;
-  --mu: #587087;
-  --ac: #0075FF;
-  --on: #ffffff;
-  --lec: #3F5FD6;
-  --pra: #12906A;
-  --lab: #D6426A;
-  --b1: #9FD6F0;
-  --b2: #B8EBD8;
-  box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #E6EEF5; --gl: rgba(255,255,255,.7); --gb: rgba(255,255,255,.95); --ln: rgba(12,26,42,.1);
+  --tx: #0C1A2A; --mu: #587087; --ac: #0075FF; --on: #ffffff;
+  --lec: #3F5FD6; --pra: #12906A; --lab: #D6426A; --b1: #9FD6F0; --b2: #B8EBD8;
+  box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #07121F;
-    --gl: rgba(255,255,255,.075);
-    --gb: rgba(255,255,255,.15);
-    --ln: rgba(255,255,255,.1);
-    --tx: #EEF4FA;
-    --mu: #8EA2B8;
-    --ac: #2FD39B;
-    --on: #042018;
-    --lec: #7C9CFF;
-    --pra: #4FD1A5;
-    --lab: #FF8FA3;
-    --b1: #0f3554;
-    --b2: #084337;
+    --bg: #07121F; --gl: rgba(255,255,255,.075); --gb: rgba(255,255,255,.15); --ln: rgba(255,255,255,.1);
+    --tx: #EEF4FA; --mu: #8EA2B8; --ac: #2FD39B; --on: #042018;
+    --lec: #7C9CFF; --pra: #4FD1A5; --lab: #FF8FA3; --b1: #0f3554; --b2: #084337;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #07121F;
-  --gl: rgba(255,255,255,.075);
-  --gb: rgba(255,255,255,.15);
-  --ln: rgba(255,255,255,.1);
-  --tx: #EEF4FA;
-  --mu: #8EA2B8;
-  --ac: #2FD39B;
-  --on: #042018;
-  --lec: #7C9CFF;
-  --pra: #4FD1A5;
-  --lab: #FF8FA3;
-  --b1: #0f3554;
-  --b2: #084337;
+  --bg: #07121F; --gl: rgba(255,255,255,.075); --gb: rgba(255,255,255,.15); --ln: rgba(255,255,255,.1);
+  --tx: #EEF4FA; --mu: #8EA2B8; --ac: #2FD39B; --on: #042018;
+  --lec: #7C9CFF; --pra: #4FD1A5; --lab: #FF8FA3; --b1: #0f3554; --b2: #084337;
 }
 * { box-sizing: border-box; margin: 0; font-family: Onest, system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; color: var(--tx); background: radial-gradient(70% 45% at 0% 0%, var(--b1), transparent 70%), radial-gradient(60% 45% at 100% 35%, var(--b2), transparent 70%), var(--bg); background-attachment: fixed; scrollbar-width: none; }
@@ -83,8 +51,6 @@ h2 { font-size: 19px; font-weight: 800; margin: 22px 4px 10px; }
 .hero h3 { font-size: 23px; font-weight: 800; margin: 6px 0 10px; line-height: 1.25; }
 .bar { height: 6px; border-radius: 6px; background: var(--ln); margin-top: 14px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--ac); }
-.hero .bar { background: rgba(0,0,0,.15); }
-.hero .bar i { background: var(--on); }
 .it { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 13px 4px; border-bottom: 1px solid var(--ln); }
 .it:last-child { border: 0; }
 .it b { display: block; font-weight: 700; font-size: 15px; }
@@ -109,10 +75,8 @@ textarea.fld { min-height: 100px; resize: none; }
 .who { text-align: left; min-width: 0; flex: 1; }
 .who h1 { font-size: 25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 .who small { display: block; font-size: 13px; color: var(--mu); max-width: 48vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 .day-nav-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 10px; }
 .day-nav-btn { font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 99px; }
-
 .strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 6px; margin-bottom: 14px; border-radius: 28px; }
 .d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; border-radius: 22px; }
 .d span { font-size: 11px; color: var(--mu); font-weight: 600; }
@@ -121,23 +85,17 @@ textarea.fld { min-height: 100px; resize: none; }
 .d.has u { background: var(--mu); }
 .d.now b { color: var(--ac); }
 .d.sel { background: var(--ac); color: var(--on); }
-.d.sel span, .d.sel b { color: var(--on); }
-.d.sel u { background: var(--on); }
 .row { display: grid; grid-template-columns: 50px 1fr; gap: 10px; margin-bottom: 12px; }
-.no { display: flex; flex-direction: column; align-items: flex-end; padding-top: 14px; font-size: 12px; color: var(--mu); font-variant-numeric: tabular-nums; }
+.no { display: flex; flex-direction: column; align-items: flex-end; padding-top: 14px; font-size: 12px; color: var(--mu); }
 .no b { font-size: 15px; color: var(--tx); font-weight: 800; }
 .card { display: block; width: 100%; text-align: left; padding: 14px 16px 14px 18px; position: relative; overflow: hidden; }
 .card:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c); }
-.lec { --c: var(--lec); }
-.pra { --c: var(--pra); }
-.lab { --c: var(--lab); }
-.oth { --c: var(--mu); }
+.lec { --c: var(--lec); } .pra { --c: var(--pra); } .lab { --c: var(--lab); } .oth { --c: var(--mu); }
 .tp { font-size: 12px; font-weight: 700; color: var(--c); margin-bottom: 3px; text-transform: uppercase; }
 .card h3 { font-size: 16px; font-weight: 700; line-height: 1.3; }
 .meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--mu); }
 .meta .rm { color: var(--tx); font-weight: 600; white-space: nowrap; }
 .live .card { border-color: var(--ac); box-shadow: 0 0 0 2px var(--ac); }
-.live .no b { color: var(--ac); }
 .nt { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--ac); background: color-mix(in srgb, var(--ac) 15%, transparent); padding: 2px 8px; border-radius: 6px; }
 .gap { margin: 0 0 12px 60px; padding: 8px 14px; border: 1px dashed var(--ln); border-radius: 18px; font-size: 12px; color: var(--mu); }
 .empty { text-align: center; padding: 46px 20px; color: var(--mu); }
@@ -145,62 +103,29 @@ textarea.fld { min-height: 100px; resize: none; }
 .slide { animation: sl .2s ease-out; }
 @keyframes sl { from { opacity: .2; transform: translateX(var(--dx, 16px)); } }
 #today { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); background: var(--ac); color: var(--on); font-weight: 800; padding: 12px 20px; border-radius: 99px; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 3; }
-
 .sheet { position: fixed; inset: 0; display: none; z-index: 6; }
 .sheet.on { display: block; }
 .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(3px); }
-.panel {
-  position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto;
-  max-height: 88%; min-height: 40%; background: var(--bg); border-radius: 32px 32px 0 0;
-  display: flex; flex-direction: column; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto; scrollbar-width: none; touch-action: pan-y;
-}
-.panel:before {
-  content: ""; width: 44px; height: 5px; border-radius: 5px; background: var(--ln);
-  margin: 4px auto 14px; flex: none; cursor: grab;
-}
-
-.kfu-avatar-wrap {
-  width: 96px; height: 96px; border-radius: 28px; background: #ffffff; border: 2px solid var(--ac);
-  box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22); display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 14px; overflow: hidden; padding: 6px;
-}
+.panel { position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; max-height: 88%; min-height: 40%; background: var(--bg); border-radius: 32px 32px 0 0; display: flex; flex-direction: column; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; scrollbar-width: none; touch-action: pan-y; }
+.panel:before { content: ""; width: 44px; height: 5px; border-radius: 5px; background: var(--ln); margin: 4px auto 14px; flex: none; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+.ch { font-size: 12px; color: var(--mu); font-style: normal; font-weight: 700; padding: 6px 0; }
+.cd { aspect-ratio: 1; border-radius: 50%; font-weight: 700; font-size: 14px; }
+.cd.has { background: var(--ln); } .cd.now { color: var(--ac); } .cd.sel { background: var(--ac); color: var(--on); }
+.onb { padding-top: 10vh; }
+.onb p { color: var(--mu); margin: 6px 0 24px; font-size: 15px; }
+.big { display: block; width: 100%; text-align: left; padding: 20px; font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+.big small { display: block; font-size: 13px; font-weight: 500; color: var(--mu); margin-top: 4px; }
+.kfu-avatar-wrap { width: 96px; height: 96px; border-radius: 28px; background: #ffffff; border: 2px solid var(--ac); box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; overflow: hidden; padding: 6px; }
 .kfu-avatar-wrap img { width: 100%; height: 100%; object-fit: contain; }
-
 .bub { padding: 12px 16px; border-radius: 20px; margin-bottom: 10px; max-width: 90%; font-size: 14px; line-height: 1.4; }
 .bub.me { margin-left: auto; background: var(--ac); color: var(--on); font-weight: 600; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .chip { padding: 8px 13px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; }
-
-/* Анимированная иконка Совёнка AI */
-.ai-pulse-icon {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(135deg, #0075FF, #2FD39B);
-  display: grid; place-items: center; color: #fff;
-  box-shadow: 0 0 20px rgba(0, 117, 255, 0.4);
-  animation: aiPulse 2.4s infinite ease-in-out;
-}
-@keyframes aiPulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0.5); }
-  50% { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(47, 211, 155, 0.35); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0); }
-}
-
-/* Экран блокировки ИИ для неавторизованных */
-.ai-lock-overlay {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh;
-}
-
-#toast {
-  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px));
-  transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9);
-  color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
-  padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99;
-  opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap;
-}
+.ai-pulse-icon { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #0075FF, #2FD39B); display: grid; place-items: center; color: #fff; box-shadow: 0 0 20px rgba(0, 117, 255, 0.4); animation: aiPulse 2.4s infinite ease-in-out; }
+@keyframes aiPulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(47, 211, 155, 0.35); } 100% { transform: scale(1); } }
+.ai-lock-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh; }
+#toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9); color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99; opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease; box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -225,6 +150,7 @@ const TEACHER_PIN = '1804';
 const API_URL = 'https://bot-1791299850-3323-degustatorvagin.bothost.tech';
 
 const MO = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const MN = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const DN = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
 const SH = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
@@ -234,29 +160,19 @@ const BELLS = {
 };
 
 const BALL = [
-  'Иди, сегодня будет что-то интересное',
-  'Лучше поспать, но пара важная',
-  'Препод сегодня в хорошем настроении',
-  'Опоздаешь на 5 минут — никто не заметит',
-  'Бери зарядку, день длинный',
-  'Звёзды говорят: кофе и вперёд',
-  'Сегодня точно проверят посещаемость!'
+  'Иди, сегодня будет что-то интересное', 'Лучше поспать, но пара важная',
+  'Препод сегодня в хорошем настроении', 'Опоздаешь на 5 минут — никто не заметит',
+  'Бери зарядку, день длинный', 'Звёзды говорят: кофе и вперёд', 'Сегодня точно проверят посещаемость!'
 ];
 
 const EXCUSES = [
-  'Лифт в УЛК-1 застрял на 3 этаже, ждали мастера.',
-  'Трамвай встал на Вахитова из-за затора на путях.',
-  'Очередь в гардеробе УЛК-1 дотянулась до дверей.',
-  'Помогал в деканате переносить зачётные ведомости.',
+  'Лифт в УЛК-1 застрял на 3 этаже, ждали мастера.', 'Трамвай встал на Вахитова из-за затора на путях.',
+  'Очередь в гардеробе УЛК-1 дотянулась до дверей.', 'Помогал в деканате переносить зачётные ведомости.',
   'Перепутал корпус и приехал в УЛК-7 вместо УЛК-1.'
 ];
 
 const ACC = [
-  ['#0075FF', '#ffffff'],
-  ['#2FD39B', '#042018'],
-  ['#8B7BFF', '#ffffff'],
-  ['#FF7A8A', '#ffffff'],
-  ['#FFC247', '#1A1400']
+  ['#0075FF', '#ffffff'], ['#2FD39B', '#042018'], ['#8B7BFF', '#ffffff'], ['#FF7A8A', '#ffffff'], ['#FFC247', '#1A1400']
 ];
 
 const ANCHOR = new Date(2026, 7, 31);
@@ -294,7 +210,6 @@ let manualWeek = null;
 let aiMode = 'summary';
 
 const key = t => t.k + ':' + t.n;
-
 const toast = (m, ic = '') => {
   const t = $('toast');
   t.innerHTML = (ic ? `<span style="color:var(--ac);font-size:14px;">${ic}</span>` : '') + `<span>${esc(m)}</span>`;
@@ -304,15 +219,10 @@ const toast = (m, ic = '') => {
 };
 
 function look() {
-  if (cfg.theme === 'auto') {
-    document.documentElement.removeAttribute('data-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', cfg.theme);
-  }
-  const a = ACC[cfg.ac || 0];
-  const s = document.documentElement.style;
-  s.setProperty('--ac', a[0]);
-  s.setProperty('--on', a[1]);
+  if (cfg.theme === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', cfg.theme);
+  const a = ACC[cfg.ac || 0], s = document.documentElement.style;
+  s.setProperty('--ac', a[0]); s.setProperty('--on', a[1]);
 }
 
 function build() {
@@ -332,38 +242,25 @@ function build() {
   }
 }
 
-function getWeek(d) {
-  return manualWeek || wcode(d);
-}
+function getWeek(d) { return manualWeek || wcode(d); }
 
 function lessonsOf(t, w, d) {
   if (!t) return [];
-  if (t.k === 'g') {
-    return (DATA[t.n]?.schedule?.[w]?.[d] || []).map(l => ({ ...l }));
-  }
+  if (t.k === 'g') return (DATA[t.n]?.schedule?.[w]?.[d] || []).map(l => ({ ...l }));
   const m = {};
   for (const l of (T[t.n]?.[w]?.[d] || [])) {
     const k = l.time + l.room + l.subject;
-    if (m[k]) {
-      if (!m[k].group.includes(l.group)) m[k].group += ', ' + l.group;
-    } else {
-      m[k] = { ...l };
-    }
+    if (m[k]) { if (!m[k].group.includes(l.group)) m[k].group += ', ' + l.group; }
+    else m[k] = { ...l };
   }
   return Object.values(m).sort((a, b) => a.time.localeCompare(b.time));
 }
 
-const span = l => {
-  const st = l.time.slice(0, 5);
-  const b = BELLS[st];
-  return [mins(st), b ? mins(b[0]) : mins(st) + 90];
-};
-
+const span = l => { const st = l.time.slice(0, 5), b = BELLS[st]; return [mins(st), b ? mins(b[0]) : mins(st) + 90]; };
 const cls = t => /лек/i.test(t) ? 'lec' : /лаб/i.test(t) ? 'lab' : /пр|сем/i.test(t) ? 'pra' : 'oth';
 
 function status(t, now) {
-  const gi = now.getDay();
-  const nm = now.getHours() * 60 + now.getMinutes();
+  const gi = now.getDay(), nm = now.getHours() * 60 + now.getMinutes();
   const L = gi ? lessonsOf(t, getWeek(now), DN[gi - 1]) : [];
   let live = null, next = null;
   for (const l of L) {
@@ -384,39 +281,24 @@ function stLine(t, now) {
 }
 
 const I = {
-  h: 'M3 11l9-8 9 8v10h-6v-6H9v6H3z',
-  s: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
-  f: 'M11 19a8 8 0 100-16 8 8 0 000 16zm10 2l-4.35-4.35',
-  a: 'M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z',
-  c: 'M12 12a5 5 0 100-10 5 5 0 000 10zm0 3c-6 0-9 3-9 6v1h18v-1c0-3-3-6-9-6z',
-  up: 'M12 19V5M5 12l7-7 7 7',
-  tg: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
-  pal: 'M12 2a10 10 0 100 20c1.5 0 2.5-1 2.5-2.5 0-.7-.3-1.3-.8-1.8-.5-.5-.7-1.1-.7-1.7 0-1.4 1.1-2.5 2.5-2.5H18a4 4 0 004-4c0-4.4-4.5-7.5-10-7.5z',
-  share: 'M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7m-4-5l-4-4-4 4m4-4v12',
-  star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+  h: 'M3 11l9-8 9 8v10h-6v-6H9v6H3z', s: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+  f: 'M11 19a8 8 0 100-16 8 8 0 000 16zm10 2l-4.35-4.35', a: 'M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z',
+  c: 'M12 12a5 5 0 100-10 5 5 0 000 10zm0 3c-6 0-9 3-9 6v1h18v-1c0-3-3-6-9-6z', up: 'M12 19V5M5 12l7-7 7 7',
+  tg: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z', pal: 'M12 2a10 10 0 100 20c1.5 0 2.5-1 2.5-2.5 0-.7-.3-1.3-.8-1.8-.5-.5-.7-1.1-.7-1.7 0-1.4 1.1-2.5 2.5-2.5H18a4 4 0 004-4c0-4.4-4.5-7.5-10-7.5z',
+  share: 'M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7m-4-5l-4-4-4 4m4-4v12', star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
   users: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm14 10v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
-  cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
-  user: 'M12 12a5 5 0 100-10 5 5 0 000 10zm0 3c-6 0-9 3-9 6v1h18v-1c0-3-3-6-9-6z',
+  cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', user: 'M12 12a5 5 0 100-10 5 5 0 000 10zm0 3c-6 0-9 3-9 6v1h18v-1c0-3-3-6-9-6z',
   pin: 'M12 2a8 8 0 00-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 00-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z'
 };
 
 const ico = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
-
-const item = (ic, t, sub, a, v = '', r = '') =>
-  `<button class="it" data-a="${a}" data-v="${esc(v)}">
-    <span class="ic">${ico(ic)}</span>
-    <span class="t"><b>${esc(t)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
-    ${r ? `<span class="mu" style="font-size:13px">${esc(r)}</span>` : '<span class="chev">›</span>'}
-  </button>`;
+const item = (ic, t, sub, a, v = '', r = '') => `<button class="it" data-a="${a}" data-v="${esc(v)}"><span class="ic">${ico(ic)}</span><span class="t"><b>${esc(t)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${r ? `<span class="mu" style="font-size:13px">${esc(r)}</span>` : '<span class="chev">›</span>'}</button>`;
 
 function tabs() {
   const nm = { h: 'Главная', s: 'Расписание', f: 'Найти', a: 'Совёнок AI', c: 'Профиль' };
   $('tabs').hidden = false;
   $('tabs').innerHTML = Object.entries(nm).map(([k, l]) =>
-    `<button class="${tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">
-      ${k === 'a' ? `<div style="display:inline-flex;align-items:center;justify-content:center;position:relative;"><div style="position:absolute;width:28px;height:28px;border-radius:50%;background:var(--ac);opacity:0.25;animation:aiPulse 2s infinite;"></div>${ico(k, 22)}</div>` : ico(k, 22)}
-      <span>${l}</span>
-    </button>`
+    `<button class="${tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${k === 'a' ? `<div style="display:inline-flex;align-items:center;justify-content:center;position:relative;"><div style="position:absolute;width:28px;height:28px;border-radius:50%;background:var(--ac);opacity:0.25;animation:aiPulse 2s infinite;"></div>${ico(k, 22)}</div>` : ico(k, 22)}<span>${l}</span></button>`
   ).join('');
 }
 
@@ -425,21 +307,13 @@ function go(t) {
   if (!me) return onboard();
   tabs();
   $('today').hidden = (tab !== 's' || same(date, NOW()));
-  const p = $('page');
-  p.scrollTop = 0;
-  p.classList.remove('view-enter');
-  void p.offsetWidth;
-  p.classList.add('view-enter');
-  if (tab === 'h') home();
-  else if (tab === 's') sched();
-  else if (tab === 'f') find();
-  else if (tab === 'a') ai();
-  else if (tab === 'c') prof();
+  const p = $('page'); p.scrollTop = 0; p.classList.remove('view-enter'); void p.offsetWidth; p.classList.add('view-enter');
+  if (tab === 'h') home(); else if (tab === 's') sched(); else if (tab === 'f') find(); else if (tab === 'a') ai(); else if (tab === 'c') prof();
 }
 
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
-// Главная: минималистичный стиль (Скриншот 3)
+// Главная страница: компактный информативный вид (Скриншот 3)
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -452,53 +326,24 @@ function home() {
         <h1>Привет${me.nick ? ', ' + esc(me.nick) : ''}</h1>
         <small>${esc(me.target.n)} · ${now.getDate()} ${MO[now.getMonth()]}</small>
       </div>
-      <div style="flex-shrink:0;">
-        ${wkPill(now)}
-      </div>
+      <div style="flex-shrink:0;">${wkPill(now)}</div>
     </div>`;
 
   if (s.live) {
-    const l = s.live.l;
-    const durM = s.live.e - s.live.s;
-    const el = s.nm - s.live.s;
-    const pct = Math.max(0, Math.min(100, Math.round(el / durM * 100)));
-    h += `
-      <div class="box hero">
-        <div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div>
-        <h3>${esc(l.subject)}</h3>
-        <div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div>
-        <div class="bar"><i></i></div>
-      </div>`;
-    setTimeout(() => {
-      const b = document.querySelector('.hero .bar i');
-      if (b) b.style.width = pct + '%';
-    }, 20);
+    const l = s.live.l, durM = s.live.e - s.live.s, el = s.nm - s.live.s, pct = Math.max(0, Math.min(100, Math.round(el / durM * 100)));
+    h += `<div class="box hero"><div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div><div class="bar"><i></i></div></div>`;
+    setTimeout(() => { const b = document.querySelector('.hero .bar i'); if (b) b.style.width = pct + '%'; }, 20);
   } else if (s.next) {
     const l = s.next.l;
-    h += `
-      <div class="box hero">
-        <div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div>
-        <h3>${esc(l.subject)}</h3>
-        <div>${l.time.slice(0, 5)} · ${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div>
-      </div>`;
+    h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
   } else if (isFinished) {
-    h += `
-      <div class="box g">
-        <b>🎉 Все пары на сегодня завершились!</b>
-        <div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div>
-      </div>`;
+    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать</div></div>`;
   } else {
-    h += `
-      <div class="box hero">
-        <div class="mu">Сегодня пар нет</div>
-        <h3>Выходной день 🎉</h3>
-        <div>Отдыхаем и набираемся сил</div>
-      </div>`;
+    h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и набираемся сил</div></div>`;
   }
 
   if (isFinished || isWeekend) {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
     h += `<h2>Расписание на завтра (${tomorrow.getDate()} ${MO[tomorrow.getMonth()]})</h2>`;
     h += dayHtml(me.target, tomorrow, false);
   } else {
@@ -511,7 +356,6 @@ function home() {
     h += me.fav.map(f => item(f.k === 'g' ? 'users' : 'user', f.n, stLine(f, now), 'who', key(f))).join('');
     h += `</div>`;
   }
-
   $('page').innerHTML = h;
 }
 
@@ -519,571 +363,167 @@ const dk = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 const nk = (d, l) => dk(d) + '|' + l.time.slice(0, 5) + '|' + l.subject;
 
 function dayHtml(t, d, click) {
-  const now = NOW();
-  const w = getWeek(d);
-  const gi = d.getDay();
+  const now = NOW(), w = getWeek(d), gi = d.getDay();
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
-  const today = same(d, now);
-  const nm = now.getHours() * 60 + now.getMinutes();
-
-  if (!L.length) {
-    return `<div class="empty"><b>В этот день пар нет</b>${gi === 0 ? 'Воскресенье — законный выходной' : 'Занятий по расписанию не запланировано'}</div>`;
-  }
+  const today = same(d, now), nm = now.getHours() * 60 + now.getMinutes();
+  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий не запланировано</div>`;
 
   const f = span(L[L.length - 1]);
-  let h = `<div class="mu" style="margin:0 4px 12px">${L.length} ${L.length === 1 ? 'пара' : L.length < 5 ? 'пары' : 'пар'} · до ${hm(f[1])}</div>`;
+  let h = `<div class="mu" style="margin:0 4px 12px">${L.length} пар · до ${hm(f[1])}</div>`;
 
   L.forEach((l, i) => {
     const [a, e] = span(l);
     if (i > 0) {
-      const prev = span(L[i - 1]);
-      const g = a - prev[1];
-      if (g > 10) {
-        const isLunch = (prev[1] === 11 * 60 + 50 && a === 12 * 60 + 30) || (prev[1] === 11 * 60 + 10 && a === 11 * 60 + 50);
-        h += `<div class="gap">${isLunch ? '🥪 Обед 40 мин' : '🕳 Окно ' + dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
-      }
+      const prev = span(L[i - 1]), g = a - prev[1];
+      if (g > 10) h += `<div class="gap">🕳 Окно ${dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
     }
     const no = `<div class="no"><b>${i + 1}</b><span>${l.time.slice(0, 5)}</span><span>${hm(e)}</span></div>`;
-    const live = today && nm >= a && nm < e;
-    const note = NOTES[nk(d, l)];
-    const whoSub = t.k === 't' ? (l.group || '') : (l.teacher || '');
-
-    h += `
-      <div class="row${live ? ' live' : ''}">
-        ${no}
-        <div>
-          <button class="card g ${cls(l.type)}" ${click ? `data-a="les" data-v="${i}"` : ''}>
-            <div class="tp">${esc(l.type || 'Пара')}</div>
-            <h3>${esc(l.subject)}</h3>
-            <div class="meta">
-              <span>${esc(whoSub)}</span>
-              <span class="rm">${esc(l.room)}${l.building ? ', ' + esc(l.building) : ''}</span>
-            </div>
-            ${note ? `<div class="nt">📝 ${esc(note)}</div>` : ''}
-          </button>
-        </div>
-      </div>`;
+    const live = today && nm >= a && nm < e, note = NOTES[nk(d, l)];
+    h += `<div class="row${live ? ' live' : ''}">${no}<div><button class="card g ${cls(l.type)}" ${click ? `data-a="les" data-v="${i}"` : ''}><div class="tp">${esc(l.type || 'Пара')}</div><h3>${esc(l.subject)}</h3><div class="meta"><span>${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</span><span class="rm">${esc(l.room)}${l.building ? ', ' + esc(l.building) : ''}</span></div>${note ? `<div class="nt">📝 ${esc(note)}</div>` : ''}</button></div></div>`;
   });
-
   return h;
 }
 
 function sched() {
-  const t = me.target;
-  const now = NOW();
-  const gi = date.getDay();
+  const t = me.target, now = NOW(), gi = date.getDay();
   const sp = t.k === 'g' ? (DATA[t.n]?.spec || '') : 'Преподаватель кафедры';
-
   let h = `
     <div class="top">
-      <div class="who">
-        <h1>${esc(t.n)}</h1>
-        <small>${esc(sp)}</small>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-        <button class="ib g" data-a="cal" title="Календарь">${ico('cal', 18)}</button>
-        ${wkPill(date)}
-      </div>
+      <div class="who"><h1>${esc(t.n)}</h1><small>${esc(sp)}</small></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;"><button class="ib g" data-a="cal">${ico('cal', 18)}</button>${wkPill(date)}</div>
     </div>
-
     <div class="day-nav-bar">
       <button class="day-nav-btn pill g" data-a="shift" data-v="-1">‹ Вчера</button>
-      <b style="font-size:13px;color:var(--tx);font-weight:700;">${date.getDate()} ${MO[date.getMonth()]}</b>
+      <b style="font-size:13px;font-weight:700;">${date.getDate()} ${MO[date.getMonth()]}</b>
       <button class="day-nav-btn pill g" data-a="shift" data-v="1">Завтра ›</button>
     </div>`;
 
-  const m = mon(date);
-  const w = getWeek(date);
+  const m = mon(date), w = getWeek(date);
   let s = '';
   for (let i = 0; i < 7; i++) {
-    const d = new Date(m);
-    d.setDate(m.getDate() + i);
+    const d = new Date(m); d.setDate(m.getDate() + i);
     const has = i < 6 && lessonsOf(t, w, DN[i]).length;
-    s += `
-      <button class="d${has ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}" data-a="day" data-v="${i}">
-        <span>${SH[i]}</span>
-        <b>${d.getDate()}</b>
-        <u></u>
-      </button>`;
+    s += `<button class="d${has ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}" data-a="day" data-v="${i}"><span>${SH[i]}</span><b>${d.getDate()}</b><u></u></button>`;
   }
   h += `<div class="strip g">${s}</div>`;
-
   CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   h += `<div id="lst" class="slide">${dayHtml(t, date, true)}</div>`;
   $('page').innerHTML = h;
-
   $('today').hidden = same(date, now);
-
-  let x0 = null;
-  $('page').ontouchstart = e => x0 = e.touches[0].clientX;
-  $('page').ontouchend = e => {
-    if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0;
-    x0 = null;
-    if (Math.abs(dx) > 65) shiftDay(dx < 0 ? 1 : -1);
-  };
 }
 
 function shiftDay(n) {
   date = new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
-  const l = $('lst');
-  if (l) {
-    l.style.setProperty('--dx', (n > 0 ? 18 : -18) + 'px');
-    l.classList.add('slide');
-  }
   sched();
 }
 
 function find() {
-  const nm = { f: 'Избранное', g: 'Группы', t: 'Преподаватели' };
-  let h = `
-    <div class="top"><h1>Найти</h1></div>
-    <div class="seg g">
-      ${Object.entries(nm).map(([k, l]) => `<button class="${seg === k ? 'on' : ''}" data-a="seg" data-v="${k}">${l}</button>`).join('')}
-    </div>
-    <input class="fld g" id="fq" placeholder="Поиск группы или преподавателя..." autocomplete="off">
-    <div id="flist"></div>`;
-  $('page').innerHTML = h;
-  flist();
+  let h = `<div class="top"><h1>Найти</h1></div><div class="seg g"><button class="${seg==='f'?'on':''}" data-a="seg" data-v="f">Избранное</button><button class="${seg==='g'?'on':''}" data-a="seg" data-v="g">Группы</button><button class="${seg==='t'?'on':''}" data-a="seg" data-v="t">Преподаватели</button></div><input class="fld g" id="fq" placeholder="Поиск..." autocomplete="off"><div id="flist"></div>`;
+  $('page').innerHTML = h; flist();
 }
 
 function flist() {
-  const now = NOW();
-  const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, '');
-  const q = n($('fq') ?$('fq').value : '');
-  let ls = [];
-
-  if (seg === 'f') {
-    ls = me.fav || [];
-    if (!ls.length) {
-      $('flist').innerHTML = '<div class="empty"><b>В избранном пока пусто</b>Добавляйте расписания через звёздочку</div>';
-      return;
-    }
-    $('flist').innerHTML = `<div class="box g" style="padding:4px 16px">` +
-      ls.filter(x => !q || n(x.n).includes(q)).map(x => item(x.k === 'g' ? 'users' : 'user', x.n, stLine(x, now), 'who', key(x))).join('') +
-      `</div>`;
-    return;
-  }
-
-  ls = (seg === 'g' ? Object.keys(DATA) : Object.keys(T)).sort((a, b) => a.localeCompare(b, 'ru'));
-  const filtered = ls.filter(k => !q || n(k).includes(q) || (seg === 'g' && n(DATA[k].spec || '').includes(q)));
-
-  if (!filtered.length) {
-    $('flist').innerHTML = '<div class="empty"><b>Ничего не найдено</b>Проверьте правильность написания</div>';
-    return;
-  }
-
-  $('flist').innerHTML = `<div class="box g" style="padding:4px 16px">` +
-    filtered.map(k => item(seg === 'g' ? 'users' : 'user', k, seg === 'g' ? (DATA[k].spec || '').replace(/,\s*\d+\s*чел.*/, '') : 'Преподаватель кафедры', 'who', (seg === 'g' ? 'g:' : 't:') + k)).join('') +
-    `</div>`;
+  const now = NOW(), n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), q = n($('fq') ?$('fq').value : '');
+  let ls = seg === 'f' ? (me.fav || []) : (seg === 'g' ? Object.keys(DATA) : Object.keys(T)).sort((a,b)=>a.localeCompare(b,'ru'));
+  const filtered = seg === 'f' ? ls.filter(x => !q || n(x.n).includes(q)) : ls.filter(k => !q || n(k).includes(q));
+  if (!filtered.length) { $('flist').innerHTML = '<div class="empty"><b>Ничего не найдено</b></div>'; return; }
+  $('flist').innerHTML = `<div class="box g" style="padding:4px 16px">` + (seg === 'f' ? filtered.map(x=>item(x.k==='g'?'users':'user',x.n,stLine(x,now),'who',key(x))).join('') : filtered.map(k=>item(seg==='g'?'users':'c',k,seg==='g'?(DATA[k].spec||''):'Преподаватель','who',(seg==='g'?'g:':'t:')+k)).join('')) + `</div>`;
 }
 
-function whoOpen(k) {
-  const [a, ...b] = k.split(':');
-  PT = { k: a, n: b.join(':') };
-  pDate = ds(NOW());
-  drawWho();
-  $('sheet').classList.add('on');
-}
-
+function whoOpen(k) { const [a, ...b] = k.split(':'); PT = { k: a, n: b.join(':') }; pDate = ds(NOW()); drawWho(); $('sheet').classList.add('on'); }
 function drawWho() {
-  const t = PT;
-  const now = NOW();
-  const s = status(t, now);
-  const fv = me.fav.some(x => key(x) === key(t));
-
-  let c = '';
-  if (s.live) {
-    c = `<div class="mu">Сейчас на паре</div><h3 style="font-size:24px;font-weight:800;margin:4px 0">${esc(s.live.l.subject)}</h3><div>${where(s.live.l)}</div>`;
-  } else if (s.next) {
-    c = `<div class="mu">Следующая пара в ${s.next.l.time.slice(0, 5)}</div><h3 style="font-size:24px;font-weight:800;margin:4px 0">${esc(s.next.l.subject)}</h3><div>${where(s.next.l)}</div>`;
-  } else {
-    c = `<div class="mu">Сейчас пар нет</div><h3 style="font-size:24px;font-weight:800;margin:4px 0">Свободен</h3>`;
-  }
-
-  $('pnl').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
-      <div class="who">
-        <h1 style="font-size:24px">${esc(t.n)}</h1>
-        <small>${t.k === 'g' ? esc(DATA[t.n]?.spec || 'Группа') : 'Преподаватель'}</small>
-      </div>
-      <button class="ib g" data-a="fav" style="color:${fv ? 'var(--ac)' : 'var(--mu)'}">${ico('star', 22)}</button>
-    </div>
-    <div class="box hero" style="margin-bottom:16px">${c}</div>
-    <div class="top" style="padding:4px">
-      <b>${pDate.getDate()} ${MO[pDate.getMonth()]}</b>
-      <div style="display:flex;gap:6px">
-        <button class="pill g" data-a="pd" data-v="-1">◀</button>
-        <button class="pill g" data-a="pd" data-v="1">▶</button>
-      </div>
-    </div>
-    ${dayHtml(t, pDate, false)}
-  `;
+  const t = PT, s = status(t, NOW()), fv = me.fav.some(x => key(x) === key(t));
+  $('pnl').innerHTML = `<div style="display:flex;justify-content:space-between"><h1>${esc(t.n)}</h1><button class="ib g" data-a="fav" style="color:${fv?'var(--ac)':'var(--mu)'}">${ico('star',22)}</button></div><div class="box hero" style="margin:14px 0">${s.live?'Сейчас на паре: '+s.live.l.subject:'Пар нет'}</div>${dayHtml(t, pDate, false)}`;
 }
 
 function lesOpen(i) {
-  const l = CUR[i];
-  const k = nk(date, l);
-  const [a, e] = span(l);
-  window.NK = k;
-  window.ACTIVE_LESSON = l;
-  const curNote = NOTES[k] || '';
-
-  $('pnl').innerHTML = `
-    <div class="tp ${cls(l.type)}">${esc(l.type || 'Пара')}</div>
-    <h1 style="font-size:22px;font-weight:800;margin:4px 0 14px">${esc(l.subject)}</h1>
-    <div class="box g" style="padding:4px 16px;margin-bottom:16px">
-      <div class="it">
-        <span class="ic">${ico('cal')}</span>
-        <span class="t"><b>${esc(l.time.slice(0, 5))} — ${hm(e)}</b><small>${date.getDate()} ${MO[date.getMonth()]}</small></span>
-      </div>
-      <button class="it" data-a="who" data-v="t:${esc(l.teacher)}">
-        <span class="ic">${ico('user')}</span>
-        <span class="t"><b>${esc(l.teacher || '—')}</b><small>Посмотреть преподавателя</small></span>
-        <span class="chev">›</span>
-      </button>
-      <div class="it">
-        <span class="ic">${ico('pin')}</span>
-        <span class="t"><b>${where(l)}</b><small>Корпус и аудитория</small></span>
-      </div>
-    </div>
-    <div class="lab2">Личная заметка к этой паре</div>
-    <textarea class="fld" id="note" placeholder="Сдать лабораторную, подготовить доклад, взять конспект...">${esc(curNote)}</textarea>
-    
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:6px">
-      <button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>
-      <button class="btn gl" data-a="shn" data-v="${esc(k)}">Поделиться</button>
-    </div>
-  `;
+  const l = CUR[i], k = nk(date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
+  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Заметка</div><textarea class="fld" id="note" placeholder="Заметка...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
 function calOpen() {
-  const m = calM;
-  const first = (m.getDay() + 6) % 7;
-  const dim = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
-  let c = SH.map(x => `<i class="ch">${x}</i>`).join('');
-  for (let i = 0; i < first; i++) c += '<i></i>';
-  for (let d = 1; d <= dim; d++) {
-    const x = new Date(m.getFullYear(), m.getMonth(), d);
-    const g = x.getDay();
-    const has = g && lessonsOf(me.target, getWeek(x), DN[g - 1]).length;
-    c += `<button class="cd${has ? ' has' : ''}${same(x, NOW()) ? ' now' : ''}${same(x, date) ? ' sel' : ''}" data-a="cd" data-v="${d}">${d}</button>`;
-  }
-  $('pnl').innerHTML = `
-    <div class="top">
-      <h1>${MN[m.getMonth()]} ${m.getFullYear()}</h1>
-      <div style="display:flex;gap:6px">
-        <button class="pill g" data-a="cm" data-v="-1">◀</button>
-        <button class="pill g" data-a="cm" data-v="1">▶</button>
-      </div>
-    </div>
-    <div class="cal">${c}</div>
-  `;
+  const m = calM, first = (m.getDay()+6)%7, dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
+  let c = SH.map(x=>`<i class="ch">${x}</i>`).join('');
+  for(let i=0;i<first;i++) c+='<i></i>';
+  for(let d=1;d<=dim;d++) { const x = new Date(m.getFullYear(), m.getMonth(), d); c+=`<button class="cd${same(x,date)?' sel':''}" data-a="cd" data-v="${d}">${d}</button>`; }
+  $('pnl').innerHTML = `<div class="top"><h1>${MN[m.getMonth()]}</h1></div><div class="cal">${c}</div>`;
   $('sheet').classList.add('on');
 }
 
-// СОВЁНОК AI С АВТОРИЗАЦИЕЙ И ИНСТРУМЕНТОМ СЖАТИЯ
+// СОВЁНОК AI С АВТОРИЗАЦИЕЙ И КОНСПЕКТАМИ
 function ai() {
   const isAuth = Boolean(me.tgUser && me.tgUser.id);
-
-  // Если не авторизован — показываем экран блокировки (Скриншот 1)
   if (!isAuth) {
-    $('page').innerHTML = `
-      <div class="top"><h1>Совёнок AI</h1></div>
-      <div class="ai-lock-overlay g">
-        <div class="ai-pulse-icon">${ico('a', 24)}</div>
-        <h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим личным помощником</h3>
-        <div class="mu">Синхронизируй расписание и получи доступ к умному сжатию лекций</div>
-        <button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button>
-      </div>
-    `;
+    $('page').innerHTML = `<div class="top"><h1>Совёнок AI</h1></div><div class="ai-lock-overlay g"><div class="ai-pulse-icon">${ico('a',24)}</div><h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим помощником</h3><div class="mu">Синхронизируй расписание и сжимай лекции</div><button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button></div>`;
     return;
   }
 
-  const isTeacher = me.target.k === 't';
-  let chips = isTeacher ? [
-    { t: '📊 Моя нагрузка сегодня', a: 'ai_t_load' },
-    { t: '👥 С какими группами пары?', a: 'ai_t_groups' },
-    { t: '📍 В каких я аудиториях?', a: 'ai_t_rooms' },
-    { t: '☕ Сколько до перерыва?', a: 'ai_t_break' }
-  ] : [
-    { t: '📍 Где преподаватель?', a: 'ai_locate' },
-    { t: '🥪 Сколько до обеда?', a: 'ai_lunch' },
-    { t: '😴 Сколько пар осталось?', a: 'ai_left' },
-    { t: '🎲 Отмазка для опоздания', a: 'ai_excuse' }
-  ];
-
   $('page').innerHTML = `
-    <div class="top">
-      <div>
-        <h1>Совёнок AI</h1>
-        <div class="mu">Твой умный ассистент КФУ</div>
-      </div>
-      <div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a', 20)}</div>
-    </div>
-
+    <div class="top"><div><h1>Совёнок AI</h1><div class="mu">Твой умный ассистент КФУ</div></div><div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a',20)}</div></div>
     <div class="box g" style="padding:16px;">
-      <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сжать лекцию для тетради</b>
-      <div class="mu" style="margin-bottom:10px;">Вставь длинный текст — Совёнок сделает краткий конспект на 2-3 страницы</div>
-
+      <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сократить лекцию для тетради</b>
+      <div class="mu" style="margin-bottom:10px;">Вставь текст — Совёнок выдаст тезисы без воды</div>
       <div class="seg g" style="margin-bottom:10px;">
-        <button class="${aiMode === 'summary' ? 'on' : ''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
-        <button class="${aiMode === 'cards' ? 'on' : ''}" data-a="set_ai_mode" data-v="cards">❓ Шпаргалка</button>
-        <button class="${aiMode === 'simple' ? 'on' : ''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
+        <button class="${aiMode==='summary'?'on':''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
+        <button class="${aiMode==='cards'?'on':''}" data-a="set_ai_mode" data-v="cards">❓ Вопрос-Ответ</button>
+        <button class="${aiMode==='simple'?'on':''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
       </div>
-
-      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции..."></textarea>
+      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь текст лекции..."></textarea>
       <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">🦉 Сократить через Совёнок AI</button>
-
       <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:rgba(255,255,255,0.04);border:1px dashed var(--ac);padding:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <b style="color:var(--ac);">Конспект от Совёнка:</b>
-          <button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
-        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="color:var(--ac);">Конспект:</b><button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button></div>
         <div id="ai_summary_content" style="font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
       </div>
     </div>
-
-    <div class="lab2">Быстрые сценарии</div>
-    <div class="chips">
-      ${chips.map(c => `<button class="chip g" data-a="${c.a}">${c.t}</button>`).join('')}
-    </div>
-
     <div class="lab2">Диалог с Совёнком</div>
-    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
-      <div class="bub g">🦉 Привет! Я Совёнок AI. Спроси меня про расписание, аудитории или преподавателей НЧИ КФУ!</div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:6px">
-      <input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси: где Волкова, сколько пар...">
-      <button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up', 22)}</button>
-    </div>
+    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про расписание или аудитории КФУ!</div></div>
+    <div style="display:flex;gap:8px;margin-top:6px"><input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси что-нибудь..."><button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up',22)}</button></div>
   `;
-
   $('ai_send').onclick = handleAiSend;
   $('ai_input').onkeydown = e => { if (e.key === 'Enter') handleAiSend(); };
 }
 
 async function runAiCompress() {
-  const txt = $('lecture_text') ?$('lecture_text'].value.trim() : '';
+  const txt = $('lecture_text') ?$('lecture_text').value.trim() : '';
   if (!txt) return toast('Вставьте текст лекции');
-
-  const btn = $('btn_compress_ai');
-  const resBox = $('ai_summary_result');
-  const resContent = $('ai_summary_content');
-
-  btn.disabled = true;
-  btn.textContent = '🦉 Совёнок думает...';
-  resBox.style.display = 'none';
-
+  const btn = $('btn_compress_ai'), resBox = $('ai_summary_result'), resContent =$('ai_summary_content');
+  btn.disabled = true; btn.textContent = '🦉 Совёнок думает...'; resBox.style.display = 'none';
   try {
-    const res = await fetch(`${API_URL}/api/ai_compress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt, task: aiMode })
-    });
+    const res = await fetch(`${API_URL}/api/ai_compress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: txt, task: aiMode }) });
     const data = await res.json();
-    if (data.status === 'ok') {
-      resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
-      resBox.style.display = 'block';
-      resBox.scrollIntoView({ behavior: 'smooth' });
-      toast('Конспект готов!', '✓');
-    } else {
-      toast(data.message || 'Ошибка обработки');
-    }
-  } catch (e) {
-    toast('Сервер недоступен');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🦉 Сократить через Совёнок AI';
-  }
+    if (data.status === 'ok') { resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>'); resBox.style.display = 'block'; toast('Готово!', '✓'); }
+    else toast(data.message || 'Ошибка');
+  } catch (e) { toast('Сервер недоступен'); }
+  finally { btn.disabled = false; btn.textContent = '🦉 Сократить через Совёнок AI'; }
 }
 
-function copyAiResult() {
-  const t = $('ai_summary_content').innerText;
-  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Скопировано', '✓'));
-}
-
-function postAiMsg(text, isMe = false) {
-  const c = $('ai_chat');
-  if (!c) return;
-  const div = document.createElement('div');
-  div.className = 'bub ' + (isMe ? 'me' : 'g');
-  div.innerHTML = esc(text).replace(/\n/g, '<br>');
-  c.appendChild(div);
-  div.scrollIntoView({ behavior: 'smooth' });
-}
-
-function handleAiSend() {
-  const inp = $('ai_input');
-  const q = inp.value.trim();
-  if (!q) return;
-  postAiMsg(q, true);
-  inp.value = '';
-  setTimeout(() => processAiQuery(q), 280);
-}
-
-function processAiQuery(q) {
-  const lower = q.toLowerCase();
-  const now = NOW();
-
-  if (lower.includes('обед') || lower.includes('кушать')) {
-    postAiMsg('🥪 Обед проходит с 11:50 до 12:30 (в институте с 11:10 до 11:50). Успеешь перекусить!');
-    return;
-  }
-  if (lower.includes('пар') || lower.includes('осталось')) {
-    const gi = now.getDay();
-    if (!gi) { postAiMsg('🎉 Сегодня воскресенье, пар нет!'); return; }
-    const L = lessonsOf(me.target, getWeek(now), DN[gi - 1]);
-    const nm = now.getHours() * 60 + now.getMinutes();
-    const remaining = L.filter(l => span(l)[1] > nm);
-    postAiMsg(remaining.length ? `📚 На сегодня осталось пар: ${remaining.length}` : '🎉 Все пары на сегодня уже завершились!');
-    return;
-  }
-  if (lower.includes('отмаз')) {
-    const exc = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
-    postAiMsg(`🦉 Совёнок советует отмазку:\n\n«${exc}»`);
-    return;
-  }
-
-  const allT = Object.keys(T);
-  const matched = allT.filter(t => lower.includes(t.toLowerCase().split(' ')[0]));
-  if (matched.length) {
-    const targetT = matched[0];
-    const s = status({ k: 't', n: targetT }, now);
-    if (s.live) postAiMsg(`📍 ${targetT} веде́т пару: ${s.live.l.subject} (${where(s.live.l)})`);
-    else postAiMsg(`ℹ️ У преподавателя ${targetT} сейчас пар нет.`);
-    return;
-  }
-
-  postAiMsg('🦉 Совёнок AI на связи! Спроси про расписание, аудитории или отправь текст для сжатия.');
-}
+function copyAiResult() { const t = $('ai_summary_content').innerText; if (navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast('Скопировано','✓')); }
+function postAiMsg(text, isMe = false) { const c = $('ai_chat'); if(!c) return; const div = document.createElement('div'); div.className = 'bub ' + (isMe ? 'me' : 'g'); div.innerHTML = esc(text).replace(/\n/g, '<br>'); c.appendChild(div); div.scrollIntoView({ behavior: 'smooth' }); }
+function handleAiSend() { const inp = $('ai_input'), q = inp.value.trim(); if (!q) return; postAiMsg(q, true); inp.value = ''; setTimeout(() => postAiMsg('🦉 Совёнок AI на связи! Используй верхнее поле для сжатия лекций.'), 280); }
 
 function prof() {
-  const isTeacher = me.target.k === 't';
-  const roleLabel = isTeacher ? '👨‍🏫 Преподаватель' : '🎓 Студент';
-  const targetLabel = isTeacher ? me.target.n : `Группа ${me.target.n}`;
-  const userName = (me.tgUser && me.tgUser.first_name) ? me.tgUser.first_name : (me.nick || (isTeacher ? me.target.n : 'Студент НЧИ КФУ'));
-  const isAuth = Boolean(me.tgUser && me.tgUser.id);
-
-  const kfuLogoImg = `
-    <div class="kfu-avatar-wrap">
-      <img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./logo.png';" alt="Герб КФУ">
-    </div>`;
-
+  const isTeacher = me.target.k === 't', roleLabel = isTeacher ? '👨‍🏫 Преподаватель' : '🎓 Студент', targetLabel = isTeacher ? me.target.n : `Группа ${me.target.n}`;
+  const userName = (me.tgUser && me.tgUser.first_name) ? me.tgUser.first_name : (me.nick || 'Студент НЧИ КФУ'), isAuth = Boolean(me.tgUser && me.tgUser.id);
   $('page').innerHTML = `
     <div class="top"><h1>Профиль</h1></div>
-    <div class="box g" style="text-align:center;padding:24px 16px">
-      ${kfuLogoImg}
-      <h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1>
-      <div class="mu" style="margin-top:3px;font-size:14px;font-weight:600">${roleLabel} · ${esc(targetLabel)}</div>
-      <div style="font-size:13px;color:var(--mu);margin-top:2px;font-weight:500">НЧИ КФУ</div>
-      <button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button>
-    </div>
-
-    <div class="lab2">Моё расписание</div>
-    <div class="box g" style="padding:4px 16px">
-      ${item('users', isTeacher ? 'Сменить фамилию преподавателя' : 'Сменить группу', 'Сейчас: ' + esc(me.target.n), 'chg')}
-      ${item('star', 'Избранное', 'Сохранённые расписания: ' + me.fav.length, 'favs')}
-    </div>
-
-    <div class="lab2">Авторизация и Совёнок AI</div>
-    <div class="box g" style="padding:4px 16px">
-      ${isAuth
-        ? item('tg', esc(me.tgUser.first_name), (me.tgUser.username ? '@' + esc(me.tgUser.username) + ' · ' : '') + 'Облачная синхронизация включена ✓', 'x')
-        : `<button class="it" onclick="startTgAuth()">
-            <span class="ic">${ico('tg')}</span>
-            <span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI и заметки</small></span>
-            <span class="chev">›</span>
-           </button>`
-      }
-    </div>
-
-    <div class="lab2">Помощь и обратная связь</div>
-    <div class="box g" style="padding:4px 16px">
-      <a class="it" href="https://t.me/AvaUtility_support" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">
-        <span class="ic" style="background:rgba(37,99,235,0.18);color:#60a5fa">${ico('tg')}</span>
-        <span class="t"><b>Техподдержка КФУ</b><small>Написать в @AvaUtility_support</small></span>
-        <span class="chev">›</span>
-      </a>
-    </div>
-
-    <div class="lab2">Оформление</div>
-    <div class="box g" style="padding:4px 16px">
-      ${item('pal', 'Цветовая палитра', 'Светлая, тёмная тема и цвет акцента', 'look')}
-      ${item('share', 'Поделиться расписанием', 'Отправить ссылку одногруппникам', 'shr')}
-    </div>
-
-    <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки на устройстве</button>
-    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.5</button>
+    <div class="box g" style="text-align:center;padding:24px 16px"><div class="kfu-avatar-wrap"><img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./logo.png';" alt="Герб"></div><h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1><div class="mu" style="margin-top:3px">${roleLabel} · ${esc(targetLabel)}</div><button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button></div>
+    <div class="lab2">Авторизация</div><div class="box g" style="padding:4px 16px">${isAuth ? item('tg', esc(me.tgUser.first_name), 'Облачная синхронизация ✓', 'x') : `<button class="it" onclick="startTgAuth()"><span class="ic">${ico('tg')}</span><span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI</small></span><span class="chev">›</span></button>`}</div>
+    <div class="lab2">Поддержка</div><div class="box g" style="padding:4px 16px"><a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none"><span class="ic">${ico('help')}</span><span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span><span class="chev">›</span></a></div>
+    <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки</button>
   `;
 }
 
-function lookOpen() {
-  $('pnl').innerHTML = `
-    <h1 style="font-size:22px;margin-bottom:12px">Оформление</h1>
-    <div class="lab2">Тема приложения</div>
-    <div class="seg g" style="margin-bottom:14px">
-      <button class="${cfg.theme === 'auto' ? 'on' : ''}" data-a="th" data-v="auto">Системная</button>
-      <button class="${cfg.theme === 'light' ? 'on' : ''}" data-a="th" data-v="light">Светлая</button>
-      <button class="${cfg.theme === 'dark' ? 'on' : ''}" data-a="th" data-v="dark">Тёмная</button>
-    </div>
-    <div class="lab2">Цвет акцента</div>
-    <div class="dots">
-      ${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[0]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}
-    </div>
-  `;
-  $('sheet').classList.add('on');
-}
-
-function editOpen() {
-  $('pnl').innerHTML = `
-    <h1 style="font-size:22px;margin-bottom:14px">Имя в профиле</h1>
-    <div class="lab2">Ваше имя или псевдоним</div>
-    <input class="fld" id="nick" value="${esc(me.nick || '')}" placeholder="Например: Руслан">
-    <button class="btn" data-a="save">Сохранить</button>
-  `;
-  $('sheet').classList.add('on');
-}
-
-function onboard() {
-  $('tabs').hidden = true;
-  $('page').innerHTML = `
-    <div class="onb">
-      <h1>Расписание</h1>
-      <p>Выберите ваш профиль в НЧИ КФУ:</p>
-      <button class="big g" data-a="role" data-v="g">
-        🎓 Студент
-        <small>Найти свою группу колледжа или института</small>
-      </button>
-      <button class="big g" data-a="role" data-v="t">
-        👨‍🏫 Преподаватель
-        <small>Вход для преподавателей кафедр (по пин-коду)</small>
-      </button>
-    </div>
-  `;
-}
-
-function picker(o) {
-  P = o; pk = o.k;
-  $('pnl').innerHTML = `<h1 style="font-size:22px">${o.title}</h1><input class="fld" id="q" placeholder="Поиск..." autocomplete="off"><div id="items"></div>`;
-  $('sheet').classList.add('on'); items();
-}
-
-function items() {
-  const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), q = n($('q').value);
-  const ls = pk === 'g' ? Object.keys(DATA) : Object.keys(T).sort((a,b)=>a.localeCompare(b,'ru'));
-  $('items').innerHTML = ls.filter(k=>!q||n(k).includes(q)||(pk==='g'&&n(DATA[k].spec||'').includes(q))).map(k=>item(pk==='g'?'users':'c',esc(k),pk==='g'?esc((DATA[k].spec||'').replace(/,\s*\d+\s*чел.*/,'')):'Преподаватель','pick',k)).join('')||'<div class="empty"><b>Ничего не найдено</b></div>';
-}
+function lookOpen() { $('pnl').innerHTML = `<h1 style="font-size:22px">Оформление</h1><div class="seg g"><button class="${cfg.theme==='auto'?'on':''}" data-a="th" data-v="auto">Авто</button><button class="${cfg.theme==='light'?'on':''}" data-a="th" data-v="light">Светлая</button><button class="${cfg.theme==='dark'?'on':''}" data-a="th" data-v="dark">Тёмная</button></div>`; $('sheet').classList.add('on'); }
+function editOpen() { $('pnl').innerHTML = `<h1 style="font-size:22px">Имя</h1><input class="fld" id="nick" value="${esc(me.nick||'')}"><button class="btn" data-a="save">Сохранить</button>`; $('sheet').classList.add('on'); }
+function onboard() { $('tabs').hidden = true; $('page').innerHTML = `<div class="onb"><h1>Расписание</h1><p>Кто вы?</p><button class="big g" data-a="role" data-v="g">🎓 Студент<small>Выбрать группу</small></button><button class="big g" data-a="role" data-v="t">👨‍🏫 Преподаватель<small>По коду</small></button></div>`; }
+function picker(o) { P = o; pk = o.k; $('pnl').innerHTML = `<h1 style="font-size:22px">${o.title}</h1><input class="fld" id="q" placeholder="Поиск..."><div id="items"></div>`; $('sheet').classList.add('on'); items(); }
+function items() { const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g,''), q = n($('q').value); const ls = pk==='g'?Object.keys(DATA):Object.keys(T).sort((a,b)=>a.localeCompare(b,'ru'));$('items').innerHTML = ls.filter(k=>!q||n(k).includes(q)).map(k=>item(pk==='g'?'users':'c',esc(k),'','pick',k)).join('')||'<div class="empty">Ничего</div>'; }
 
 const pickRole = (r, lock) => {
-  if (r === 't') {
-    const pin = prompt('Введите пин-код для преподавателей:');
-    if (pin !== TEACHER_PIN) { toast('Неверный код', '✕'); return; }
-  }
-  picker({ k: r, lock, title: r==='g'?'Твоя группа':'Твоя фамилия', cb: t => { if (!me) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', fav:[] }; me.role=r; me.target=t; sv('me', me); go('h'); } });
+  if (r === 't') { const pin = prompt('Пин-код преподавателя:'); if (pin !== TEACHER_PIN) return toast('Неверный код','✕'); }
+  picker({ k: r, lock, title: r==='g'?'Группа':'Фамилия', cb: t => { me = me || {}; me.role=r; me.target={k:r,n:t}; sv('me',me); go('h'); } });
 };
-
 const closeS = () => $('sheet').classList.remove('on');
 
 let authPollTimer = null;
@@ -1091,7 +531,6 @@ function startTgAuth() {
   const authCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   window.open(`https://t.me/${BOT}?start=auth_${authCode}`, '_blank');
   toast('Подтвердите вход в боте', '💬');
-
   clearInterval(authPollTimer);
   authPollTimer = setInterval(async () => {
     try {
@@ -1101,64 +540,34 @@ function startTgAuth() {
       if (data.status === 'confirmed') {
         clearInterval(authPollTimer);
         me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
-        if (data.target && (DATA[data.target] || T[data.target])) {
-          me.target = { k: 'g', n: data.target };
-        }
-        sv('me', me);
-        toast(`Вход выполнен: ${data.first_name}`, '✓');
-        go('a');
+        if (data.target && DATA[data.target]) me.target = { k: 'g', n: data.target };
+        sv('me', me); toast(`Вход: ${data.first_name}`, '✓'); go('a');
       }
-    } catch (e) {}
+    } catch(e){}
   }, 2000);
 }
 
 const A = {
-  tab: v => go(v),
-  role: v => pickRole(v, true),
-  close: () => { if (!(P && P.lock && !me)) closeS(); },
+  tab: v => go(v), role: v => pickRole(v, true), close: () => closeS(),
   day: v => { const m = mon(date); m.setDate(m.getDate() + +v); date = m; sched(); },
-  today: () => { date = ds(NOW()); sched(); },
-  shift: v => shiftDay(+v),
-  toggle_week: () => { manualWeek = (getWeek(date) === 'в') ? 'н' : 'в'; toast(manualWeek === 'в' ? 'Верхняя неделя' : 'Нижняя неделя', manualWeek === 'в' ? '▲' : '▼'); go(); },
+  today: () => { date = ds(NOW()); sched(); }, shift: v => shiftDay(+v),
+  toggle_week: () => { manualWeek = (getWeek(date) === 'в') ? 'н' : 'в'; go(); },
   set_ai_mode: v => { aiMode = v; ai(); },
   cal: () => { calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
-  cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth() + +v, 1); calOpen(); },
+  cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth()+ +v, 1); calOpen(); },
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
-  savenote: async v => {
-    const val = $('note') ?$('note').value.trim() : '';
-    if (val) NOTES[v] = val; else delete NOTES[v];
-    sv('notes', NOTES);
-    if (me.tgUser && me.tgUser.id) {
-      try { await fetch(`${API_URL}/api/save_note`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: me.tgUser.id, note_key: v, note_text: val }) }); } catch(e){}
-    }
-    toast('Заметка сохранена', '✓'); closeS(); sched();
-  },
-  shn: v => {
-    const t = NOTES[v] || ''; if (!t) return toast('Напишите заметку');
-    if (navigator.share) navigator.share({ text: t }).catch(()=>{});
-  },
+  savenote: async v => { const val = $('note') ?$('note').value.trim() : ''; if(val) NOTES[v]=val; else delete NOTES[v]; sv('notes', NOTES); toast('Сохранено','✓'); closeS(); sched(); },
   who: v => whoOpen(v),
-  fav: () => { const k = key(PT); me.fav = me.fav.some(x => key(x) === k) ? me.fav.filter(x => key(x) !== k) : [...me.fav, PT]; sv('me', me); drawWho(); if (tab==='f') flist(); if (tab==='h') home(); },
-  pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate() + +v); drawWho(); },
-  seg: v => { seg = v; find(); },
-  chg: () => pickRole(me.role, false),
-  favs: () => { seg = 'f'; go('f'); },
-  edit: editOpen,
-  save: () => { me.nick = $('nick').value.trim(); me.org = 'НЧИ КФУ'; sv('me', me); closeS(); prof(); },
-  look: lookOpen,
-  acc: v => { cfg.ac = +v; sv('cfg', cfg); look(); lookOpen(); },
-  th: v => { cfg.theme = v; sv('cfg', cfg); look(); lookOpen(); },
-  shr: () => { if (navigator.share) navigator.share({ title: 'Расписание НЧИ КФУ', url: location.href }).catch(()=>{}); },
-  reset: () => { if (confirm('Сбросить настройки?')) { try{localStorage.clear();}catch(e){} me=null; cfg={theme:'auto',ac:0}; NOTES={}; look(); go(); } },
-  ver: () => { if (++taps >= 5) { taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN) adminOpen(); } },
-  ball: () => { const s = status(me.target, NOW()); postAiMsg(`🔮 Предсказание:\n«${s.L.length?BALL[Math.floor(Math.random()*BALL.length)]:'Пар нет'}»`); },
-  ai_locate: () => { const q = prompt('Фамилия преподавателя:'); if(q) processAiQuery('где ' + q); },
-  ai_lunch: () => processAiQuery('обед'),
-  ai_left: () => processAiQuery('сколько пар'),
-  ai_excuse: () => postAiMsg(`🎲 Отмазка:\n\n«${EXCUSES[Math.floor(Math.random()*EXCUSES.length)]}»`),
-  x: () => {},
-  pick: v => { closeS(); P.cb({ k: pk, n: v }); }
+  fav: () => { const k = key(PT); me.fav = me.fav.some(x=>key(x)===k)?me.fav.filter(x=>key(x)!==k):[...me.fav,PT]; sv('me',me); drawWho(); },
+  pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate()+ +v); drawWho(); },
+  seg: v => { seg = v; find(); }, chg: () => pickRole(me.role, false), favs: () => { seg='f'; go('f'); },
+  edit: editOpen, save: () => { me.nick = $('nick').value.trim(); sv('me',me); closeS(); prof(); },
+  look: lookOpen, acc: v => { cfg.ac=+v; sv('cfg',cfg); look(); lookOpen(); }, th: v => { cfg.theme=v; sv('cfg',cfg); look(); lookOpen(); },
+  shr: () => { if(navigator.share) navigator.share({title:'Расписание',url:location.href}).catch(()=>{}); },
+  reset: () => { if(confirm('Сбросить?')) { localStorage.clear(); me=null; go(); } },
+  ver: () => { if(++taps>=5){taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN) adminOpen();} },
+  x: () => {}, pick: v => { closeS(); P.cb({k:pk, n:v}); }
 };
 
 document.addEventListener('click', e => { const c = e.target.closest('[data-a]'); if (c && A[c.dataset.a]) A[c.dataset.a](c.dataset.v); });
@@ -1169,29 +578,19 @@ function initSheetGestures() {
     const p = $(id); if (!p) return;
     let sY = 0, cY = 0, drag = false;
     p.addEventListener('touchstart', e => { if (p.scrollTop <= 0) { sY = e.touches[0].clientY; cY = sY; drag = true; } else drag = false; }, { passive: true });
-    p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transform = `translateY(${d}px)`; p.style.transition = 'none'; } }, { passive: true });
-    p.addEventListener('touchend', () => {
-      if (!drag) return; drag = false; const d = cY - sY;
-      p.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-      if (d > 75) { p.style.transform = 'translateY(100%)'; setTimeout(() => { if(id==='pnl') closeS(); else $('adm').classList.remove('on'); p.style.transform=''; p.style.transition=''; }, 180); }
-      else { p.style.transform = 'translateY(0)'; setTimeout(()=>{ p.style.transform=''; p.style.transition=''; }, 220); }
-    });
+    p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transform = `translateY(${d}px)`; } }, { passive: true });
+    p.addEventListener('touchend', () => { if (!drag) return; drag = false; if (cY - sY > 75) closeS(); p.style.transform = ''; });
   });
 }
 
-function adminOpen() {
-  $('apnl').innerHTML = `<h1 style="font-size:22px;margin-bottom:12px">Dev Админка</h1><div class="box g"><b>Групп в базе:</b> ${Object.keys(DATA).length}</div>`;
-  $('adm').classList.add('on'); $('ascrim').onclick = () =>$('adm').classList.remove('on');
-}
+function adminOpen() { $('apnl').innerHTML = `<h1 style="font-size:22px">Админка</h1><div class="box g">Групп: ${Object.keys(DATA).length}</div>`; $('adm').classList.add('on'); }
 
 function init() {
   build(); look(); initSheetGestures();
   const params = new URLSearchParams(window.location.search);
-  const urlGrp = params.get('group'), urlTchr = params.get('teacher');
+  const urlGrp = params.get('group');
   if (urlGrp && DATA[urlGrp]) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', role:'g', target:{k:'g', n:urlGrp}, fav:me?.fav||[] };
-  else if (urlTchr && T[urlTchr]) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', role:'t', target:{k:'t', n:urlTchr}, fav:me?.fav||[] };
-  if (me && !(me.target.k==='g'?DATA[me.target.n]:T[me.target.n])) me = null;
-  go();
+  if (!me) onboard(); else go();
 }
 
 fetch('./schedule.json').then(r => r.ok ? r.json() : null).then(j => { if (j && Object.keys(j).length) { DATA = j; build(); init(); } }).catch(() => init());
