@@ -36,22 +36,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 # --- КОНФИГУРАЦИЯ ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN", "8918873090:AAEVDb3_ExuDvy38GHEEczEurX7Puu0M0Rk")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
 SUPPORT_USERNAME = "@AvaUtility_support"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Твой жесткий системный промт для обработки текста
+# Системный промпт для сжатия лекций
 AI_SYSTEM_PROMPT = """Ты — университетский ИИ-ассистент НЧИ КФУ.
 Твоя задача — профессионально и компактно сжимать учебные материалы, лекции и статьи.
 Правила работы:
 1. Выдели 3-5 ключевых тезисов без лишней 'воды'.
 2. Выдели главные термины, определения и формулы, если они есть.
 3. Оформи всё чёткими списками с эмодзи-маркерами (📌, 💡, ⚡).
-4. Пиши строго по делу, понятно, академично, но без канцелярита.
-5. Это все буду писать в тетрадь, а много писать я не хочу"""
+4. Пиши строго по делу, понятно, академично, на русском языке."""
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -365,7 +363,7 @@ async def cmd_tomorrow(msg: Message):
     log_activity(msg.from_user.id, msg.from_user.username, role, "📅 Завтра")
     await msg.answer(format_day_text(day_name, wn_code, lessons, target_name, role, tom.strftime('%d.%m.%Y')))
 
-# --- API И РАБОТА С НЕЙРОСЕТЬЮ ---
+# --- API И РАБОТА С НЕЙРОСЕТЬЮ (GROQ API) ---
 def cors_response(data: dict):
     return web.json_response(data, headers={
         "Access-Control-Allow-Origin": "*",
@@ -399,18 +397,23 @@ async def handle_api_auth_poll(request):
         })
     return cors_response({"status": "pending"})
 
-# ЭНДПОИНТ РЕАЛЬНОГО ИИ (СЖАТИЕ ЛЕКЦИИ ПО ТВОЕМУ ПРОМТУ)
+# ЭНДПОИНТ РЕАЛЬНОГО ИИ (С ПОДРОБНЫМ ЛОГИРОВАНИЕМ В КОНСОЛЬ)
 async def handle_api_ai_compress(request):
     try:
         data = await request.json()
         raw_text = data.get("text", "").strip()
-        custom_task = data.get("task", "summary") # 'summary', 'cards', 'simple'
+        custom_task = data.get("task", "summary")
 
         if not raw_text:
-            return cors_response({"status": "error", "message": "Пустой текст"})
+            return cors_response({"status": "error", "message": "Вставьте текст для обработки"})
 
-        # Если задан GROQ_API_KEY — делаем реальный вызов нейросети Llama 3.3 70B
-        if GROQ_API_KEY:
+        # Динамическое считывание ключа из переменных Bothost
+        raw_env_key = os.getenv("GROQ_API_KEY", "")
+        active_key = raw_env_key.strip()
+
+        logging.info(f"Запрос к ИИ. Длина ключа: {len(active_key)}, префикс: {active_key[:4] if active_key else 'НЕТ'}")
+
+        if active_key:
             instruction = AI_SYSTEM_PROMPT
             if custom_task == 'cards':
                 instruction += "\nСделай из этого текста шпаргалку в формате 'Вопрос — Краткий ответ'."
@@ -424,29 +427,42 @@ async def handle_api_ai_compress(request):
                     {"role": "user", "content": f"Материал для обработки:\n{raw_text}"}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 1200
+                "max_tokens": 1400
             }
 
             async with ClientSession() as session:
                 async with session.post(
                     "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    headers={
+                        "Authorization": f"Bearer {active_key}",
+                        "Content-Type": "application/json"
+                    },
                     json=payload,
-                    timeout=20
+                    timeout=25
                 ) as resp:
+                    resp_text = await resp.text()
+                    logging.info(f"Ответ от Groq API: статус {resp.status}")
+
                     if resp.status == 200:
-                        res_json = await resp.json()
+                        res_json = json.loads(resp_text)
                         ai_text = res_json['choices'][0]['message']['content']
                         return cors_response({"status": "ok", "result": ai_text})
+                    else:
+                        logging.error(f"Ошибка вызова Groq: {resp_text}")
+                        return cors_response({
+                            "status": "error",
+                            "message": f"Ошибка нейросети Groq ({resp.status}). Проверьте правильность ключа."
+                        })
 
-        # Резервный алгоритм, если API-ключ ещё не введён в панели Bothost
-        sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 15]
+        # Если ключ действительно пустой или отсутствует в Bothost
+        sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 5]
         top_sentences = sentences[:5] if len(sentences) >= 5 else sentences
         fallback_text = "📌 <b>Главные тезисы материала:</b>\n\n" + "\n".join([f"• {s}." for s in top_sentences])
-        fallback_text += "\n\n<i>(Подключите бесплатный GROQ_API_KEY в панели Bothost для полной генерации нейросетью)</i>"
+        fallback_text += "\n\n<i>(Сервер не обнаружил переменную GROQ_API_KEY. Добавьте её в настройках Bothost и перезапустите бота)</i>"
         return cors_response({"status": "ok", "result": fallback_text})
 
     except Exception as e:
+        logging.error(f"Сбой в handle_api_ai_compress: {e}")
         return cors_response({"status": "error", "message": str(e)})
 
 async def handle_api_save_note(request):
@@ -486,7 +502,7 @@ async def handle_admin_dashboard(request):
         c.execute("SELECT count(*) FROM user_notes")
         total_notes = c.fetchone()[0] or 0
     return web.Response(
-        text=f"<h1>Панель управления Bothost</h1><p>Пользователей: {total_u} · Заметок: {total_notes}</p>",
+        text=f"<h1>Панель Bothost</h1><p>Пользователей: {total_u} · Заметок: {total_notes}</p>",
         content_type='text/html'
     )
 
@@ -510,7 +526,7 @@ async def main():
         await site.start()
         logging.info(f"Сервер Bothost запущен на 0.0.0.0:{PORT}")
     except Exception as e:
-        logging.warning(f"Ошибка биндинга порта: {e}")
+        logging.warning(f"Ошибка порта: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
