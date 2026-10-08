@@ -79,10 +79,10 @@ html, body {
 #page { flex: 1; overflow-y: auto; padding: 0 16px 120px; scrollbar-width: none; }
 
 .view-enter {
-  animation: viewSlideIn .22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: viewSlideIn .24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes viewSlideIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -340,7 +340,7 @@ let PT = null;
 let pDate = ds(NOW());
 let calM = ds(NOW());
 let manualWeek = null;
-let aiMode = 'summary';
+let aiMode = 'summary'; // 'summary', 'cards', 'simple'
 
 const key = t => t.k + ':' + t.n;
 
@@ -428,7 +428,7 @@ const where = l => 'ауд. ' + esc(l.room) + (l.building ? ', ' + esc(l.buildin
 function stLine(t, now) {
   const s = status(t, now);
   if (s.live) return `Сейчас: ${where(s.live.l)}`;
-  if (s.next) return `Дальше: ${s.next.l.time.slice(0, 5)} ·${where(s.next.l)}`;
+  if (s.next) return `Дальше: ${s.next.l.time.slice(0, 5)} · ${where(s.next.l)}`;
   return s.L.length ? 'Все пары завершены' : 'Сегодня пар нет';
 }
 
@@ -487,6 +487,7 @@ function go(t) {
 
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
+// Главная страница
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -497,7 +498,7 @@ function home() {
     <div class="top">
       <div class="who">
         <h1>Привет${me.nick ? ', ' + esc(me.nick) : ''}</h1>
-        <small>${esc(me.target.n)} · ${now.getDate()}${MO[now.getMonth()]}</small>
+        <small>${esc(me.target.n)} · ${now.getDate()} ${MO[now.getMonth()]}</small>
       </div>
       <div style="flex-shrink:0;">
         ${wkPill(now)}
@@ -513,7 +514,7 @@ function home() {
       <div class="box hero">
         <div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div>
         <h3>${esc(l.subject)}</h3>
-        <div>${where(l)}${l.group ? '· ' + esc(l.group) : ''}</div>
+        <div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div>
         <div class="bar"><i></i></div>
       </div>`;
     setTimeout(() => {
@@ -526,7 +527,7 @@ function home() {
       <div class="box hero">
         <div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div>
         <h3>${esc(l.subject)}</h3>
-        <div>${l.time.slice(0, 5)} · ${where(l)}${l.group ? '· ' + esc(l.group) : ''}</div>
+        <div>${l.time.slice(0, 5)} · ${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div>
       </div>`;
   } else if (isFinished) {
     h += `
@@ -546,7 +547,7 @@ function home() {
   if (isFinished || isWeekend) {
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    h += `<h2>Расписание на завтра (${tomorrow.getDate()}${MO[tomorrow.getMonth()]})</h2>`;
+    h += `<h2>Расписание на завтра (${tomorrow.getDate()} ${MO[tomorrow.getMonth()]})</h2>`;
     h += dayHtml(me.target, tomorrow, false);
   } else {
     h += `<h2>Расписание на сегодня</h2>`;
@@ -587,7 +588,7 @@ function dayHtml(t, d, click) {
       const g = a - prev[1];
       if (g > 10) {
         const isLunch = (prev[1] === 11 * 60 + 50 && a === 12 * 60 + 30) || (prev[1] === 11 * 60 + 10 && a === 11 * 60 + 50);
-        h += `<div class="gap">${isLunch ? '🥪 Обед 40 мин' : '🕳 Окно ' + dur(g)} (${hm(prev[1])} –${hm(a)})</div>`;
+        h += `<div class="gap">${isLunch ? '🥪 Обед 40 мин' : '🕳 Окно ' + dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
       }
     }
     const no = `<div class="no"><b>${i + 1}</b><span>${l.time.slice(0, 5)}</span><span>${hm(e)}</span></div>`;
@@ -615,7 +616,6 @@ function dayHtml(t, d, click) {
   return h;
 }
 
-// Расписание
 function sched() {
   const t = me.target;
   const now = NOW();
@@ -629,13 +629,14 @@ function sched() {
         <small>${esc(sp)}</small>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
-        <button class="ib g" data-a="cal" title="Календарь">${ico('cal', 18)}</button>${wkPill(date)}
+        <button class="ib g" data-a="cal" title="Календарь">${ico('cal', 18)}</button>
+        ${wkPill(date)}
       </div>
     </div>
 
     <div class="day-nav-bar">
       <button class="day-nav-btn pill g" data-a="shift" data-v="-1">‹ Вчера</button>
-      <b style="font-size:13px;color:var(--tx);font-weight:700;">${date.getDate()}${MO[date.getMonth()]}</b>
+      <b style="font-size:13px;color:var(--tx);font-weight:700;">${date.getDate()} ${MO[date.getMonth()]}</b>
       <button class="day-nav-btn pill g" data-a="shift" data-v="1">Завтра ›</button>
     </div>`;
 
@@ -660,6 +661,15 @@ function sched() {
   $('page').innerHTML = h;
 
   $('today').hidden = same(date, now);
+
+  let x0 = null;
+  $('page').ontouchstart = e => x0 = e.touches[0].clientX;
+  $('page').ontouchend = e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    x0 = null;
+    if (Math.abs(dx) > 65) shiftDay(dx < 0 ? 1 : -1);
+  };
 }
 
 function shiftDay(n) {
@@ -749,7 +759,7 @@ function drawWho() {
     </div>
     <div class="box hero" style="margin-bottom:16px">${c}</div>
     <div class="top" style="padding:4px">
-      <b>${pDate.getDate()}${MO[pDate.getMonth()]}</b>
+      <b>${pDate.getDate()} ${MO[pDate.getMonth()]}</b>
       <div style="display:flex;gap:6px">
         <button class="pill g" data-a="pd" data-v="-1">◀</button>
         <button class="pill g" data-a="pd" data-v="1">▶</button>
@@ -773,7 +783,7 @@ function lesOpen(i) {
     <div class="box g" style="padding:4px 16px;margin-bottom:16px">
       <div class="it">
         <span class="ic">${ico('cal')}</span>
-        <span class="t"><b>${esc(l.time.slice(0, 5))} —${hm(e)}</b><small>${date.getDate()}${MO[date.getMonth()]}</small></span>
+        <span class="t"><b>${esc(l.time.slice(0, 5))} — ${hm(e)}</b><small>${date.getDate()} ${MO[date.getMonth()]}</small></span>
       </div>
       <button class="it" data-a="who" data-v="t:${esc(l.teacher)}">
         <span class="ic">${ico('user')}</span>
@@ -810,7 +820,7 @@ function calOpen() {
   }
   $('pnl').innerHTML = `
     <div class="top">
-      <h1>${MN[m.getMonth()]}${m.getFullYear()}</h1>
+      <h1>${MN[m.getMonth()]} ${m.getFullYear()}</h1>
       <div style="display:flex;gap:6px">
         <button class="pill g" data-a="cm" data-v="-1">◀</button>
         <button class="pill g" data-a="cm" data-v="1">▶</button>
@@ -821,7 +831,7 @@ function calOpen() {
   $('sheet').classList.add('on');
 }
 
-// ИИ-помощник: сжатие лекций и студенческий ассистент
+// РЕАЛЬНЫЙ ИИ: СЖАТИЕ ЛЕКЦИЙ И СТУДЕНЧЕСКИЙ АССИСТЕНТ
 function ai() {
   const isTeacher = me.target.k === 't';
   let chips = [];
@@ -851,6 +861,7 @@ function ai() {
       <div class="pill g" style="color:var(--ac)"><i></i>Llama 3.3</div>
     </div>
 
+    <!-- БЛОК СЖАТИЯ ЛЕКЦИИ И ТЕКСТА -->
     <div class="box g" style="padding:16px;">
       <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сжатие лекции / конспекта</b>
       <div class="mu" style="margin-bottom:10px;">Вставь полотно текста — ИИ уберёт воду и оставит суть</div>
@@ -893,9 +904,9 @@ function ai() {
   $('ai_input').onkeydown = e => { if (e.key === 'Enter') handleAiSend(); };
 }
 
-// Запуск сжатия с отказоустойчивостью (Сервер Bothost + Локальный fallback)
+// Запуск сжатия лекции
 async function runAiCompress() {
-  const txt = $('lecture_text') ? $('lecture_text').value.trim() : '';
+  const txt = $('lecture_text') ?$('lecture_text').value.trim() : '';
   if (!txt) return toast('Вставьте текст лекции в поле');
 
   const btn = $('btn_compress_ai');
@@ -906,51 +917,27 @@ async function runAiCompress() {
   btn.textContent = '⏳ Нейросеть сжимает материал...';
   resBox.style.display = 'none';
 
-  let summaryResult = null;
-
-  // 1. Попытка запроса к серверу Bothost
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`${API_URL}/api/ai_compress`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt, task: aiMode }),
-      signal: controller.signal
+      body: JSON.stringify({ text: txt, task: aiMode })
     });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.status === 'ok') {
-        summaryResult = data.result;
-      }
+    const data = await res.json();
+    if (data.status === 'ok') {
+      resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
+      resBox.style.display = 'block';
+      resBox.scrollIntoView({ behavior: 'smooth' });
+      toast('Готово!', '✓');
+    } else {
+      toast(data.message || 'Ошибка обработки');
     }
   } catch (e) {
-    // Сервер оффлайн или блокировка CORS
+    toast('Сервер Bothost недоступен');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Сжать материал через ИИ';
   }
-
-  // 2. Встроенный автономный движок (если тестируешь локально на ПК)
-  if (!summaryResult) {
-    const rawSentences = txt.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 20);
-    if (aiMode === 'summary') {
-      const top = rawSentences.slice(0, 5);
-      summaryResult = "📌 Ключевые тезисы материала:\n\n" + top.map((s, i) => `${i + 1}.${s}.`).join('\n\n') + "\n\n💡 Итог: материал структурирован и готов к повторению.";
-    } else if (aiMode === 'cards') {
-      const top = rawSentences.slice(0, 4);
-      summaryResult = "❓ Экзаменационная шпаргалка:\n\n" + top.map((s, i) => `Вопрос ${i + 1}: В чём суть пункта ${i + 1}?\nОтвет: ${s}.`).join('\n\n');
-    } else {
-      const top = rawSentences.slice(0, 3);
-      summaryResult = "💡 Объяснение простыми словами:\n\n" + top.join(' ') + "\n\n(Вся суть сводится к этим базовым положениям).";
-    }
-  }
-
-  resContent.innerHTML = esc(summaryResult).replace(/\n/g, '<br>');
-  resBox.style.display = 'block';
-  resBox.scrollIntoView({ behavior: 'smooth' });
-  toast('Готово!', '✓');
-
-  btn.disabled = false;
-  btn.textContent = '⚡ Сжать материал через ИИ';
 }
 
 function copyAiResult() {
@@ -989,7 +976,7 @@ function processAiQuery(q) {
     const L = gi ? lessonsOf(me.target, getWeek(now), DN[gi - 1]) : [];
     if (lower.includes('нагруз') || lower.includes('пар') || lower.includes('расписан')) {
       if (!L.length) { postAiMsg('Сегодня занятий в расписании нет. У вас методический день.'); return; }
-      postAiMsg(`📊 Ваша нагрузка на сегодня (${now.getDate()}${MO[now.getMonth()]}):\nКоличество занятий: ${L.length} (всего ${L.length * 1.5} акад. часов).\nПервая пара: ${L[0].time.slice(0, 5)} · ауд. ${L[0].room}.`);
+      postAiMsg(`📊 Ваша нагрузка на сегодня (${now.getDate()} ${MO[now.getMonth()]}):\nКоличество занятий: ${L.length} (всего ${L.length * 1.5} акад. часов).\nПервая пара: ${L[0].time.slice(0, 5)} · ауд. ${L[0].room}.`);
       return;
     }
     if (lower.includes('групп')) {
@@ -1057,7 +1044,7 @@ function processAiQuery(q) {
     const targetT = matched[0];
     const s = status({ k: 't', n: targetT }, now);
     if (s.live) {
-      postAiMsg(`📍 ${targetT} прямо сейчас ведёт пару:\n📘 ${s.live.l.subject} (${s.live.l.type \vert{}\vert{} 'пара'})\n📍 ${where(s.live.l)}\n👥 Группа: ${s.live.l.group \vert{}\vert{} '—'}\n⏰ До звонка с пары осталось: ${s.live.e - s.nm} мин.`);
+      postAiMsg(`📍 ${targetT} прямо сейчас ведёт пару:\n📘 ${s.live.l.subject} (${s.live.l.type || 'пара'})\n📍 ${where(s.live.l)}\n👥 Группа: ${s.live.l.group || '—'}\n⏰ До звонка с пары осталось: ${s.live.e - s.nm} мин.`);
     } else if (s.next) {
       postAiMsg(`☕ ${targetT} сейчас на перерыве.\nСледующая пара начнётся через ${s.next.s - s.nm} мин в ${where(s.next.l)} (группа ${s.next.l.group || '—'}).`);
     } else {
@@ -1086,7 +1073,7 @@ function prof() {
     <div class="box g" style="text-align:center;padding:24px 16px">
       ${kfuLogoImg}
       <h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1>
-      <div class="mu" style="margin-top:3px;font-size:14px;font-weight:600">${roleLabel} ·${esc(targetLabel)}</div>
+      <div class="mu" style="margin-top:3px;font-size:14px;font-weight:600">${roleLabel} · ${esc(targetLabel)}</div>
       <div style="font-size:13px;color:var(--mu);margin-top:2px;font-weight:500">НЧИ КФУ</div>
       <button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button>
     </div>
@@ -1274,8 +1261,8 @@ const A = {
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
   savenote: async v => {
-    const val = $('note') ? $('note').value.trim() : '';
-    const remindCheck = $('remind_check') ? $('remind_check').checked : false;
+    const val = $('note') ?$('note').value.trim() : '';
+    const remindCheck = $('remind_check') ?$('remind_check').checked : false;
 
     if (val) {
       NOTES[v] = val;
@@ -1296,7 +1283,7 @@ const A = {
             note_text: val,
             subject: l.subject || '',
             time: l.time || '',
-            date: `${date.getDate()}${MO[date.getMonth()]}`,
+            date: `${date.getDate()} ${MO[date.getMonth()]}`,
             remind: remindCheck ? 1 : 0
           })
         });
@@ -1361,6 +1348,11 @@ const A = {
       else if (p !== null) toast('Неверный PIN');
     }
   },
+  ball: () => {
+    const s = status(me.target, NOW());
+    const ans = s.L.length ? BALL[Math.floor(Math.random() * BALL.length)] : 'Пар нет, можно спокойно отдыхать!';
+    postAiMsg(`🔮 Предсказание на сегодня:\n«${ans}»`);
+  },
   ai_locate: () => {
     const q = prompt('Напишите фамилию преподавателя:');
     if (q) {
@@ -1410,20 +1402,6 @@ document.addEventListener('input', e => {
   if (i === 'q') items();
   if (i === 'fq') flist();
 });
-
-// ИСПРАВЛЕННЫЙ СВАЙП ДНЕЙ: работает ТОЛЬКО во вкладке Расписание (tab === 's')
-let x0 = null;
-$('page').addEventListener('touchstart', e => {
-  if (tab === 's') x0 = e.touches[0].clientX;
-  else x0 = null;
-}, { passive: true });
-
-$('page').addEventListener('touchend', e => {
-  if (x0 === null || tab !== 's') return;
-  const dx = e.changedTouches[0].clientX - x0;
-  x0 = null;
-  if (Math.abs(dx) > 65) shiftDay(dx < 0 ? 1 : -1);
-}, { passive: true });
 
 function initSheetGestures() {
   ['pnl', 'apnl'].forEach(id => {
@@ -1487,4 +1465,67 @@ function adminOpen() {
     </div>
     <div class="lab2">Тестовое время</div>
     <input type="datetime-local" class="fld" id="sim">
-    <button class="btn" id
+    <button class="btn" id="simbtn">Включить симуляцию времени</button>
+    <button class="btn gl" id="simreset" style="margin-top:6px">Вернуть реальное время</button>
+  `;
+  $('adm').classList.add('on');
+
+  $('simbtn').onclick = () => {
+    const v = $('sim').value;
+    if (v) {
+      simT = v;
+      date = ds(NOW());
+      $('adm').classList.remove('on');
+      toast('Симуляция включена');
+      go();
+    }
+  };
+  $('simreset').onclick = () => {
+    simT = null;
+    date = ds(NOW());
+    $('adm').classList.remove('on');
+    toast('Реальное время');
+    go();
+  };
+  $('ascrim').onclick = () =>$('adm').classList.remove('on');
+}
+
+function init() {
+  build();
+  look();
+  initSheetGestures();
+
+  const params = new URLSearchParams(window.location.search);
+  const urlGrp = params.get('group');
+  const urlTchr = params.get('teacher');
+
+  if (urlGrp && DATA[urlGrp]) {
+    me = { nick: tgU ? tgU.first_name : '', org: 'НЧИ КФУ', role: 'g', target: { k: 'g', n: urlGrp }, fav: me?.fav || [] };
+    sv('me', me);
+  } else if (urlTchr && T[urlTchr]) {
+    me = { nick: tgU ? tgU.first_name : '', org: 'НЧИ КФУ', role: 't', target: { k: 't', n: urlTchr }, fav: me?.fav || [] };
+    sv('me', me);
+  }
+
+  if (me) {
+    if (!me.fav) me.fav = [];
+    if (!(me.target.k === 'g' ? DATA[me.target.n] : T[me.target.n])) me = null;
+  }
+  go();
+}
+
+fetch('./schedule.json')
+  .then(r => r.ok ? r.json() : null)
+  .then(j => {
+    if (j && Object.keys(j).length) {
+      DATA = j;
+      build();
+      init();
+    }
+  })
+  .catch(() => {
+    init();
+  });
+</script>
+</body>
+</html>
