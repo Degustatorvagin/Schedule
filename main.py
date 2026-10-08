@@ -137,7 +137,6 @@ def get_cyrillic_font(size=13):
             except Exception: pass
     return None
 
-# --- БАЗА ДАННЫХ И МИГРАЦИИ ---
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -177,7 +176,6 @@ def init_db():
             """)
             conn.commit()
 
-            # Проверка и добавление недостающих колонок для исключения OperationalError
             c.execute("PRAGMA table_info(auth_sessions)")
             cols = [col[1] for col in c.fetchall()]
             if 'group_name' not in cols:
@@ -502,10 +500,13 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, g
 # --- ХЕНДЛЕРЫ БОТА ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
+    # Принудительно сбрасываем зависшие формы, чтобы кнопка Старт ВСЕГДА срабатывала
     await state.clear()
-    args = msg.text.split()[1] if len(msg.text.split()) > 1 else ""
+    
+    parts = msg.text.split(maxsplit=1)
+    args = parts[1].strip() if len(parts) > 1 else ""
 
-    # Авторизация из приложения
+    # Авторизация по ссылке
     if args.startswith("auth_"):
         auth_code = args.replace("auth_", "").strip()
         user = get_user(msg.from_user.id)
@@ -517,7 +518,7 @@ async def cmd_start(msg: Message, state: FSMContext):
                 VALUES (?, ?, ?, ?, ?, 'confirmed')
             """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
             conn.commit()
-        await msg.answer(f"✅ <b>Вход подтверждён, {msg.from_user.first_name}!</b>\n\nВернитесь в приложение — Совёнок AI разблокирован, а заметки синхронизированы.")
+        await msg.answer(f"✅ <b>Вход подтверждён, {msg.from_user.first_name}!</b>\n\nВернитесь в приложение — Совёнок AI разблокирован, а профиль синхронизирован.")
         return
 
     if args == "support":
@@ -536,12 +537,42 @@ async def cmd_start(msg: Message, state: FSMContext):
     if is_adm: text += "\n\n👑 <i>Доступна кнопка «🌐 Веб-Админка».</i>"
     await msg.answer(text, reply_markup=main_keyboard(user[2], is_admin=is_adm))
 
+# Команда привязки профиля к сайту
+@dp.message(Command("profile"))
+@dp.message(Command("login"))
+async def cmd_profile(msg: Message, state: FSMContext):
+    await state.clear()
+    user = get_user(msg.from_user.id)
+    grp = user[2] if user else DEFAULT_GROUP
+    
+    # Создаем 6-значный код авторизации
+    import random, string
+    auth_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("""
+            INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, group_name, status)
+            VALUES (?, ?, ?, ?, ?, 'confirmed')
+        """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
+        conn.commit()
+
+    direct_url = f"{WEB_APP_URL}?auth_code={auth_code}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Войти в Расписание на сайте", url=direct_url)],
+        [InlineKeyboardButton(text="📱 Открыть в Telegram", web_app=WebAppInfo(url=direct_url))]
+    ])
+    await msg.answer(
+        f"🔐 <b>Код авторизации готов:</b> <code>{auth_code}</code>\n\n"
+        f"Нажмите кнопку ниже, чтобы автоматически войти в аккаунт на сайте:",
+        reply_markup=kb
+    )
+
 @dp.message(Form.waiting_for_group)
 async def process_custom_group(msg: Message, state: FSMContext):
     raw_query = msg.text.strip()
     matched = find_group(raw_query)
 
-    # Строгая проверка на правильность группы
     if not matched:
         await msg.answer("❌ <b>Группа не найдена в базе НЧИ КФУ!</b>\n\nПожалуйста, проверьте номер и напишите снова (например: <code>7241452</code> или <code>18.2-545</code>):")
         return
