@@ -59,33 +59,13 @@
   --b1: #0f3554;
   --b2: #084337;
 }
-* {
-  box-sizing: border-box;
-  margin: 0;
-  font-family: Onest, system-ui, -apple-system, sans-serif;
-  -webkit-tap-highlight-color: transparent;
-}
-html, body {
-  height: 100%;
-  color: var(--tx);
-  background: radial-gradient(70% 45% at 0% 0%, var(--b1), transparent 70%),
-              radial-gradient(60% 45% at 100% 35%, var(--b2), transparent 70%),
-              var(--bg);
-  background-attachment: fixed;
-  scrollbar-width: none;
-}
+* { box-sizing: border-box; margin: 0; font-family: Onest, system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; color: var(--tx); background: radial-gradient(70% 45% at 0% 0%, var(--b1), transparent 70%), radial-gradient(60% 45% at 100% 35%, var(--b2), transparent 70%), var(--bg); background-attachment: fixed; scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; }
 #app { height: 100%; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; }
 #page { flex: 1; overflow-y: auto; padding: 0 16px 120px; scrollbar-width: none; }
-
-.view-enter {
-  animation: viewSlideIn .24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes viewSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
+.view-enter { animation: viewSlideIn .24s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes viewSlideIn { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 button { border: 0; background: none; color: inherit; cursor: pointer; font-size: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -93,7 +73,6 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
 h2 { font-size: 19px; font-weight: 800; margin: 22px 4px 10px; }
 .mu { color: var(--mu); font-size: 13px; }
 .g { background: var(--gl); border: 1px solid var(--gb); border-radius: 26px; -webkit-backdrop-filter: blur(26px) saturate(1.5); backdrop-filter: blur(26px) saturate(1.5); }
-
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px 4px 10px; }
 .pill { font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 99px; white-space: nowrap; display: inline-flex; align-items: center; cursor: pointer; }
 .pill i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ac); margin-right: 7px; }
@@ -181,71 +160,48 @@ textarea.fld { min-height: 100px; resize: none; }
   margin: 4px auto 14px; flex: none; cursor: grab;
 }
 
-.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
-.ch { font-size: 12px; color: var(--mu); font-style: normal; font-weight: 700; padding: 6px 0; }
-.cd { aspect-ratio: 1; border-radius: 50%; font-weight: 700; font-size: 14px; }
-.cd.has { background: var(--ln); }
-.cd.now { color: var(--ac); }
-.cd.sel { background: var(--ac); color: var(--on); }
-.onb { padding-top: 10vh; }
-.onb p { color: var(--mu); margin: 6px 0 24px; font-size: 15px; }
-.big { display: block; width: 100%; text-align: left; padding: 20px; font-size: 20px; font-weight: 800; margin-bottom: 12px; }
-.big small { display: block; font-size: 13px; font-weight: 500; color: var(--mu); margin-top: 4px; }
-
 .kfu-avatar-wrap {
-  width: 96px;
-  height: 96px;
-  border-radius: 28px;
-  background: #ffffff;
-  border: 2px solid var(--ac);
-  box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-  overflow: hidden;
-  padding: 6px;
+  width: 96px; height: 96px; border-radius: 28px; background: #ffffff; border: 2px solid var(--ac);
+  box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22); display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px; overflow: hidden; padding: 6px;
 }
-.kfu-avatar-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
+.kfu-avatar-wrap img { width: 100%; height: 100%; object-fit: contain; }
 
 .bub { padding: 12px 16px; border-radius: 20px; margin-bottom: 10px; max-width: 90%; font-size: 14px; line-height: 1.4; }
 .bub.me { margin-left: auto; background: var(--ac); color: var(--on); font-weight: 600; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .chip { padding: 8px 13px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; }
 
+/* Анимированная иконка Совёнка AI */
+.ai-pulse-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, #0075FF, #2FD39B);
+  display: grid; place-items: center; color: #fff;
+  box-shadow: 0 0 20px rgba(0, 117, 255, 0.4);
+  animation: aiPulse 2.4s infinite ease-in-out;
+}
+@keyframes aiPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0.5); }
+  50% { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(47, 211, 155, 0.35); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0); }
+}
+
+/* Экран блокировки ИИ для неавторизованных */
+.ai-lock-overlay {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh;
+}
+
 #toast {
-  position: fixed;
-  left: 50%;
-  top: calc(14px + env(safe-area-inset-top, 0px));
-  transform: translateX(-50%) translateY(-24px);
-  background: rgba(11, 18, 31, 0.9);
-  color: #EEF4FA;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
-  padding: 8px 18px;
-  border-radius: 99px;
-  font-size: 13px;
-  font-weight: 700;
-  z-index: 99;
-  opacity: 0;
-  pointer-events: none;
-  transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
+  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9);
+  color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+  padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99;
+  opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap;
 }
-#toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -269,7 +225,6 @@ const TEACHER_PIN = '1804';
 const API_URL = 'https://bot-1791299850-3323-degustatorvagin.bothost.tech';
 
 const MO = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-const MN = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const DN = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
 const SH = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
@@ -322,9 +277,6 @@ const tgU = TG && TG.initDataUnsafe && TG.initDataUnsafe.user;
 
 let simT = null;
 let NOW = () => simT ? new Date(simT) : new Date();
-let logs = [];
-window.addEventListener('error', e => logs.push(e.message));
-
 let T = {};
 let me = ld('me');
 let cfg = ld('cfg') || { theme: 'auto', ac: 0 };
@@ -338,9 +290,8 @@ let taps = 0;
 let CUR = [];
 let PT = null;
 let pDate = ds(NOW());
-let calM = ds(NOW());
 let manualWeek = null;
-let aiMode = 'summary'; // 'summary', 'cards', 'simple'
+let aiMode = 'summary';
 
 const key = t => t.k + ':' + t.n;
 
@@ -459,11 +410,12 @@ const item = (ic, t, sub, a, v = '', r = '') =>
   </button>`;
 
 function tabs() {
-  const nm = { h: 'Главная', s: 'Расписание', f: 'Найти', a: 'ИИ', c: 'Профиль' };
+  const nm = { h: 'Главная', s: 'Расписание', f: 'Найти', a: 'Совёнок AI', c: 'Профиль' };
   $('tabs').hidden = false;
   $('tabs').innerHTML = Object.entries(nm).map(([k, l]) =>
     `<button class="${tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">
-      ${ico(k, 22)}<span>${l}</span>
+      ${k === 'a' ? `<div style="display:inline-flex;align-items:center;justify-content:center;position:relative;"><div style="position:absolute;width:28px;height:28px;border-radius:50%;background:var(--ac);opacity:0.25;animation:aiPulse 2s infinite;"></div>${ico(k, 22)}</div>` : ico(k, 22)}
+      <span>${l}</span>
     </button>`
   ).join('');
 }
@@ -487,7 +439,7 @@ function go(t) {
 
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
-// Главная страница
+// Главная: минималистичный стиль (Скриншот 3)
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -698,7 +650,7 @@ function find() {
 function flist() {
   const now = NOW();
   const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, '');
-  const q = n($('fq') ? $('fq').value : '');
+  const q = n($('fq') ?$('fq').value : '');
   let ls = [];
 
   if (seg === 'f') {
@@ -831,40 +783,49 @@ function calOpen() {
   $('sheet').classList.add('on');
 }
 
-// РЕАЛЬНЫЙ ИИ: СЖАТИЕ ЛЕКЦИЙ И СТУДЕНЧЕСКИЙ АССИСТЕНТ
+// СОВЁНОК AI С АВТОРИЗАЦИЕЙ И ИНСТРУМЕНТОМ СЖАТИЯ
 function ai() {
-  const isTeacher = me.target.k === 't';
-  let chips = [];
+  const isAuth = Boolean(me.tgUser && me.tgUser.id);
 
-  if (isTeacher) {
-    chips = [
-      { t: '📊 Моя нагрузка сегодня', a: 'ai_t_load' },
-      { t: '👥 С какими группами пары?', a: 'ai_t_groups' },
-      { t: '📍 В каких я аудиториях?', a: 'ai_t_rooms' },
-      { t: '☕ Сколько до перерыва?', a: 'ai_t_break' }
-    ];
-  } else {
-    chips = [
-      { t: '📍 Где сейчас преподаватель?', a: 'ai_locate' },
-      { t: '🥪 Сколько до обеда?', a: 'ai_lunch' },
-      { t: '😴 Сколько пар осталось?', a: 'ai_left' },
-      { t: '🎲 Отмазка для опоздания', a: 'ai_excuse' }
-    ];
+  // Если не авторизован — показываем экран блокировки (Скриншот 1)
+  if (!isAuth) {
+    $('page').innerHTML = `
+      <div class="top"><h1>Совёнок AI</h1></div>
+      <div class="ai-lock-overlay g">
+        <div class="ai-pulse-icon">${ico('a', 24)}</div>
+        <h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим личным помощником</h3>
+        <div class="mu">Синхронизируй расписание и получи доступ к умному сжатию лекций</div>
+        <button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button>
+      </div>
+    `;
+    return;
   }
+
+  const isTeacher = me.target.k === 't';
+  let chips = isTeacher ? [
+    { t: '📊 Моя нагрузка сегодня', a: 'ai_t_load' },
+    { t: '👥 С какими группами пары?', a: 'ai_t_groups' },
+    { t: '📍 В каких я аудиториях?', a: 'ai_t_rooms' },
+    { t: '☕ Сколько до перерыва?', a: 'ai_t_break' }
+  ] : [
+    { t: '📍 Где преподаватель?', a: 'ai_locate' },
+    { t: '🥪 Сколько до обеда?', a: 'ai_lunch' },
+    { t: '😴 Сколько пар осталось?', a: 'ai_left' },
+    { t: '🎲 Отмазка для опоздания', a: 'ai_excuse' }
+  ];
 
   $('page').innerHTML = `
     <div class="top">
       <div>
-        <h1>ИИ-помощник</h1>
-        <div class="mu">Умный суммаризатор и ассистент КФУ</div>
+        <h1>Совёнок AI</h1>
+        <div class="mu">Твой умный ассистент КФУ</div>
       </div>
-      <div class="pill g" style="color:var(--ac)"><i></i>Llama 3.3</div>
+      <div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a', 20)}</div>
     </div>
 
-    <!-- БЛОК СЖАТИЯ ЛЕКЦИИ И ТЕКСТА -->
     <div class="box g" style="padding:16px;">
-      <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сжатие лекции / конспекта</b>
-      <div class="mu" style="margin-bottom:10px;">Вставь полотно текста — ИИ уберёт воду и оставит суть</div>
+      <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сжать лекцию для тетради</b>
+      <div class="mu" style="margin-bottom:10px;">Вставь длинный текст — Совёнок сделает краткий конспект на 2-3 страницы</div>
 
       <div class="seg g" style="margin-bottom:10px;">
         <button class="${aiMode === 'summary' ? 'on' : ''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
@@ -872,30 +833,29 @@ function ai() {
         <button class="${aiMode === 'simple' ? 'on' : ''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
       </div>
 
-      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции, параграф учебника или методичку..."></textarea>
-      
-      <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">⚡ Сжать материал через ИИ</button>
+      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции..."></textarea>
+      <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">🦉 Сократить через Совёнок AI</button>
 
       <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:rgba(255,255,255,0.04);border:1px dashed var(--ac);padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <b style="color:var(--ac);">Результат ИИ:</b>
+          <b style="color:var(--ac);">Конспект от Совёнка:</b>
           <button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
         </div>
         <div id="ai_summary_content" style="font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
       </div>
     </div>
 
-    <div class="lab2">Быстрые сценарии по расписанию</div>
+    <div class="lab2">Быстрые сценарии</div>
     <div class="chips">
       ${chips.map(c => `<button class="chip g" data-a="${c.a}">${c.t}</button>`).join('')}
     </div>
 
-    <div class="lab2">Диалог по институту</div>
+    <div class="lab2">Диалог с Совёнком</div>
     <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
-      <div class="bub g">👋 Я знаю расписание всех 156 групп и преподавателей НЧИ КФУ. Спроси меня, в какой аудитории преподаватель, сколько до обеда или сколько пар осталось!</div>
+      <div class="bub g">🦉 Привет! Я Совёнок AI. Спроси меня про расписание, аудитории или преподавателей НЧИ КФУ!</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
-      <input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси: где Волкова, сколько пар, обед...">
+      <input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси: где Волкова, сколько пар...">
       <button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up', 22)}</button>
     </div>
   `;
@@ -904,17 +864,16 @@ function ai() {
   $('ai_input').onkeydown = e => { if (e.key === 'Enter') handleAiSend(); };
 }
 
-// Запуск сжатия лекции
 async function runAiCompress() {
-  const txt = $('lecture_text') ?$('lecture_text').value.trim() : '';
-  if (!txt) return toast('Вставьте текст лекции в поле');
+  const txt = $('lecture_text') ?$('lecture_text'].value.trim() : '';
+  if (!txt) return toast('Вставьте текст лекции');
 
   const btn = $('btn_compress_ai');
   const resBox = $('ai_summary_result');
   const resContent = $('ai_summary_content');
 
   btn.disabled = true;
-  btn.textContent = '⏳ Нейросеть сжимает материал...';
+  btn.textContent = '🦉 Совёнок думает...';
   resBox.style.display = 'none';
 
   try {
@@ -928,23 +887,21 @@ async function runAiCompress() {
       resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
       resBox.style.display = 'block';
       resBox.scrollIntoView({ behavior: 'smooth' });
-      toast('Готово!', '✓');
+      toast('Конспект готов!', '✓');
     } else {
       toast(data.message || 'Ошибка обработки');
     }
   } catch (e) {
-    toast('Сервер Bothost недоступен');
+    toast('Сервер недоступен');
   } finally {
     btn.disabled = false;
-    btn.textContent = '⚡ Сжать материал через ИИ';
+    btn.textContent = '🦉 Сократить через Совёнок AI';
   }
 }
 
 function copyAiResult() {
   const t = $('ai_summary_content').innerText;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(t).then(() => toast('Выжимка скопирована', '✓'));
-  }
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Скопировано', '✓'));
 }
 
 function postAiMsg(text, isMe = false) {
@@ -969,72 +926,23 @@ function handleAiSend() {
 function processAiQuery(q) {
   const lower = q.toLowerCase();
   const now = NOW();
-  const isTeacher = me.target.k === 't';
 
-  if (isTeacher) {
-    const gi = now.getDay();
-    const L = gi ? lessonsOf(me.target, getWeek(now), DN[gi - 1]) : [];
-    if (lower.includes('нагруз') || lower.includes('пар') || lower.includes('расписан')) {
-      if (!L.length) { postAiMsg('Сегодня занятий в расписании нет. У вас методический день.'); return; }
-      postAiMsg(`📊 Ваша нагрузка на сегодня (${now.getDate()} ${MO[now.getMonth()]}):\nКоличество занятий: ${L.length} (всего ${L.length * 1.5} акад. часов).\nПервая пара: ${L[0].time.slice(0, 5)} · ауд. ${L[0].room}.`);
-      return;
-    }
-    if (lower.includes('групп')) {
-      if (!L.length) { postAiMsg('Сегодня занятий нет.'); return; }
-      const grps = Array.from(new Set(L.map(l => l.group))).join(', ');
-      postAiMsg(`👥 Сегодня вы ведете занятия у групп: ${grps}.`);
-      return;
-    }
-    if (lower.includes('аудитор') || lower.includes('кабинет') || lower.includes('где')) {
-      if (!L.length) { postAiMsg('Сегодня аудиторий не запланировано.'); return; }
-      const rms = L.map(l => `${l.time.slice(0, 5)}: ${where(l)} (${l.subject})`).join('\n');
-      postAiMsg(`📍 Ваши аудитории на сегодня:\n\n${rms}`);
-      return;
-    }
-    if (lower.includes('перерыв') || lower.includes('окно')) {
-      const s = status(me.target, now);
-      if (s.live) {
-        postAiMsg(`⏰ До окончания текущей пары осталось ${s.live.e - s.nm} мин.`);
-      } else if (s.next) {
-        postAiMsg(`☕ Вы на перерыве. До начала следующей пары осталось ${s.next.s - s.nm} мин (начало в ${s.next.l.time.slice(0, 5)}).`);
-      } else {
-        postAiMsg('Занятий в данный момент нет.');
-      }
-      return;
-    }
-  }
-
-  if (lower.includes('обед') || lower.includes('кушать') || lower.includes('перерыв')) {
-    const nm = now.getHours() * 60 + now.getMinutes();
-    const lStart = 11 * 60 + 50;
-    const lEnd = 12 * 60 + 30;
-    if (nm < lStart) {
-      postAiMsg(`🥪 До обеда осталось ${dur(lStart - nm)} (обед с 11:50 до 12:30 в колледже и с 11:10 в институте).`);
-    } else if (nm >= lStart && nm <= lEnd) {
-      postAiMsg(`🥪 Сейчас обеденный перерыв! До конца обеда осталось ${lEnd - nm} мин.`);
-    } else {
-      postAiMsg(`🏁 Обед уже завершился.`);
-    }
+  if (lower.includes('обед') || lower.includes('кушать')) {
+    postAiMsg('🥪 Обед проходит с 11:50 до 12:30 (в институте с 11:10 до 11:50). Успеешь перекусить!');
     return;
   }
-
-  if (lower.includes('пар') || lower.includes('осталось') || lower.includes('скольк')) {
+  if (lower.includes('пар') || lower.includes('осталось')) {
     const gi = now.getDay();
     if (!gi) { postAiMsg('🎉 Сегодня воскресенье, пар нет!'); return; }
     const L = lessonsOf(me.target, getWeek(now), DN[gi - 1]);
     const nm = now.getHours() * 60 + now.getMinutes();
     const remaining = L.filter(l => span(l)[1] > nm);
-    if (!remaining.length) {
-      postAiMsg('🎉 Все пары на сегодня уже закончились! Можно отдыхать.');
-    } else {
-      postAiMsg(`📚 На сегодня осталось пар: ${remaining.length}.\nБлижайшая: ${remaining[0].subject} (${where(remaining[0])}).`);
-    }
+    postAiMsg(remaining.length ? `📚 На сегодня осталось пар: ${remaining.length}` : '🎉 Все пары на сегодня уже завершились!');
     return;
   }
-
-  if (lower.includes('отмаз') || lower.includes('опозда')) {
+  if (lower.includes('отмаз')) {
     const exc = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
-    postAiMsg(`🎲 Вот отмазка для преподавателя:\n\n«${exc}»`);
+    postAiMsg(`🦉 Совёнок советует отмазку:\n\n«${exc}»`);
     return;
   }
 
@@ -1043,17 +951,12 @@ function processAiQuery(q) {
   if (matched.length) {
     const targetT = matched[0];
     const s = status({ k: 't', n: targetT }, now);
-    if (s.live) {
-      postAiMsg(`📍 ${targetT} прямо сейчас ведёт пару:\n📘 ${s.live.l.subject} (${s.live.l.type || 'пара'})\n📍 ${where(s.live.l)}\n👥 Группа: ${s.live.l.group || '—'}\n⏰ До звонка с пары осталось: ${s.live.e - s.nm} мин.`);
-    } else if (s.next) {
-      postAiMsg(`☕ ${targetT} сейчас на перерыве.\nСледующая пара начнётся через ${s.next.s - s.nm} мин в ${where(s.next.l)} (группа ${s.next.l.group || '—'}).`);
-    } else {
-      postAiMsg(`ℹ️ У преподавателя ${targetT} прямо сейчас пар нет.`);
-    }
+    if (s.live) postAiMsg(`📍 ${targetT} веде́т пару: ${s.live.l.subject} (${where(s.live.l)})`);
+    else postAiMsg(`ℹ️ У преподавателя ${targetT} сейчас пар нет.`);
     return;
   }
 
-  postAiMsg(`🤖 Задайте вопрос по расписанию: где преподаватель, сколько пар осталось или сколько до обеда!`);
+  postAiMsg('🦉 Совёнок AI на связи! Спроси про расписание, аудитории или отправь текст для сжатия.');
 }
 
 function prof() {
@@ -1084,13 +987,13 @@ function prof() {
       ${item('star', 'Избранное', 'Сохранённые расписания: ' + me.fav.length, 'favs')}
     </div>
 
-    <div class="lab2">Авторизация и облако</div>
+    <div class="lab2">Авторизация и Совёнок AI</div>
     <div class="box g" style="padding:4px 16px">
       ${isAuth
         ? item('tg', esc(me.tgUser.first_name), (me.tgUser.username ? '@' + esc(me.tgUser.username) + ' · ' : '') + 'Облачная синхронизация включена ✓', 'x')
         : `<button class="it" onclick="startTgAuth()">
             <span class="ic">${ico('tg')}</span>
-            <span class="t"><b>Войти через Telegram</b><small>Синхронизация заметок и напоминаний</small></span>
+            <span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI и заметки</small></span>
             <span class="chev">›</span>
            </button>`
       }
@@ -1112,7 +1015,7 @@ function prof() {
     </div>
 
     <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки на устройстве</button>
-    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.4</button>
+    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.5</button>
   `;
 }
 
@@ -1162,48 +1065,23 @@ function onboard() {
 }
 
 function picker(o) {
-  P = o;
-  pk = o.k;
-  $('pnl').innerHTML = `
-    <h1 style="font-size:22px">${o.title}</h1>
-    <input class="fld" id="q" placeholder="Поиск по номеру или фамилии..." autocomplete="off">
-    <div id="items"></div>
-  `;
-  $('sheet').classList.add('on');
-  items();
+  P = o; pk = o.k;
+  $('pnl').innerHTML = `<h1 style="font-size:22px">${o.title}</h1><input class="fld" id="q" placeholder="Поиск..." autocomplete="off"><div id="items"></div>`;
+  $('sheet').classList.add('on'); items();
 }
 
 function items() {
-  const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, '');
-  const q = n($('q').value);
-  const ls = pk === 'g' ? Object.keys(DATA) : Object.keys(T).sort((a, b) => a.localeCompare(b, 'ru'));
-  const filtered = ls.filter(k => !q || n(k).includes(q) || (pk === 'g' && n(DATA[k].spec || '').includes(q)));
-
-  $('items').innerHTML = filtered.map(k =>
-    item(pk === 'g' ? 'users' : 'user', esc(k), pk === 'g' ? esc((DATA[k].spec || '').replace(/,\s*\d+\s*чел.*/, '')) : 'Преподаватель кафедры', 'pick', k)
-  ).join('') || '<div class="empty"><b>Ничего не найдено</b></div>';
+  const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), q = n($('q').value);
+  const ls = pk === 'g' ? Object.keys(DATA) : Object.keys(T).sort((a,b)=>a.localeCompare(b,'ru'));
+  $('items').innerHTML = ls.filter(k=>!q||n(k).includes(q)||(pk==='g'&&n(DATA[k].spec||'').includes(q))).map(k=>item(pk==='g'?'users':'c',esc(k),pk==='g'?esc((DATA[k].spec||'').replace(/,\s*\d+\s*чел.*/,'')):'Преподаватель','pick',k)).join('')||'<div class="empty"><b>Ничего не найдено</b></div>';
 }
 
 const pickRole = (r, lock) => {
   if (r === 't') {
-    const pin = prompt('Введите пин-код доступа для преподавателей:');
-    if (pin !== TEACHER_PIN) {
-      toast('Доступ только для преподавателей', '✕');
-      return;
-    }
+    const pin = prompt('Введите пин-код для преподавателей:');
+    if (pin !== TEACHER_PIN) { toast('Неверный код', '✕'); return; }
   }
-  picker({
-    k: r,
-    lock,
-    title: r === 'g' ? 'Твоя группа' : 'Твоя фамилия',
-    cb: t => {
-      if (!me) me = { nick: tgU ? tgU.first_name : '', org: 'НЧИ КФУ', fav: [] };
-      me.role = r;
-      me.target = t;
-      sv('me', me);
-      go('h');
-    }
-  });
+  picker({ k: r, lock, title: r==='g'?'Твоя группа':'Твоя фамилия', cb: t => { if (!me) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', fav:[] }; me.role=r; me.target=t; sv('me', me); go('h'); } });
 };
 
 const closeS = () => $('sheet').classList.remove('on');
@@ -1211,10 +1089,8 @@ const closeS = () => $('sheet').classList.remove('on');
 let authPollTimer = null;
 function startTgAuth() {
   const authCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  const botLink = `https://t.me/${BOT}?start=auth_${authCode}`;
-
-  window.open(botLink, '_blank');
-  toast('Подтвердите вход в открывшемся боте', '💬');
+  window.open(`https://t.me/${BOT}?start=auth_${authCode}`, '_blank');
+  toast('Подтвердите вход в боте', '💬');
 
   clearInterval(authPollTimer);
   authPollTimer = setInterval(async () => {
@@ -1224,17 +1100,13 @@ function startTgAuth() {
       const data = await res.json();
       if (data.status === 'confirmed') {
         clearInterval(authPollTimer);
-        me.tgUser = {
-          id: data.user_id,
-          username: data.username,
-          first_name: data.first_name
-        };
+        me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
         if (data.target && (DATA[data.target] || T[data.target])) {
-          me.target = { k: data.role === 'teacher' ? 't' : 'g', n: data.target };
+          me.target = { k: 'g', n: data.target };
         }
         sv('me', me);
         toast(`Вход выполнен: ${data.first_name}`, '✓');
-        prof();
+        go('a');
       }
     } catch (e) {}
   }, 2000);
@@ -1247,285 +1119,82 @@ const A = {
   day: v => { const m = mon(date); m.setDate(m.getDate() + +v); date = m; sched(); },
   today: () => { date = ds(NOW()); sched(); },
   shift: v => shiftDay(+v),
-  toggle_week: () => {
-    manualWeek = (getWeek(date) === 'в') ? 'н' : 'в';
-    toast(manualWeek === 'в' ? 'Верхняя неделя' : 'Нижняя неделя', manualWeek === 'в' ? '▲' : '▼');
-    go();
-  },
-  set_ai_mode: v => {
-    aiMode = v;
-    ai();
-  },
+  toggle_week: () => { manualWeek = (getWeek(date) === 'в') ? 'н' : 'в'; toast(manualWeek === 'в' ? 'Верхняя неделя' : 'Нижняя неделя', manualWeek === 'в' ? '▲' : '▼'); go(); },
+  set_ai_mode: v => { aiMode = v; ai(); },
   cal: () => { calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
   cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth() + +v, 1); calOpen(); },
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
   savenote: async v => {
     const val = $('note') ?$('note').value.trim() : '';
-    const remindCheck = $('remind_check') ?$('remind_check').checked : false;
-
-    if (val) {
-      NOTES[v] = val;
-    } else {
-      delete NOTES[v];
-    }
+    if (val) NOTES[v] = val; else delete NOTES[v];
     sv('notes', NOTES);
-
     if (me.tgUser && me.tgUser.id) {
-      try {
-        const l = window.ACTIVE_LESSON || {};
-        await fetch(`${API_URL}/api/save_note`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: me.tgUser.id,
-            note_key: v,
-            note_text: val,
-            subject: l.subject || '',
-            time: l.time || '',
-            date: `${date.getDate()} ${MO[date.getMonth()]}`,
-            remind: remindCheck ? 1 : 0
-          })
-        });
-      } catch (e) {}
+      try { await fetch(`${API_URL}/api/save_note`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: me.tgUser.id, note_key: v, note_text: val }) }); } catch(e){}
     }
-
-    toast('Заметка сохранена', '✓');
-    closeS();
-    sched();
+    toast('Заметка сохранена', '✓'); closeS(); sched();
   },
   shn: v => {
-    const t = NOTES[v] || '';
-    if (!t) return toast('Сначала напишите заметку');
-    const s = 'Заметка к паре (' + (v.split('|')[2]) + '):\n' + t;
-    if (navigator.share) navigator.share({ text: s }).catch(() => {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(s).then(() => toast('Скопировано в буфер'));
+    const t = NOTES[v] || ''; if (!t) return toast('Напишите заметку');
+    if (navigator.share) navigator.share({ text: t }).catch(()=>{});
   },
   who: v => whoOpen(v),
-  fav: () => {
-    const k = key(PT);
-    me.fav = me.fav.some(x => key(x) === k) ? me.fav.filter(x => key(x) !== k) : [...me.fav, PT];
-    sv('me', me);
-    drawWho();
-    if (tab === 'f') flist();
-    if (tab === 'h') home();
-  },
+  fav: () => { const k = key(PT); me.fav = me.fav.some(x => key(x) === k) ? me.fav.filter(x => key(x) !== k) : [...me.fav, PT]; sv('me', me); drawWho(); if (tab==='f') flist(); if (tab==='h') home(); },
   pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate() + +v); drawWho(); },
   seg: v => { seg = v; find(); },
   chg: () => pickRole(me.role, false),
   favs: () => { seg = 'f'; go('f'); },
   edit: editOpen,
-  save: () => {
-    me.nick = $('nick').value.trim();
-    me.org = 'НЧИ КФУ';
-    sv('me', me);
-    closeS();
-    prof();
-  },
+  save: () => { me.nick = $('nick').value.trim(); me.org = 'НЧИ КФУ'; sv('me', me); closeS(); prof(); },
   look: lookOpen,
   acc: v => { cfg.ac = +v; sv('cfg', cfg); look(); lookOpen(); },
   th: v => { cfg.theme = v; sv('cfg', cfg); look(); lookOpen(); },
-  shr: () => {
-    const s = { title: 'Расписание НЧИ КФУ', url: location.href };
-    if (navigator.share) navigator.share(s).catch(() => {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(() => toast('Ссылка скопирована'));
-  },
-  reset: () => {
-    if (confirm('Сбросить сохранённые настройки на этом телефоне?')) {
-      try { localStorage.clear(); } catch (e) {}
-      me = null;
-      cfg = { theme: 'auto', ac: 0 };
-      NOTES = {};
-      look();
-      go();
-    }
-  },
-  ver: () => {
-    if (++taps >= 5) {
-      taps = 0;
-      const p = prompt('PIN администратора:');
-      if (p === ADMIN_PIN) adminOpen();
-      else if (p !== null) toast('Неверный PIN');
-    }
-  },
-  ball: () => {
-    const s = status(me.target, NOW());
-    const ans = s.L.length ? BALL[Math.floor(Math.random() * BALL.length)] : 'Пар нет, можно спокойно отдыхать!';
-    postAiMsg(`🔮 Предсказание на сегодня:\n«${ans}»`);
-  },
-  ai_locate: () => {
-    const q = prompt('Напишите фамилию преподавателя:');
-    if (q) {
-      postAiMsg(`Где сейчас преподаватель ${q}?`, true);
-      processAiQuery('где ' + q);
-    }
-  },
-  ai_lunch: () => {
-    postAiMsg('Сколько осталось до обеда?', true);
-    processAiQuery('обед');
-  },
-  ai_left: () => {
-    postAiMsg('Сколько пар осталось сегодня?', true);
-    processAiQuery('сколько пар осталось');
-  },
-  ai_excuse: () => {
-    postAiMsg('Придумай отмазку для опоздания', true);
-    processAiQuery('отмазка');
-  },
-  ai_t_load: () => {
-    postAiMsg('Какая у меня нагрузка на сегодня?', true);
-    processAiQuery('нагрузка');
-  },
-  ai_t_groups: () => {
-    postAiMsg('С какими группами сегодня занятия?', true);
-    processAiQuery('группы');
-  },
-  ai_t_rooms: () => {
-    postAiMsg('В каких аудиториях сегодня пары?', true);
-    processAiQuery('аудитории');
-  },
-  ai_t_break: () => {
-    postAiMsg('Сколько времени до ближайшего перерыва?', true);
-    processAiQuery('перерыв');
-  },
+  shr: () => { if (navigator.share) navigator.share({ title: 'Расписание НЧИ КФУ', url: location.href }).catch(()=>{}); },
+  reset: () => { if (confirm('Сбросить настройки?')) { try{localStorage.clear();}catch(e){} me=null; cfg={theme:'auto',ac:0}; NOTES={}; look(); go(); } },
+  ver: () => { if (++taps >= 5) { taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN) adminOpen(); } },
+  ball: () => { const s = status(me.target, NOW()); postAiMsg(`🔮 Предсказание:\n«${s.L.length?BALL[Math.floor(Math.random()*BALL.length)]:'Пар нет'}»`); },
+  ai_locate: () => { const q = prompt('Фамилия преподавателя:'); if(q) processAiQuery('где ' + q); },
+  ai_lunch: () => processAiQuery('обед'),
+  ai_left: () => processAiQuery('сколько пар'),
+  ai_excuse: () => postAiMsg(`🎲 Отмазка:\n\n«${EXCUSES[Math.floor(Math.random()*EXCUSES.length)]}»`),
   x: () => {},
   pick: v => { closeS(); P.cb({ k: pk, n: v }); }
 };
 
-document.addEventListener('click', e => {
-  const c = e.target.closest('[data-a]');
-  if (c && A[c.dataset.a]) A[c.dataset.a](c.dataset.v);
-});
-
-document.addEventListener('input', e => {
-  const i = e.target.id;
-  if (i === 'q') items();
-  if (i === 'fq') flist();
-});
+document.addEventListener('click', e => { const c = e.target.closest('[data-a]'); if (c && A[c.dataset.a]) A[c.dataset.a](c.dataset.v); });
+document.addEventListener('input', e => { if (e.target.id === 'q') items(); if (e.target.id === 'fq') flist(); });
 
 function initSheetGestures() {
   ['pnl', 'apnl'].forEach(id => {
-    const p = $(id);
-    if (!p) return;
+    const p = $(id); if (!p) return;
     let sY = 0, cY = 0, drag = false;
-    p.addEventListener('touchstart', e => {
-      if (p.scrollTop <= 0) {
-        sY = e.touches[0].clientY;
-        cY = sY;
-        drag = true;
-      } else {
-        drag = false;
-      }
-    }, { passive: true });
-
-    p.addEventListener('touchmove', e => {
-      if (!drag) return;
-      const y = e.touches[0].clientY;
-      const d = y - sY;
-      if (d > 0) {
-        cY = y;
-        p.style.transform = `translateY(${d}px)`;
-        p.style.transition = 'none';
-      } else {
-        p.style.transform = '';
-        p.style.transition = '';
-      }
-    }, { passive: true });
-
+    p.addEventListener('touchstart', e => { if (p.scrollTop <= 0) { sY = e.touches[0].clientY; cY = sY; drag = true; } else drag = false; }, { passive: true });
+    p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transform = `translateY(${d}px)`; p.style.transition = 'none'; } }, { passive: true });
     p.addEventListener('touchend', () => {
-      if (!drag) return;
-      drag = false;
-      const d = cY - sY;
+      if (!drag) return; drag = false; const d = cY - sY;
       p.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-      if (d > 75) {
-        p.style.transform = 'translateY(100%)';
-        setTimeout(() => {
-          if (id === 'pnl') closeS(); else $('adm').classList.remove('on');
-          p.style.transform = '';
-          p.style.transition = '';
-        }, 180);
-      } else {
-        p.style.transform = 'translateY(0)';
-        setTimeout(() => {
-          p.style.transform = '';
-          p.style.transition = '';
-        }, 220);
-      }
+      if (d > 75) { p.style.transform = 'translateY(100%)'; setTimeout(() => { if(id==='pnl') closeS(); else $('adm').classList.remove('on'); p.style.transform=''; p.style.transition=''; }, 180); }
+      else { p.style.transform = 'translateY(0)'; setTimeout(()=>{ p.style.transform=''; p.style.transition=''; }, 220); }
     });
   });
 }
 
 function adminOpen() {
-  const g = Object.keys(DATA).length;
-  $('apnl').innerHTML = `
-    <h1 style="font-size:22px;margin-bottom:12px">Админ-панель (Dev)</h1>
-    <div class="box g">
-      <b>База данных</b>
-      <div class="mu" style="margin-top:4px">Всего групп: ${g} · Преподавателей: ${Object.keys(T).length}</div>
-    </div>
-    <div class="lab2">Тестовое время</div>
-    <input type="datetime-local" class="fld" id="sim">
-    <button class="btn" id="simbtn">Включить симуляцию времени</button>
-    <button class="btn gl" id="simreset" style="margin-top:6px">Вернуть реальное время</button>
-  `;
-  $('adm').classList.add('on');
-
-  $('simbtn').onclick = () => {
-    const v = $('sim').value;
-    if (v) {
-      simT = v;
-      date = ds(NOW());
-      $('adm').classList.remove('on');
-      toast('Симуляция включена');
-      go();
-    }
-  };
-  $('simreset').onclick = () => {
-    simT = null;
-    date = ds(NOW());
-    $('adm').classList.remove('on');
-    toast('Реальное время');
-    go();
-  };
-  $('ascrim').onclick = () =>$('adm').classList.remove('on');
+  $('apnl').innerHTML = `<h1 style="font-size:22px;margin-bottom:12px">Dev Админка</h1><div class="box g"><b>Групп в базе:</b> ${Object.keys(DATA).length}</div>`;
+  $('adm').classList.add('on'); $('ascrim').onclick = () =>$('adm').classList.remove('on');
 }
 
 function init() {
-  build();
-  look();
-  initSheetGestures();
-
+  build(); look(); initSheetGestures();
   const params = new URLSearchParams(window.location.search);
-  const urlGrp = params.get('group');
-  const urlTchr = params.get('teacher');
-
-  if (urlGrp && DATA[urlGrp]) {
-    me = { nick: tgU ? tgU.first_name : '', org: 'НЧИ КФУ', role: 'g', target: { k: 'g', n: urlGrp }, fav: me?.fav || [] };
-    sv('me', me);
-  } else if (urlTchr && T[urlTchr]) {
-    me = { nick: tgU ? tgU.first_name : '', org: 'НЧИ КФУ', role: 't', target: { k: 't', n: urlTchr }, fav: me?.fav || [] };
-    sv('me', me);
-  }
-
-  if (me) {
-    if (!me.fav) me.fav = [];
-    if (!(me.target.k === 'g' ? DATA[me.target.n] : T[me.target.n])) me = null;
-  }
+  const urlGrp = params.get('group'), urlTchr = params.get('teacher');
+  if (urlGrp && DATA[urlGrp]) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', role:'g', target:{k:'g', n:urlGrp}, fav:me?.fav||[] };
+  else if (urlTchr && T[urlTchr]) me = { nick: tgU?tgU.first_name:'', org:'НЧИ КФУ', role:'t', target:{k:'t', n:urlTchr}, fav:me?.fav||[] };
+  if (me && !(me.target.k==='g'?DATA[me.target.n]:T[me.target.n])) me = null;
   go();
 }
 
-fetch('./schedule.json')
-  .then(r => r.ok ? r.json() : null)
-  .then(j => {
-    if (j && Object.keys(j).length) {
-      DATA = j;
-      build();
-      init();
-    }
-  })
-  .catch(() => {
-    init();
-  });
+fetch('./schedule.json').then(r => r.ok ? r.json() : null).then(j => { if (j && Object.keys(j).length) { DATA = j; build(); init(); } }).catch(() => init());
 </script>
 </body>
 </html>
