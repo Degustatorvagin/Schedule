@@ -41,7 +41,7 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
 SUPPORT_USERNAME = "@AvaUtility_support"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Твой жесткий системный промт для обработки текста
 AI_SYSTEM_PROMPT = """Ты — университетский ИИ-ассистент НЧИ КФУ.
