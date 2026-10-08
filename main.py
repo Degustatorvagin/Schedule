@@ -7,7 +7,7 @@ import os
 import re
 import sqlite3
 import urllib.parse
-from aiohttp import web
+from aiohttp import web, ClientSession
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
@@ -40,8 +40,19 @@ TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
+SUPPORT_USERNAME = "@AvaUtility_support"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-# Инициализация бота и диспетчера в начале файла
+# Твой жесткий системный промт для обработки текста
+AI_SYSTEM_PROMPT = """Ты — университетский ИИ-ассистент НЧИ КФУ.
+Твоя задача — профессионально и компактно сжимать учебные материалы, лекции и статьи.
+Правила работы:
+1. Выдели 3-5 ключевых тезисов без лишней 'воды'.
+2. Выдели главные термины, определения и формулы, если они есть.
+3. Оформи всё чёткими списками с эмодзи-маркерами (📌, 💡, ⚡).
+4. Пиши строго по делу, понятно, академично, но без канцелярита.
+5. Это все буду писать в тетрадь, а много писать я не хочу"""
+
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
@@ -62,7 +73,6 @@ MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
 DAYS_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
 DAYS_MAP = {0: 'Понедельник', 1: 'Вторник', 2: 'Среда', 3: 'Четверг', 4: 'Пятница', 5: 'Суббота'}
 
-# --- СЕТКА ЗВОНКОВ ---
 BELLS_TABLE = {
     "08:00": ("08:00", "09:30", 1),
     "09:40": ("09:40", "11:10", 2),
@@ -99,42 +109,6 @@ def get_slot_info(time_str: str):
         return slot, s_str, e_str, st, et
     return None, str(time_str), "", None, None
 
-def calculate_break_or_window(prev_end_str, curr_start_str, prev_slot=None, curr_slot=None):
-    try:
-        p_h, p_m = map(int, prev_end_str.split(':'))
-        c_h, c_m = map(int, curr_start_str.split(':'))
-        diff_m = (c_h * 60 + c_m) - (p_h * 60 + p_m)
-        if diff_m <= 0:
-            return ""
-        h = diff_m // 60
-        m = diff_m % 60
-        time_txt = f"{h} ч {m} мин" if (h > 0 and m > 0) else (f"{h} ч" if h > 0 else f"{m} мин")
-        if (prev_end_str == "11:50" and curr_start_str == "12:30") or (prev_end_str == "11:10" and curr_start_str == "11:50"):
-            return f"\n🥪 <i>Обед {time_txt} ({prev_end_str} – {curr_start_str})</i>\n"
-        if diff_m >= 45 or (prev_slot and curr_slot and curr_slot - prev_slot > 1):
-            return f"\n🕳 <b>Окно {time_txt}</b> ({prev_end_str} – {curr_start_str})\n"
-        else:
-            return f"\n☕ <i>Перерыв {time_txt} ({prev_end_str} – {curr_start_str})</i>\n"
-    except Exception:
-        return ""
-
-def get_cyrillic_font(size=13):
-    candidate_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        os.path.join(DATA_DIR, "font.ttf"),
-        "font.ttf"
-    ]
-    for p in candidate_paths:
-        if os.path.exists(p) and os.path.getsize(p) > 10000:
-            try:
-                return ImageFont.truetype(p, size)
-            except Exception:
-                pass
-    return None
-
-# --- БАЗА ДАННЫХ И ЛОГИРОВАНИЕ ---
 def init_db():
     try:
         with sqlite3.connect(DB_FILE) as conn:
@@ -164,31 +138,43 @@ def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS auth_sessions (
+                    auth_code TEXT PRIMARY KEY,
+                    user_id INTEGER,
+                    username TEXT,
+                    first_name TEXT,
+                    role TEXT,
+                    target_name TEXT,
+                    status TEXT DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    note_key TEXT,
+                    lesson_date TEXT,
+                    lesson_time TEXT,
+                    subject TEXT,
+                    note_text TEXT,
+                    remind_evening INTEGER DEFAULT 1,
+                    remind_sent INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, note_key)
+                )
+            """)
             conn.commit()
-            for col, col_type, default_val in [
-                ("role", "TEXT", "'student'"),
-                ("teacher_name", "TEXT", "''"),
-                ("notify_morning", "INTEGER", "1"),
-                ("notify_remind", "INTEGER", "1"),
-                ("notify_hw", "INTEGER", "1"),
-                ("view_type", "TEXT", "'text'")
-            ]:
-                try:
-                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type} DEFAULT {default_val}")
-                    conn.commit()
-                except Exception:
-                    pass
     except Exception as e:
         logging.error(f"Ошибка БД: {e}")
 
 def log_activity(user_id: int, username: str, role: str, action: str, details: str = ""):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO activity_logs (user_id, username, role, action, details)
-                VALUES (?, ?, ?, ?, ?)
-            """, (user_id, username or "", role, action, details))
+            c = conn.cursor()
+            c.execute("INSERT INTO activity_logs (user_id, username, role, action, details) VALUES (?, ?, ?, ?, ?)",
+                      (user_id, username or "", role, action, details))
             conn.commit()
     except Exception as e:
         logging.error(f"Ошибка логирования: {e}")
@@ -196,13 +182,9 @@ def log_activity(user_id: int, username: str, role: str, action: str, details: s
 def get_user(user_id: int):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT user_id, username, group_name, notify_morning, notify_remind, 
-                       notify_hw, view_type, role, teacher_name 
-                FROM users WHERE user_id = ?
-            """, (user_id,))
-            return cursor.fetchone()
+            c = conn.cursor()
+            c.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type, role, teacher_name FROM users WHERE user_id = ?", (user_id,))
+            return c.fetchone()
     except Exception:
         return None
 
@@ -212,8 +194,8 @@ def register_user(user_id: int, username: str, role: str = "student", group_name
         saved_grp = group_name if group_name is not None else (existing[2] if existing else DEFAULT_GROUP)
         saved_teacher = teacher_name if teacher_name is not None else (existing[8] if existing else "")
         with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            c = conn.cursor()
+            c.execute("""
                 INSERT OR REPLACE INTO users (user_id, username, role, group_name, teacher_name, notify_morning, notify_remind, notify_hw, view_type)
                 VALUES (?, ?, ?, ?, ?,
                     COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
@@ -226,25 +208,6 @@ def register_user(user_id: int, username: str, role: str = "student", group_name
     except Exception as e:
         logging.error(f"Ошибка регистрации: {e}")
 
-def update_user_field(user_id: int, field: str, value):
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"UPDATE users SET {field} = ? WHERE user_id = ?", (value, user_id))
-            conn.commit()
-    except Exception as e:
-        logging.error(f"Ошибка обновления {field}: {e}")
-
-def get_subscribers(field: str = "notify_morning"):
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT user_id, role, group_name, teacher_name FROM users WHERE {field} = 1")
-            return cursor.fetchall()
-    except Exception:
-        return []
-
-# --- РАСПИСАНИЕ И ПОИСК ---
 def load_schedule() -> dict:
     if os.path.exists(JSON_FILE):
         try:
@@ -256,57 +219,6 @@ def load_schedule() -> dict:
 
 SCHEDULE_DB = load_schedule()
 
-def get_all_teachers_list():
-    teachers = set()
-    for grp, data in SCHEDULE_DB.items():
-        sched = data.get("schedule", {})
-        for wn in ["в", "н"]:
-            for day, lessons in sched.get(wn, {}).items():
-                for l in lessons:
-                    raw_t = l.get("teacher", "").strip()
-                    if not raw_t or raw_t == "—":
-                        continue
-                    parts = re.split(r'\s{2,}|\n|,', raw_t)
-                    for p in parts:
-                        p = p.strip()
-                        if p and len(p) > 3:
-                            teachers.add(p)
-    return sorted(list(teachers))
-
-TEACHERS_LIST = get_all_teachers_list()
-
-def find_teachers(query: str):
-    q = query.lower().strip()
-    if not q:
-        return []
-    exact = [t for t in TEACHERS_LIST if q == t.lower()]
-    if exact:
-        return exact
-    return [t for t in TEACHERS_LIST if q in t.lower()]
-
-def find_group_strict(query: str):
-    clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
-    if not clean_q:
-        return None
-    for grp in SCHEDULE_DB.keys():
-        if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
-            return grp
-    if "545" in clean_q:
-        if "182" in clean_q or "филолог" in query.lower():
-            return "18.2-545" if "18.2-545" in SCHEDULE_DB else None
-        if "1803" in clean_q or "юр" in query.lower():
-            return "18.03-545" if "18.03-545" in SCHEDULE_DB else None
-        return "18.2-545" if "18.2-545" in SCHEDULE_DB else ("18.03-545" if "18.03-545" in SCHEDULE_DB else None)
-    if "452" in clean_q:
-        if "7241452" in SCHEDULE_DB:
-            return "7241452"
-    if len(clean_q) >= 4:
-        for grp in SCHEDULE_DB.keys():
-            clean_grp = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower()
-            if clean_q in clean_grp:
-                return grp
-    return None
-
 def get_group_schedule(group_name: str) -> dict:
     data = SCHEDULE_DB.get(group_name)
     if isinstance(data, dict) and "schedule" in data:
@@ -314,1358 +226,291 @@ def get_group_schedule(group_name: str) -> dict:
     return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
 
 def get_teacher_schedule(target_teacher: str) -> dict:
-    t_sched = {
-        "в": {d: [] for d in DAYS_ORDER},
-        "н": {d: [] for d in DAYS_ORDER}
-    }
+    t_sched = {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
     t_clean = target_teacher.lower()
     for grp, g_data in SCHEDULE_DB.items():
         g_sched = g_data.get("schedule", {})
         for wn in ["в", "н"]:
             for day, lessons in g_sched.get(wn, {}).items():
                 for l in lessons:
-                    teacher_val = l.get("teacher", "")
-                    if t_clean in teacher_val.lower():
-                        lesson_copy = dict(l)
-                        lesson_copy["group"] = grp
-                        t_sched[wn][day].append(lesson_copy)
+                    if t_clean in (l.get("teacher") or "").lower():
+                        t_sched[wn][day].append({**l, "group": grp})
     for wn in ["в", "н"]:
         for day in t_sched[wn]:
             t_sched[wn][day].sort(key=lambda x: x.get("time", ""))
-            combined = []
-            for item in t_sched[wn][day]:
-                matched_existing = False
-                for c in combined:
-                    if c["time"] == item["time"] and c["subject"] == item["subject"] and c.get("room") == item.get("room"):
-                        if item["group"] not in c["group"]:
-                            c["group"] += f", {item['group']}"
-                        matched_existing = True
-                        break
-                if not matched_existing:
-                    combined.append(dict(item))
-            t_sched[wn][day] = combined
     return t_sched
 
 def get_week_info(target_date: datetime.date = None):
     if target_date is None:
         target_date = datetime.datetime.now(MSK_TZ).date()
     weeks_diff = (target_date - ANCHOR_MONDAY).days // 7
-    if weeks_diff % 2 == 0:
-        return 'в', 'Верхняя неделя 🔼'
-    return 'н', 'Нижняя неделя 🔽'
+    return ('в', 'Верхняя неделя 🔼') if weeks_diff % 2 == 0 else ('н', 'Нижняя неделя 🔽')
 
-# --- МОДУЛЬ: ГДЕ СЕЙЧАС ПРЕПОДАВАТЕЛЬ ---
-def locate_teacher(teacher_name: str, check_dt: datetime.datetime, wn_code: str):
-    t_sched = get_teacher_schedule(teacher_name)
-    day_name = DAYS_MAP.get(check_dt.weekday())
-    if not day_name:
-        return f"🏖 Сегодня воскресенье. <b>{teacher_name}</b> отдыхает."
-
-    day_lessons = t_sched.get(wn_code, {}).get(day_name, [])
-    if not day_lessons:
-        return f"☕ Сегодня ({day_name}) у преподавателя <b>{teacher_name}</b> по расписанию занятий нет."
-
-    enriched = []
-    for l in day_lessons:
-        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
-        if st and et:
-            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str, "slot": slot})
-
-    if not enriched:
-        return f"ℹ️ Расписание найдено, но время звонков не определено."
-
-    enriched.sort(key=lambda x: x["st"])
-    curr_t = check_dt.time()
-    first_st = enriched[0]["st"]
-    last_et = enriched[-1]["et"]
-
-    if curr_t < first_st:
-        f = enriched[0]
-        diff_m = (first_st.hour * 60 + first_st.minute) - (curr_t.hour * 60 + curr_t.minute)
-        return (
-            f"⏳ <b>{teacher_name}</b> ещё не на парах.\n\n"
-            f"Первая пара начнётся через <b>{diff_m} мин</b> (в <b>{f['s_str']}</b>):\n"
-            f"📘 <b>{f['subject']}</b>\n"
-            f"📍 {f.get('building', '')}, ауд. <b>{f.get('room', '')}</b>\n"
-            f"👥 Группа: <code>{f.get('group', '')}</code>"
-        )
-
-    if curr_t > last_et:
-        return f"🏁 Все занятия у преподавателя <b>{teacher_name}</b> на сегодня завершились (последняя пара закончилась в <b>{enriched[-1]['e_str']}</b>)."
-
-    for i, l in enumerate(enriched):
-        if l["st"] <= curr_t <= l["et"]:
-            diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
-            nxt = enriched[i+1] if i + 1 < len(enriched) else None
-            nxt_str = f"\n\n➡️ Следующая пара в <b>{nxt['s_str']}</b>: ауд. <b>{nxt.get('room')}</b> ({nxt.get('building')}), группа <code>{nxt.get('group')}</code>" if nxt else "\n\n🏁 Это последняя пара преподавателя на сегодня!"
-            return (
-                f"📍 <b>{teacher_name} прямо сейчас ведёт пару:</b>\n\n"
-                f"📘 <b>{l['subject']}</b> ({l.get('type', '')})\n"
-                f"📍 <b>{l.get('building', '')}</b>, ауд. <b>{l.get('room', '')}</b>\n"
-                f"👥 Группа: <code>{l.get('group', '')}</code>\n"
-                f"⏰ До звонка с пары осталось: <b>{diff_m} мин</b> (до {l['e_str']}){nxt_str}"
-            )
-
-        if i + 1 < len(enriched):
-            nxt = enriched[i+1]
-            if l["et"] < curr_t < nxt["st"]:
-                diff_m = (nxt["st"].hour * 60 + nxt["st"].minute) - (curr_t.hour * 60 + curr_t.minute)
-                return (
-                    f"☕ <b>{teacher_name} сейчас на перерыве</b> (окно/перемена до {nxt['s_str']}):\n\n"
-                    f"⏳ До следующей пары: <b>{diff_m} мин</b>\n"
-                    f"➡️ В <b>{nxt['s_str']}</b> будет в <b>{nxt.get('building', '')}</b>, ауд. <b>{nxt.get('room', '')}</b>\n"
-                    f"📘 Предмет: <b>{nxt['subject']}</b>\n"
-                    f"👥 Группа: <code>{nxt.get('group', '')}</code>"
-                )
-
-    return f"ℹ️ Преподаватель: {teacher_name}."
-
-# --- ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЯ ТАБЛИЦЫ ---
-def render_table_png(lessons: list, day_name: str, target_name: str, role: str = "student"):
-    if not HAS_PILLOW:
-        return None
-    font_header = get_cyrillic_font(13)
-    font_bold = get_cyrillic_font(13)
-    font_cell = get_cyrillic_font(12)
-    font_time = get_cyrillic_font(12)
-    font_sub = get_cyrillic_font(11)
-
-    if not font_header:
-        return None
-
-    width = 760
-    header_h = 44
-    row_h = 76
-    padding = 14
-    total_h = padding * 2 + header_h + max(1, len(lessons)) * row_h
-
-    img = Image.new('RGB', (width, total_h), color='#0e1621')
-    draw = ImageDraw.Draw(img)
-
-    x0, y0 = padding, padding
-    x1, y1 = width - padding, total_h - padding
-    draw.rectangle([x0, y0, x1, y1], fill='#17212b', outline='#242f3d', width=2)
-
-    cols = [x0, x0 + 130, x0 + 410, x0 + 590, x1]
-    draw.rectangle([x0, y0, x1, y0 + header_h], fill='#1c2736', outline='#242f3d', width=1)
-
-    col2_title = "Группа" if role == "teacher" else "Преподаватель"
-    headers = ["Пара", "Предмет", col2_title, "Аудитория"]
-    for i, h in enumerate(headers):
-        draw.text((cols[i] + 12, y0 + 14), h, fill='#7f91a4', font=font_header)
-        if i > 0:
-            draw.line([(cols[i], y0), (cols[i], y1)], fill='#242f3d', width=1)
-
-    cy = y0 + header_h
-    for idx, l in enumerate(lessons):
-        draw.line([(x0, cy), (x1, cy)], fill='#242f3d', width=1)
-        slot, s_str, e_str, _, _ = get_slot_info(l.get('time', ''))
-        slot_str = str(slot or idx + 1)
-        t_range = f"{s_str} — {e_str}" if e_str else l.get('time', '')
-
-        draw.text((cols[0] + 12, cy + 17), slot_str, fill='#ffffff', font=font_bold)
-        draw.text((cols[0] + 12, cy + 39), t_range, fill='#40a7e3', font=font_time)
-
-        subj = l.get('subject', '')
-        typ = normalize_type(l.get('type', ''))
-        if len(subj) > 34:
-            subj = subj[:32] + "..."
-        draw.text((cols[1] + 12, cy + 17), subj, fill='#ffffff', font=font_bold)
-        if typ:
-            type_color = '#4ade80' if 'практ' in typ.lower() else '#60a5fa'
-            draw.text((cols[1] + 12, cy + 39), f"({typ})", fill=type_color, font=font_sub)
-
-        info_col2 = l.get('group', '—') if role == "teacher" else l.get('teacher', '—')
-        if len(info_col2) > 22:
-            info_col2 = info_col2[:20] + "..."
-        draw.text((cols[2] + 12, cy + 27), info_col2, fill='#cbd5e1', font=font_cell)
-
-        bld = l.get('building', '')
-        room = l.get('room', '')
-        place = f"{bld}, {room}" if room else bld
-        draw.text((cols[3] + 12, cy + 27), place[:18], fill='#94a3b8', font=font_cell)
-        cy += row_h
-
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    buf.seek(0)
-    return buf
-
-# --- ТЕКСТОВОЕ ОФОРМЛЕНИЕ ---
 def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str = "", role: str = "student", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
-    header_title = f"📅 <b>{day_name}</b>"
-    if date_str:
-        header_title += f" ({date_str})"
-    header_title += f" — <i>{wn_label}</i>"
-
-    lines = [header_title]
-    if role == "teacher":
-        lines.append(f"👨‍🏫 Преподаватель: <code>{target_name}</code>")
-    else:
-        lines.append(f"👥 Группа: <code>{target_name}</code>")
-    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    header_title = f"📅 <b>{day_name}</b>" + (f" ({date_str})" if date_str else "") + f" — <i>{wn_label}</i>"
+    who_label = f"👨‍🏫 Преподаватель: <code>{target_name}</code>" if role == "teacher" else f"👥 Группа: <code>{target_name}</code>"
+    lines = [header_title, who_label, "━━━━━━━━━━━━━━━━━━━━"]
 
     if not lessons:
         lines.append("\n🎉 <b>В этот день пар нет! Можно отдыхать.</b>")
         return "\n".join(lines)
 
-    enriched = []
-    for l in lessons:
-        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
-        enriched.append({**l, "slot": slot, "s_str": s_str, "e_str": e_str, "st": st, "et": et})
-
-    enriched.sort(key=lambda x: x["st"] if x["st"] else datetime.time(0, 0))
-
-    for i, l in enumerate(enriched):
-        if i > 0:
-            prev = enriched[i-1]
-            break_or_window = calculate_break_or_window(prev["e_str"], l["s_str"], prev["slot"], l["slot"])
-            if break_or_window:
-                lines.append(break_or_window)
-
-        time_range = f"{l['s_str']} – {l['e_str']}" if l.get('e_str') else l.get('time')
-        typ_full = normalize_type(l.get('type', ''))
-        type_badge = f" | <b>{typ_full}</b>" if typ_full else ""
-
-        sub_emoji = "📘"
-        if "практ" in typ_full.lower():
-            sub_emoji = "📗"
-        elif "физ" in l.get('subject', '').lower():
-            sub_emoji = "🏃"
-
-        lines.append(f"\n⏰ <b>{time_range}</b>{type_badge}")
-        lines.append(f"{sub_emoji} <b>{l['subject']}</b>")
-
-        place_parts = []
-        if l.get('building'):
-            place_parts.append(f"<b>{l['building']}</b>")
-        if l.get('room'):
-            place_parts.append(f"ауд. <b>{l['room']}</b>")
-        if place_parts:
-            lines.append(f"📍 {', '.join(place_parts)}")
-
+    for i, l in enumerate(lessons):
+        start_str = l.get('time', '')[:5]
+        slot, s_str, e_str, _, _ = get_slot_info(start_str)
+        t_range = f"{s_str} – {e_str}" if e_str else start_str
+        typ = normalize_type(l.get('type', ''))
+        lines.append(f"\n⏰ <b>{t_range}</b> | <b>{typ}</b>")
+        lines.append(f"📘 <b>{l.get('subject')}</b>")
+        if l.get('building') or l.get('room'):
+            lines.append(f"📍 {l.get('building', '')}, ауд. <b>{l.get('room', '')}</b>")
         if role == "teacher":
             lines.append(f"👥 Группа: <code>{l.get('group', '—')}</code>")
         else:
             if l.get('teacher'):
-                lines.append(f"👤 <i>{l['teacher']}</i>")
-        lines.append("")
+                lines.append(f"👤 <i>{l.get('teacher')}</i>")
 
     return "\n".join(lines).strip()
 
-def get_now_status(lessons: list, check_dt: datetime.datetime, target_name: str = "", role: str = "student") -> str:
-    if not lessons:
-        return "🎉 <b>Сегодня занятий нет!</b> Можно отдыхать."
-
-    enriched = []
-    for l in lessons:
-        slot, s_str, e_str, st, et = get_slot_info(l.get('time', ''))
-        if st and et:
-            enriched.append({**l, "st": st, "et": et, "s_str": s_str, "e_str": e_str, "slot": slot})
-
-    if not enriched:
-        return "🎉 <b>Сегодня пар нет!</b>"
-
-    enriched.sort(key=lambda x: x["st"])
-    curr_t = check_dt.time()
-    first_st = enriched[0]["st"]
-    last_et = enriched[-1]["et"]
-
-    if curr_t < first_st:
-        diff_m = (first_st.hour * 60 + first_st.minute) - (curr_t.hour * 60 + curr_t.minute)
-        f = enriched[0]
-        extra = f"\n👥 Группа: <code>{f.get('group', '')}</code>" if role == "teacher" else ""
-        return (f"⏰ <b>Пары ещё не начались</b>\n\n"
-                f"⏳ До первой пары осталось: <b>{diff_m} мин</b>\n"
-                f"В <b>{f['s_str']}</b> — <b>{f['subject']}</b>\n"
-                f"📍 {f.get('building', '')} {f.get('room', '')}{extra}")
-
-    if curr_t > last_et:
-        return "🎉 <b>Все пары на сегодня завершились!</b> Можно отдыхать."
-
-    for i, l in enumerate(enriched):
-        if l["st"] <= curr_t <= l["et"]:
-            diff_m = (l["et"].hour * 60 + l["et"].minute) - (curr_t.hour * 60 + curr_t.minute)
-            nxt = enriched[i+1] if i + 1 < len(enriched) else None
-            nxt_str = f"\n➡️ Следующая в <b>{nxt['s_str']}</b>: {nxt['subject']} ({nxt['room']})" if nxt else "\n🏁 Это последняя пара на сегодня!"
-            typ_f = normalize_type(l.get('type', ''))
-            extra = f"\n👥 Группа: <code>{l.get('group', '')}</code>" if role == "teacher" else f"\n👤 <i>{l.get('teacher', '')}</i>"
-            return (f"⚡ <b>Сейчас идёт занятие:</b>\n\n"
-                    f"⏰ <b>{l['s_str']} – {l['e_str']}</b>\n"
-                    f"📘 <b>{l['subject']}</b> ({typ_f})\n"
-                    f"📍 {l.get('building', '')} {l.get('room', '')}{extra}\n\n"
-                    f"⏳ До конца пары: <b>{diff_m} мин</b>{nxt_str}")
-
-        if i + 1 < len(enriched):
-            nxt = enriched[i+1]
-            if l["et"] < curr_t < nxt["st"]:
-                diff_m = (nxt["st"].hour * 60 + nxt["st"].minute) - (curr_t.hour * 60 + curr_t.minute)
-                is_lunch = (l["e_str"] == "11:50" and nxt["s_str"] == "12:30") or (l["e_str"] == "11:10" and nxt["s_str"] == "11:50")
-                break_title = "🥪 <b>Сейчас обеденный перерыв (40 мин)</b>" if is_lunch else f"☕ <b>Сейчас перерыв ({l['e_str']} – {nxt['s_str']})</b>"
-                return (f"{break_title}\n\n"
-                        f"⏳ До звонка на пару осталось: <b>{diff_m} мин</b>\n"
-                        f"➡️ В <b>{nxt['s_str']}</b>: <b>{nxt['subject']}</b>\n"
-                        f"📍 {nxt.get('building', '')} {nxt.get('room', '')}")
-
-    return "ℹ️ Нет информации о текущей паре."
-
-# --- КЛАВИАТУРЫ ---
-def role_choice_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎓 Я студент", callback_data="choose_role_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Я преподаватель", callback_data="choose_role_teacher")]
-    ])
-
 def main_keyboard(role: str = "student", target_name: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    if role == "teacher":
-        top_url = f"{WEB_APP_URL}?role=teacher&teacher={urllib.parse.quote(target_name)}"
-        top_button = [KeyboardButton(text="⚡ Моё расписание онлайн", web_app=WebAppInfo(url=top_url), style="success")]
-        rows = [
-            top_button,
-            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-            [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🗓 Неделя")],
-            [KeyboardButton(text="👀 Чужое расписание"), KeyboardButton(text="⚙️ Настройки")],
-            [KeyboardButton(text="🔍 Сменить преподавателя")]
-        ]
-    else:
-        top_url = f"{WEB_APP_URL}?role=student&group={urllib.parse.quote(target_name)}"
-        top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=top_url), style="success")]
-        rows = [
-            top_button,
-            [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-            [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🔍 Где преподаватель?")],
-            [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="👀 Чужое расписание")],
-            [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
-        ]
+    web_url = f"{WEB_APP_URL}?role={role}&group={urllib.parse.quote(target_name)}"
+    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
+    change_btn_text = "🔍 Сменить группу" if role == "student" else "🔍 Сменить преподавателя"
+    rows = [
+        top_button,
+        [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
+        [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🗓 Неделя")],
+        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text=change_btn_text)]
+    ]
     if is_admin:
         rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
-def schedule_inline_keyboard(date_str: str, wn_code: str, custom_prefix: str = None) -> InlineKeyboardMarkup:
-    d = datetime.date.fromisoformat(date_str)
-    prev_d = d - datetime.timedelta(days=1)
-    next_d = d + datetime.timedelta(days=1)
-    opp_wn = 'в' if wn_code == 'н' else 'н'
-    opp_label = "Верхняя 🔼" if opp_wn == 'в' else "Нижняя 🔽"
-
-    prefix = custom_prefix if custom_prefix else "nav"
-
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"{prefix}_{prev_d.isoformat()}_{wn_code}"),
-            InlineKeyboardButton(text="📅 Сегодня", callback_data=f"{prefix}_today"),
-            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"{prefix}_{next_d.isoformat()}_{wn_code}")
-        ],
-        [
-            InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"{prefix}_{date_str}_{opp_wn}"),
-            InlineKeyboardButton(text="🗓 Вся неделя", callback_data=f"{prefix}_week_{wn_code}")
-        ],
-        [
-            InlineKeyboardButton(text="🔄 Обновить", callback_data=f"{prefix}_{date_str}_{wn_code}")
-        ]
-    ])
-
-def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
-    role = user_row[7] if user_row and len(user_row) > 7 else "student"
-    grp = user_row[2] if user_row else DEFAULT_GROUP
-    teacher = user_row[8] if user_row and len(user_row) > 8 else ""
-    m_val = user_row[3] if user_row else 1
-    r_val = user_row[4] if user_row else 1
-    hw_val = user_row[5] if user_row else 1
-    view_val = user_row[6] if user_row else "text"
-
-    view_txt = "Таблица 📊" if view_val == "table" else "Текст 📝"
-    m_txt = "Вкл" if m_val else "Выкл"
-    r_txt = "Вкл" if r_val else "Выкл"
-    hw_txt = "Вкл" if hw_val else "Выкл"
-
-    target_label = f"👥 Группа: {grp}" if role == "student" else f"👨‍🏫 Преподаватель: {teacher}"
-    target_cb = "change_group" if role == "student" else "change_teacher"
-
-    kb = [
-        [InlineKeyboardButton(text="🔄 Сменить роль (Студент / Преподаватель)", callback_data="switch_role")],
-        [InlineKeyboardButton(text=target_label, callback_data=target_cb)],
-        [InlineKeyboardButton(text=f"🎨 Вид расписания: {view_txt}", callback_data="toggle_view")],
-        [InlineKeyboardButton(text=f"🔔 Утреннее расписание (07:30): {m_txt}", callback_data="toggle_morning")],
-        [InlineKeyboardButton(text=f"⏰ Напоминание (1-я пара и после обеда): {r_txt}", callback_data="toggle_remind")],
-        [InlineKeyboardButton(text=f"📚 Напоминание о парах на завтра (17:00): {hw_txt}", callback_data="toggle_hw")]
-    ]
-    if is_admin:
-        kb.append([InlineKeyboardButton(text="🚀 Тест рассылки (мне)", callback_data="admin_test_push")])
-        kb.append([InlineKeyboardButton(text="📊 Статистика бота", callback_data="admin_stats")])
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
-# --- ОТПРАВКА РАСПИСАНИЯ ---
-async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, is_callback: bool = False, custom_role: str = None, custom_target: str = None, custom_prefix: str = None):
-    user_row = get_user(target.from_user.id)
-    role = custom_role if custom_role else (user_row[7] if user_row and len(user_row) > 7 else "student")
-    target_name = custom_target if custom_target else (user_row[8] if role == "teacher" else (user_row[2] if user_row else DEFAULT_GROUP))
-
-    day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    view_type = user_row[6] if user_row else 'text'
-    reply_kb = schedule_inline_keyboard(date_obj.isoformat(), wn_code, custom_prefix=custom_prefix)
-
-    sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-    caption_header = f"📅 <b>Расписание на {date_obj.strftime('%d.%m.%Y')}, {day_name}</b>\n{sub_title}"
-
-    if date_obj.weekday() == 6:
-        text = f"📅 <b>Воскресенье</b> ({date_obj.strftime('%d.%m.%Y')})\n{sub_title}\n━━━━━━━━━━━━━━━━━━━━\n\n🎉 <b>Выходной день! Пар нет.</b>"
-        if is_callback:
-            if target.message.photo:
-                await target.message.delete()
-                await target.message.answer(text, reply_markup=reply_kb)
-            else:
-                await target.message.edit_text(text, reply_markup=reply_kb)
-        else:
-            await target.answer(text, reply_markup=reply_kb)
-        return
-
-    png_buf = None
-    if view_type == 'table' and HAS_PILLOW:
-        png_buf = render_table_png(lessons, day_name, target_name, role=role)
-
-    if png_buf:
-        file_input = BufferedInputFile(png_buf.getvalue(), filename="schedule.png")
-        if is_callback:
-            if target.message.photo:
-                await target.message.edit_media(InputMediaPhoto(media=file_input, caption=caption_header), reply_markup=reply_kb)
-            else:
-                await target.message.delete()
-                await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
-        else:
-            await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
-    else:
-        text = format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=date_obj.strftime('%d.%m.%Y'))
-        if is_callback:
-            if target.message.photo:
-                await target.message.delete()
-                await target.message.answer(text, reply_markup=reply_kb)
-            else:
-                await target.message.edit_text(text, reply_markup=reply_kb)
-        else:
-            await target.answer(text, reply_markup=reply_kb)
-
-# --- FSM СОСТОЯНИЯ ---
-class RoleForm(StatesGroup):
-    waiting_for_group = State()
-    waiting_for_teacher = State()
-    waiting_for_locator = State()
-    waiting_for_friend = State()
-
-# --- ХЕНДЛЕРЫ СТАРТА И ВЫБОРА РОЛИ ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
-    user = get_user(msg.from_user.id)
-    is_adm = (msg.from_user.id == ADMIN_ID)
-    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "guest", "/start")
-    if not user or not (user[2] or (len(user) > 8 and user[8])):
-        text = (
-            "👋 <b>Добро пожаловать в бот расписания НЧИ КФУ!</b>\n\n"
-            "Пожалуйста, выберите, кто вы:"
+    args = msg.text.split()[1] if len(msg.text.split()) > 1 else ""
+
+    if args.startswith("auth_"):
+        auth_code = args.replace("auth_", "").strip()
+        user = get_user(msg.from_user.id)
+        role = user[7] if user and len(user) > 7 else "student"
+        target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+
+        with sqlite3.connect(DB_FILE) as conn:
+            c = conn.cursor()
+            c.execute("""
+                INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, role, target_name, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'confirmed')
+            """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", role, target_name))
+            conn.commit()
+
+        log_activity(msg.from_user.id, msg.from_user.username, role, "Вход через WebApp", auth_code)
+        await msg.answer(
+            f"✅ <b>Вход подтверждён!</b>\n\n"
+            f"👤 Имя: <b>{msg.from_user.first_name}</b>\n"
+            f"👥 Расписание: <code>{target_name}</code>\n\n"
+            f"Вернитесь в приложение — синхронизация активирована."
         )
-        await msg.answer(text, reply_markup=role_choice_keyboard())
         return
 
-    role = user[7] if len(user) > 7 else "student"
+    if args == "support":
+        await msg.answer(f"💬 Служба технической поддержки: {SUPPORT_USERNAME}")
+        return
+
+    user = get_user(msg.from_user.id)
+    if not user:
+        register_user(msg.from_user.id, msg.from_user.username or "", role="student", group_name=DEFAULT_GROUP)
+        user = get_user(msg.from_user.id)
+
+    role = user[7]
     target_name = user[8] if role == "teacher" else user[2]
     _, wn_name = get_week_info()
-    label = f"👨‍🏫 Преподаватель: <code>{target_name}</code>" if role == "teacher" else f"👥 Группа: <code>{target_name}</code>"
-    text = (
-        f"👋 С возвращением!\n{label}\n"
-        f"⚡ Сейчас идет: <b>{wn_name}</b>\n\n"
-        f"Используй кнопки внизу экрана:"
-    )
-    if is_adm:
-        text += "\n\n👑 <i>Статус администратора активен.</i>"
-    await msg.answer(text, reply_markup=main_keyboard(role, target_name, is_admin=is_adm))
-
-@dp.callback_query(F.data == "choose_role_student")
-async def cb_role_student(call: CallbackQuery, state: FSMContext):
-    user = get_user(call.from_user.id)
-    if user and user[2]:
-        register_user(call.from_user.id, call.from_user.username or "", role="student")
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (call.from_user.id == ADMIN_ID)
-        await call.message.edit_text(
-            f"🎓 <b>Режим студента активирован!</b>\n"
-            f"👥 Ваша группа: <b>{user[2]}</b>\n"
-            f"⚡ Текущая неделя: <b>{wn_name}</b>"
-        )
-        await call.message.answer("Главное меню обновлено:", reply_markup=main_keyboard("student", user[2], is_admin=is_adm))
-        await call.answer()
-        return
-
-    await state.set_state(RoleForm.waiting_for_group)
-    text = (
-        "🎓 <b>Режим студента</b>\n\n"
-        "✍️ Напиши номер своей группы (например: <code>7241452</code> или <code>18.2-545</code>):"
-    )
-    await call.message.answer(text)
-    await call.answer()
-
-@dp.callback_query(F.data == "choose_role_teacher")
-async def cb_role_teacher(call: CallbackQuery, state: FSMContext):
-    user = get_user(call.from_user.id)
-    if user and len(user) > 8 and user[8]:
-        register_user(call.from_user.id, call.from_user.username or "", role="teacher")
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (call.from_user.id == ADMIN_ID)
-        await call.message.edit_text(
-            f"👨‍🏫 <b>Режим преподавателя активирован!</b>\n"
-            f"👤 Преподаватель: <b>{user[8]}</b>\n"
-            f"⚡ Текущая неделя: <b>{wn_name}</b>"
-        )
-        await call.message.answer("Главное меню обновлено:", reply_markup=main_keyboard("teacher", user[8], is_admin=is_adm))
-        await call.answer()
-        return
-
-    await state.set_state(RoleForm.waiting_for_teacher)
-    text = (
-        "👨‍🏫 <b>Режим преподавателя</b>\n\n"
-        "✍️ Напишите вашу фамилию (например: <code>Мельников</code>, <code>Волкова</code> или <code>Хузин</code>):"
-    )
-    await call.message.answer(text)
-    await call.answer()
-
-@dp.callback_query(F.data == "change_group")
-async def cb_change_group_explicit(call: CallbackQuery, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_group)
-    await call.message.answer("✍️ Напиши номер новой группы (например: <code>7241452</code> или <code>18.2-545</code>):")
-    await call.answer()
-
-@dp.callback_query(F.data == "change_teacher")
-async def cb_change_teacher_explicit(call: CallbackQuery, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_teacher)
-    await call.message.answer("✍️ Напишите фамилию преподавателя:")
-    await call.answer()
-
-@dp.callback_query(F.data == "switch_role")
-async def cb_switch_role(call: CallbackQuery, state: FSMContext):
-    await state.clear()
-    await call.message.answer("Выберите роль:", reply_markup=role_choice_keyboard())
-    await call.answer()
-
-# --- СТРОГАЯ ВАЛИДАЦИЯ ГРУППЫ ---
-@dp.message(RoleForm.waiting_for_group)
-async def process_student_group(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
-    matched = find_group_strict(raw_query)
-
-    if not matched:
-        await msg.answer(
-            f"❌ Группа «{raw_query}» не найдена в расписании!\n\n"
-            "Пожалуйста, введи реальный номер группы колледжа или высшей школы.\n"
-            "<i>Примеры:</i> <code>7241452</code>, <code>18.2-545</code>, <code>18.03-551</code>, <code>7231405</code>."
-        )
-        return
-
-    register_user(msg.from_user.id, msg.from_user.username or "", role="student", group_name=matched)
-    await state.clear()
-    _, wn_name = get_week_info()
     is_adm = (msg.from_user.id == ADMIN_ID)
-    log_activity(msg.from_user.id, msg.from_user.username, "student", "Смена группы", matched)
-    await msg.answer(
-        f"✅ Отлично! Установлена группа: <b>{matched}</b>\n"
-        f"🔔 Утреннее расписание в 07:30: <b>Включено</b>\n"
-        f"⚡ Текущая неделя: <b>{wn_name}</b>",
-        reply_markup=main_keyboard("student", matched, is_admin=is_adm)
-    )
-
-# --- ВЫБОР ПРЕПОДАВАТЕЛЯ ---
-@dp.message(RoleForm.waiting_for_teacher)
-async def process_teacher_name(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
-    matches = find_teachers(raw_query)
-
-    if not matches:
-        await msg.answer(
-            f"❌ Преподаватель с фамилией «{raw_query}» не найден в базе расписания.\n\n"
-            "Попробуйте ввести только фамилию на русском языке (например: <code>Мельников</code>, <code>Волкова</code>, <code>Хузин</code>):"
-        )
-        return
-
-    if len(matches) == 1:
-        chosen = matches[0]
-        register_user(msg.from_user.id, msg.from_user.username or "", role="teacher", teacher_name=chosen)
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (msg.from_user.id == ADMIN_ID)
-        log_activity(msg.from_user.id, msg.from_user.username, "teacher", "Смена преподавателя", chosen)
-        await msg.answer(
-            f"✅ Здравствуйте, <b>{chosen}</b>!\n"
-            f"Расписание ваших занятий успешно подключено.\n"
-            f"⚡ Текущая неделя: <b>{wn_name}</b>",
-            reply_markup=main_keyboard("teacher", chosen, is_admin=is_adm)
-        )
-        return
-
-    kb_rows = []
-    for idx, t_name in enumerate(matches[:8]):
-        try:
-            real_idx = TEACHERS_LIST.index(t_name)
-            kb_rows.append([InlineKeyboardButton(text=f"👤 {t_name}", callback_data=f"tchr_{real_idx}")])
-        except Exception:
-            pass
+    log_activity(msg.from_user.id, msg.from_user.username, role, "/start")
 
     await msg.answer(
-        f"🔍 По запросу «{raw_query}» найдено несколько преподавателей.\nВыберите себя из списка:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows)
+        f"👋 <b>Добро пожаловать в сервис расписания НЧИ КФУ!</b>\n\n"
+        f"👥 Текущий профиль: <b>{target_name}</b>\n"
+        f"⚡ Неделя: <b>{wn_name}</b>",
+        reply_markup=main_keyboard(role, target_name, is_admin=is_adm)
     )
 
-@dp.callback_query(F.data.startswith("tchr_"))
-async def cb_pick_teacher(call: CallbackQuery, state: FSMContext):
-    t_idx = int(call.data.replace("tchr_", ""))
-    if 0 <= t_idx < len(TEACHERS_LIST):
-        chosen = TEACHERS_LIST[t_idx]
-        register_user(call.from_user.id, call.from_user.username or "", role="teacher", teacher_name=chosen)
-        await state.clear()
-        _, wn_name = get_week_info()
-        is_adm = (call.from_user.id == ADMIN_ID)
-        log_activity(call.from_user.id, call.from_user.username, "teacher", "Выбор преподавателя", chosen)
-        await call.message.edit_text(f"✅ Выбран преподаватель: <b>{chosen}</b>")
-        await call.message.answer(
-            f"Главное меню открыто. Текущая неделя: <b>{wn_name}</b>",
-            reply_markup=main_keyboard("teacher", chosen, is_admin=is_adm)
-        )
-    await call.answer()
-
-# --- МОДУЛЬ: ГДЕ СЕЙЧАС ПРЕПОДАВАТЕЛЬ ---
-@dp.message(F.text.contains("Где преподаватель"))
-@dp.message(Command("locate"))
-@dp.message(Command("find"))
-async def cmd_start_locate(msg: Message, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_locator)
-    log_activity(msg.from_user.id, msg.from_user.username, "student", "Поиск преподавателя")
-    await msg.answer("✍️ Напишите фамилию преподавателя, чтобы узнать, в какой он аудитории прямо сейчас (например: <code>Волкова</code>, <code>Мельников</code>, <code>Хузин</code>):")
-
-@dp.message(RoleForm.waiting_for_locator)
-async def process_locator_query(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
-    matches = find_teachers(raw_query)
-
-    if not matches:
-        await msg.answer(f"❌ Преподаватель с фамилией «{raw_query}» не найден в расписании. Проверьте правильность написания:")
-        return
-
-    now_msk = datetime.datetime.now(MSK_TZ)
-    wn_code, _ = get_week_info(now_msk.date())
-
-    if len(matches) == 1:
-        chosen = matches[0]
-        await state.clear()
-        log_activity(msg.from_user.id, msg.from_user.username, "student", "Локация найдена", chosen)
-        res_text = locate_teacher(chosen, now_msk, wn_code)
-        t_idx = TEACHERS_LIST.index(chosen)
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📅 Всё расписание на сегодня", callback_data=f"v_t_{t_idx}_{now_msk.date().isoformat()}_{wn_code}")],
-            [InlineKeyboardButton(text="🔍 Найти другого", callback_data="btn_locate_again")]
-        ])
-        await msg.answer(res_text, reply_markup=kb)
-        return
-
-    # Несколько преподавателей
-    kb_rows = []
-    for t_name in matches[:8]:
-        real_idx = TEACHERS_LIST.index(t_name)
-        kb_rows.append([InlineKeyboardButton(text=f"📍 Где {t_name}?", callback_data=f"loc_{real_idx}")])
-    await msg.answer(f"🔍 Найдено несколько преподавателей по запросу «{raw_query}». Выберите нужного:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
-
-@dp.callback_query(F.data.startswith("loc_"))
-async def cb_loc_chosen(call: CallbackQuery, state: FSMContext):
-    t_idx = int(call.data.replace("loc_", ""))
-    if 0 <= t_idx < len(TEACHERS_LIST):
-        chosen = TEACHERS_LIST[t_idx]
-        await state.clear()
-        now_msk = datetime.datetime.now(MSK_TZ)
-        wn_code, _ = get_week_info(now_msk.date())
-        log_activity(call.from_user.id, call.from_user.username, "student", "Локация выбрана", chosen)
-        res_text = locate_teacher(chosen, now_msk, wn_code)
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📅 Всё расписание на сегодня", callback_data=f"v_t_{t_idx}_{now_msk.date().isoformat()}_{wn_code}")],
-            [InlineKeyboardButton(text="🔍 Найти другого", callback_data="btn_locate_again")]
-        ])
-        await call.message.edit_text(res_text, reply_markup=kb)
-    await call.answer()
-
-@dp.callback_query(F.data == "btn_locate_again")
-async def cb_locate_again(call: CallbackQuery, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_locator)
-    await call.message.answer("✍️ Напишите фамилию преподавателя:")
-    await call.answer()
-
-# --- МОДУЛЬ: ЧУЖОЕ РАСПИСАНИЕ / РАСПИСАНИЕ ДРУГА ---
-@dp.message(F.text.contains("Чужое расписание"))
-@dp.message(Command("friend"))
-@dp.message(Command("view"))
-async def cmd_start_friend(msg: Message, state: FSMContext):
-    await state.set_state(RoleForm.waiting_for_friend)
-    log_activity(msg.from_user.id, msg.from_user.username, "user", "Просмотр чужого расписания")
-    await msg.answer(
-        "👀 <b>Просмотр расписания друга или преподавателя</b>\n\n"
-        "✍️ Напиши номер группы (например: <code>18.2-545</code>, <code>7241453</code>) или фамилию преподавателя (например: <code>Мельников</code>):\n\n"
-        "<i>Твой профиль и настройки при этом не изменятся!</i>"
-    )
-
-@dp.message(RoleForm.waiting_for_friend)
-async def process_friend_query(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
-    today = datetime.datetime.now(MSK_TZ).date()
-    wn_code, _ = get_week_info(today)
-
-    # 1. Проверяем группу
-    grp_match = find_group_strict(raw_query)
-    if grp_match:
-        await state.clear()
-        log_activity(msg.from_user.id, msg.from_user.username, "user", "Чужая группа", grp_match)
-        await send_or_edit_schedule(
-            msg, today, wn_code, is_callback=False,
-            custom_role="student", custom_target=grp_match,
-            custom_prefix=f"v_g_{grp_match}"
-        )
-        return
-
-    # 2. Проверяем преподавателя
-    teachers_match = find_teachers(raw_query)
-    if len(teachers_match) == 1:
-        chosen = teachers_match[0]
-        await state.clear()
-        t_idx = TEACHERS_LIST.index(chosen)
-        log_activity(msg.from_user.id, msg.from_user.username, "user", "Чужой преподаватель", chosen)
-        await send_or_edit_schedule(
-            msg, today, wn_code, is_callback=False,
-            custom_role="teacher", custom_target=chosen,
-            custom_prefix=f"v_t_{t_idx}"
-        )
-        return
-    elif len(teachers_match) > 1:
-        kb_rows = []
-        for t_name in teachers_match[:8]:
-            t_idx = TEACHERS_LIST.index(t_name)
-            kb_rows.append([InlineKeyboardButton(text=f"👨‍🏫 {t_name}", callback_data=f"v_t_{t_idx}_{today.isoformat()}_{wn_code}")])
-        await msg.answer(f"🔍 Найдено несколько преподавателей по запросу «{raw_query}»:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
-        return
-
-    await msg.answer("❌ Ничего не найдено! Проверь номер группы (например: <code>7241452</code>) или фамилию преподавателя (например: <code>Волкова</code>):")
-
-# Навигация по чужому расписанию
-@dp.callback_query(F.data.startswith("v_"))
-async def cb_nav_viewer(call: CallbackQuery):
-    parts = call.data.split("_")
-    # v_g_{group}_{date}_{wn} или v_t_{idx}_{date}_{wn}
-    target_type = parts[1] # 'g' или 't'
-    target_val = parts[2]
-    action_or_date = parts[3]
-    wn_code = parts[4] if len(parts) > 4 else get_week_info()[0]
-
-    if target_type == 'g':
-        role = "student"
-        target_name = target_val
-        prefix = f"v_g_{target_val}"
-    else:
-        role = "teacher"
-        t_idx = int(target_val)
-        target_name = TEACHERS_LIST[t_idx]
-        prefix = f"v_t_{t_idx}"
-
-    if action_or_date == "today":
-        target_d = datetime.datetime.now(MSK_TZ).date()
-        wn_code, _ = get_week_info(target_d)
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True, custom_role=role, custom_target=target_name, custom_prefix=prefix)
-    elif action_or_date == "week":
-        wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
-        sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-        sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-        msg_parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n{sub_title}\n"]
-        for day in DAYS_ORDER:
-            lessons = sched.get(wn_code, {}).get(day, [])
-            if lessons:
-                msg_parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
-        reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code, custom_prefix=prefix)
-        if call.message.photo:
-            await call.message.delete()
-            await call.message.answer("\n\n".join(msg_parts), reply_markup=reply_kb)
-        else:
-            await call.message.edit_text("\n\n".join(msg_parts), reply_markup=reply_kb)
-    else:
-        target_d = datetime.date.fromisoformat(action_or_date)
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True, custom_role=role, custom_target=target_name, custom_prefix=prefix)
-    await call.answer()
-
-# --- КНОПКИ СМЕНЫ ПРОФИЛЯ ---
-@dp.message(F.text.contains("Сменить группу"))
-@dp.message(F.text.contains("Сменить преподавателя"))
-@dp.message(Command("setgroup"))
-async def cmd_change_profile(msg: Message, state: FSMContext):
-    user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    if role == "teacher":
-        await state.set_state(RoleForm.waiting_for_teacher)
-        await msg.answer("✍️ Напишите фамилию преподавателя:")
-    else:
-        await state.set_state(RoleForm.waiting_for_group)
-        await msg.answer("✍️ Напиши номер группы (например: <code>7241452</code> или <code>18.2-545</code>):")
-
-# --- ОСНОВНЫЕ КОМАНДЫ РАСПИСАНИЯ ---
 @dp.message(F.text == "📅 Сегодня")
 @dp.message(Command("today"))
 async def cmd_today(msg: Message):
-    today = datetime.datetime.now(MSK_TZ).date()
-    wn_code, _ = get_week_info(today)
     user = get_user(msg.from_user.id)
-    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "student", "📅 Сегодня")
-    await send_or_edit_schedule(msg, today, wn_code, is_callback=False)
-
-@dp.message(F.text == "📅 Завтра")
-@dp.message(Command("tomorrow"))
-async def cmd_tomorrow(msg: Message):
-    tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
-    wn_code, _ = get_week_info(tomorrow)
-    user = get_user(msg.from_user.id)
-    log_activity(msg.from_user.id, msg.from_user.username, user[7] if user else "student", "📅 Завтра")
-    await send_or_edit_schedule(msg, tomorrow, wn_code, is_callback=False)
-
-@dp.callback_query(F.data.startswith("nav_"))
-async def cb_nav_schedule(call: CallbackQuery):
-    data_parts = call.data.split("_")
-    user = get_user(call.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
-
-    if data_parts[1] == "today":
-        target_d = datetime.datetime.now(MSK_TZ).date()
-        wn_code, _ = get_week_info(target_d)
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True)
-    elif data_parts[1] == "week":
-        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info()[0]
-        wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
-        sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-        sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-        parts = [f"🗓 <b>Расписание на всю неделю ({wn_label})</b>\n{sub_title}\n"]
-        for day in DAYS_ORDER:
-            lessons = sched.get(wn_code, {}).get(day, [])
-            if lessons:
-                parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
-        reply_kb = schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code)
-        if call.message.photo:
-            await call.message.delete()
-            await call.message.answer("\n\n".join(parts), reply_markup=reply_kb)
-        else:
-            await call.message.edit_text("\n\n".join(parts), reply_markup=reply_kb)
-    else:
-        target_d = datetime.date.fromisoformat(data_parts[1])
-        wn_code = data_parts[2] if len(data_parts) > 2 else get_week_info(target_d)[0]
-        await send_or_edit_schedule(call, target_d, wn_code, is_callback=True)
-    await call.answer()
-
-@dp.message(F.text == "⏱ Сейчас")
-@dp.message(Command("now"))
-async def cmd_now(msg: Message):
-    user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
-    log_activity(msg.from_user.id, msg.from_user.username, role, "⏱ Сейчас")
-
-    now_msk = datetime.datetime.now(MSK_TZ)
-    if now_msk.weekday() == 6:
-        await msg.answer("🎉 Сегодня воскресенье! Пар нет.")
-        return
-
-    wn_code, _ = get_week_info(now_msk.date())
-    day_name = DAYS_MAP[now_msk.weekday()]
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    res = get_now_status(lessons, now_msk, target_name, role=role)
-    await msg.answer(res)
-
-@dp.message(F.text == "🗓 Неделя")
-@dp.message(Command("week"))
-async def cmd_week(msg: Message):
-    user = get_user(msg.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
-    log_activity(msg.from_user.id, msg.from_user.username, role, "🗓 Неделя")
-
-    wn_code, wn_name = get_week_info()
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    sub_title = f"👨‍🏫 <i>Преподаватель: <code>{target_name}</code></i>" if role == "teacher" else f"👥 <i>Группа: <code>{target_name}</code></i>"
-    parts = [f"🗓 <b>Расписание на текущую неделю ({wn_name})</b>\n{sub_title}\n"]
-    for day in DAYS_ORDER:
-        lessons = sched.get(wn_code, {}).get(day, [])
-        if lessons:
-            parts.append(format_day_text(day, wn_code, lessons, target_name, role=role))
-    await msg.answer("\n\n".join(parts), reply_markup=schedule_inline_keyboard(datetime.datetime.now(MSK_TZ).date().isoformat(), wn_code))
-
-# --- МЕНЮ НАСТРОЕК ---
-@dp.message(F.text.contains("Настройки"))
-@dp.message(Command("settings"))
-async def cmd_settings(msg: Message):
-    user = get_user(msg.from_user.id)
-    if not user:
-        register_user(msg.from_user.id, msg.from_user.username or "", DEFAULT_GROUP)
-        user = get_user(msg.from_user.id)
-
-    is_adm = (msg.from_user.id == ADMIN_ID)
-    log_activity(msg.from_user.id, msg.from_user.username, user[7], "⚙️ Настройки")
-    text = (
-        "<b>Настройки профиля</b>\n\n"
-        "<blockquote>"
-        "• 🔄 <b>Смена роли</b> — переключение между студентом и преподавателем\n"
-        "• 🎨 <b>Вид расписания</b> — таблица с аудиториями или структурированный текст\n"
-        "• 🔔 <b>Утреннее расписание (07:30)</b> — сводка пар на день каждое утро\n"
-        "• ⏰ <b>Напоминание за 15 минут</b> — перед первой парой и парой после обеда\n"
-        "• 📚 <b>Сводка на завтра (17:00)</b> — вечернее напоминание о расписании"
-        "</blockquote>\n\n"
-        "Нажимайте на кнопки для переключения:"
-    )
-    await msg.answer(text, reply_markup=settings_keyboard(user, is_admin=is_adm))
-
-@dp.callback_query(F.data == "toggle_view")
-async def cb_toggle_view(call: CallbackQuery):
-    user = get_user(call.from_user.id)
-    cur = user[6] if user else "text"
-    new_v = "table" if cur == "text" else "text"
-    update_user_field(call.from_user.id, "view_type", new_v)
-    user = get_user(call.from_user.id)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
-    await call.answer()
-
-@dp.callback_query(F.data == "toggle_morning")
-async def cb_toggle_morning(call: CallbackQuery):
-    user = get_user(call.from_user.id)
-    cur = user[3] if user else 1
-    new_v = 0 if cur else 1
-    update_user_field(call.from_user.id, "notify_morning", new_v)
-    user = get_user(call.from_user.id)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
-    await call.answer()
-
-@dp.callback_query(F.data == "toggle_remind")
-async def cb_toggle_remind(call: CallbackQuery):
-    user = get_user(call.from_user.id)
-    cur = user[4] if user else 1
-    new_v = 0 if cur else 1
-    update_user_field(call.from_user.id, "notify_remind", new_v)
-    user = get_user(call.from_user.id)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
-    await call.answer()
-
-@dp.callback_query(F.data == "toggle_hw")
-async def cb_toggle_hw(call: CallbackQuery):
-    user = get_user(call.from_user.id)
-    cur = user[5] if user else 1
-    new_v = 0 if cur else 1
-    update_user_field(call.from_user.id, "notify_hw", new_v)
-    user = get_user(call.from_user.id)
-    await call.message.edit_reply_markup(reply_markup=settings_keyboard(user, is_admin=(call.from_user.id == ADMIN_ID)))
-    await call.answer()
-
-@dp.callback_query(F.data == "admin_stats")
-async def cb_admin_stats(call: CallbackQuery):
-    if call.from_user.id != ADMIN_ID:
-        await call.answer("Доступ запрещен", show_alert=True)
-        return
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("SELECT count(*) FROM users")
-        total = c.fetchone()[0]
-        c.execute("SELECT count(*) FROM users WHERE notify_morning = 1")
-        active_notify = c.fetchone()[0]
-        c.execute("SELECT count(*) FROM activity_logs")
-        total_clicks = c.fetchone()[0]
-    await call.answer(f"📊 Пользователей: {total}\n🔔 Подписчиков: {active_notify}\n⚡ Кликов в боте: {total_clicks}\n📚 Групп: {len(SCHEDULE_DB)} | Преподавателей: {len(TEACHERS_LIST)}", show_alert=True)
-
-@dp.callback_query(F.data == "admin_test_push")
-async def cb_admin_test_push(call: CallbackQuery):
-    if call.from_user.id != ADMIN_ID:
-        await call.answer("Доступ запрещен", show_alert=True)
-        return
-    user = get_user(call.from_user.id)
-    role = user[7] if user and len(user) > 7 else "student"
+    role = user[7] if user else "student"
     target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
     day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
     sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
     lessons = sched.get(wn_code, {}).get(day_name, [])
-    demo_text = "☀️ <b>[ТЕСТ РАССЫЛКИ] Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=today.strftime('%d.%m.%Y'))
-    await call.message.answer(demo_text)
-    await call.answer("Тестовое уведомление отправлено!")
+    log_activity(msg.from_user.id, msg.from_user.username, role, "📅 Сегодня")
+    await msg.answer(format_day_text(day_name, wn_code, lessons, target_name, role, today.strftime('%d.%m.%Y')))
 
-@dp.message(F.text == "🌐 Веб-Админка")
-@dp.message(Command("web"))
-async def cmd_web_admin(msg: Message):
-    if msg.from_user.id != ADMIN_ID:
-        await msg.answer("⛔ Доступ только для администратора.")
-        return
-    admin_url = f"https://bot-1791299850-3323-degustatorvagin.bothost.tech/?token={ADMIN_TOKEN}"
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Открыть панель управления", url=admin_url)],
-        [InlineKeyboardButton(text="📱 Открыть в Telegram", web_app=WebAppInfo(url=admin_url))]
-    ])
-    await msg.answer(f"🛠 <b>Панель управления расписанием:</b>\n\n🔗 <code>{admin_url}</code>", reply_markup=kb)
+@dp.message(F.text == "📅 Завтра")
+@dp.message(Command("tomorrow"))
+async def cmd_tomorrow(msg: Message):
+    user = get_user(msg.from_user.id)
+    role = user[7] if user else "student"
+    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    tom = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
+    wn_code, _ = get_week_info(tom)
+    day_name = DAYS_MAP[tom.weekday()] if tom.weekday() < 6 else 'Понедельник'
+    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
+    lessons = sched.get(wn_code, {}).get(day_name, [])
+    log_activity(msg.from_user.id, msg.from_user.username, role, "📅 Завтра")
+    await msg.answer(format_day_text(day_name, wn_code, lessons, target_name, role, tom.strftime('%d.%m.%Y')))
 
-# --- ПЛАНИРОВЩИК УВЕДОМЛЕНИЙ ---
-async def background_scheduler():
-    last_morning_date = None
-    last_evening_date = None
-    sent_reminders = set()
+# --- API И РАБОТА С НЕЙРОСЕТЬЮ ---
+def cors_response(data: dict):
+    return web.json_response(data, headers={
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+    })
 
-    while True:
-        try:
-            now_msk = datetime.datetime.now(MSK_TZ)
-            today_date = now_msk.date()
-            cur_hhmm = now_msk.strftime("%H:%M")
+async def handle_options(request):
+    return web.Response(headers={
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+    })
 
-            # 1. Утренняя рассылка в 07:30
-            if cur_hhmm == "07:30" and last_morning_date != today_date:
-                last_morning_date = today_date
-                if today_date.weekday() != 6:
-                    wn_code, _ = get_week_info(today_date)
-                    day_name = DAYS_MAP[today_date.weekday()]
-                    for uid, role, grp, teacher in get_subscribers("notify_morning"):
-                        try:
-                            target_name = teacher if role == "teacher" else grp
-                            sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-                            lessons = sched.get(wn_code, {}).get(day_name, [])
-                            msg_text = "☀️ <b>Доброе утро! Расписание на сегодня:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=today_date.strftime('%d.%m.%Y'))
-                            await bot.send_message(uid, msg_text)
-                            await asyncio.sleep(0.05)
-                        except Exception:
-                            pass
+async def handle_api_auth_poll(request):
+    code = request.query.get('code', '')
+    if not code:
+        return cors_response({"status": "error"})
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("SELECT user_id, username, first_name, role, target_name, status FROM auth_sessions WHERE auth_code = ?", (code,))
+        row = c.fetchone()
+    if row and row[5] == 'confirmed':
+        return cors_response({
+            "status": "confirmed",
+            "user_id": row[0],
+            "username": row[1],
+            "first_name": row[2],
+            "role": row[3],
+            "target": row[4]
+        })
+    return cors_response({"status": "pending"})
 
-            # 2. Вечерняя сводка в 17:00
-            if cur_hhmm == "17:00" and last_evening_date != today_date:
-                last_evening_date = today_date
-                tom_date = today_date + datetime.timedelta(days=1)
-                if tom_date.weekday() != 6:
-                    wn_code, _ = get_week_info(tom_date)
-                    day_name = DAYS_MAP[tom_date.weekday()]
-                    for uid, role, grp, teacher in get_subscribers("notify_hw"):
-                        try:
-                            target_name = teacher if role == "teacher" else grp
-                            sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-                            lessons = sched.get(wn_code, {}).get(day_name, [])
-                            if lessons:
-                                msg_text = "📚 <b>Вечерняя сводка: пары на завтра:</b>\n\n" + format_day_text(day_name, wn_code, lessons, target_name, role=role, date_str=tom_date.strftime('%d.%m.%Y'))
-                                await bot.send_message(uid, msg_text)
-                                await asyncio.sleep(0.05)
-                        except Exception:
-                            pass
-
-            # 3. Напоминания за 15 минут до пары
-            if today_date.weekday() != 6:
-                wn_code, _ = get_week_info(today_date)
-                day_name = DAYS_MAP[today_date.weekday()]
-                for uid, role, grp, teacher in get_subscribers("notify_remind"):
-                    target_name = teacher if role == "teacher" else grp
-                    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-                    lessons = sched.get(wn_code, {}).get(day_name, [])
-                    if not lessons:
-                        continue
-                    targets = []
-                    if len(lessons) > 0:
-                        targets.append(lessons[0])
-                    for idx_l in range(1, len(lessons)):
-                        prev_l = lessons[idx_l - 1]
-                        cur_l = lessons[idx_l]
-                        if ("11:50" in prev_l.get('time', '') and "12:30" in cur_l.get('time', '')) or \
-                           ("11:10" in prev_l.get('time', '') and "11:50" in cur_l.get('time', '')):
-                            targets.append(cur_l)
-                    for t_l in targets:
-                        start_str = t_l.get('time', '')[:5]
-                        try:
-                            h, m = map(int, start_str.split(':'))
-                            rem_m = h * 60 + m - 15
-                            rem_str = f"{rem_m // 60:02d}:{rem_m % 60:02d}"
-                            rem_key = f"{uid}_{today_date}_{start_str}"
-                            if cur_hhmm == rem_str and rem_key not in sent_reminders:
-                                sent_reminders.add(rem_key)
-                                typ_f = normalize_type(t_l.get('type', ''))
-                                info_who = f"\n👥 Группа: <code>{t_l.get('group', '')}</code>" if role == "teacher" else f"\n👤 <i>{t_l.get('teacher', '')}</i>"
-                                alert_msg = (
-                                    f"⏰ <b>Напоминание: через 15 минут пара!</b>\n\n"
-                                    f"В <b>{start_str}</b>: <b>{t_l.get('subject')}</b> ({typ_f})\n"
-                                    f"📍 {t_l.get('building')}, ауд. <b>{t_l.get('room')}</b>{info_who}"
-                                )
-                                await bot.send_message(uid, alert_msg)
-                        except Exception:
-                            pass
-        except Exception as e:
-            logging.error(f"Ошибка в планировщике: {e}")
-        await asyncio.sleep(25)
-
-# --- ВЕБ-АДМИНКА НА BOTHOST ---
-ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Админ-панель • НЧИ КФУ</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0b1118;
-            --surface: #131c26;
-            --card: #182230;
-            --border: #223042;
-            --primary: #2563eb;
-            --primary-glow: rgba(37, 99, 235, 0.25);
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--text); padding: 14px; min-height: 100vh; }
-        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-
-        /* Шапка */
-        .header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 14px 18px; border-radius: 16px; flex-wrap: wrap; gap: 10px; }
-        .logo-title { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #fff; }
-        .status-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--success); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
-
-        /* KPI Карточки */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
-        .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-        .stat-value { font-size: 24px; font-weight: 800; color: #fff; }
-        .stat-sub { font-size: 11px; color: var(--success); font-weight: 600; }
-
-        /* Разделы */
-        .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        .section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .section-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-        .search-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: #fff; font-size: 13px; outline: none; width: 100%; max-width: 260px; }
-
-        /* Таблица активности */
-        .table-responsive { overflow-x: auto; max-height: 420px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-        th { background: var(--card); color: var(--text-muted); font-weight: 600; padding: 10px 12px; position: sticky; top: 0; border-bottom: 1px solid var(--border); font-size: 12px; }
-        td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: #cbd5e1; }
-        tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-        .badge-student { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
-        .badge-teacher { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .badge-action { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-
-        .btn-refresh { background: var(--primary); color: #fff; border: none; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-        .btn-refresh:active { transform: scale(0.97); }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-title">
-                <span>📚 НЧИ КФУ</span>
-                <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">Админ-панель</span>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <div class="status-badge"><div class="status-dot"></div> Онлайн</div>
-                <button class="btn-refresh" onclick="location.reload()">🔄 Обновить</button>
-            </div>
-        </div>
-
-        <!-- KPI Статистика -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">👥 Пользователи</div>
-                <div class="stat-value" id="val-total-users">{TOTAL_USERS}</div>
-                <div class="stat-sub">🎓 {STUDENTS_COUNT} ст. • 👨‍🏫 {TEACHERS_COUNT} пр.</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">🔔 Утренняя рассылка</div>
-                <div class="stat-value">{NOTIFY_COUNT}</div>
-                <div class="stat-sub" style="color: var(--primary);">07:30 по МСК</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">⚡ Кликов зафиксировано</div>
-                <div class="stat-value" id="val-total-clicks">{TOTAL_CLICKS}</div>
-                <div class="stat-sub">Активность в боте</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">📚 База расписания</div>
-                <div class="stat-value">{GROUPS_COUNT}</div>
-                <div class="stat-sub">групп • {TEACHERS_BASE_COUNT} препод.</div>
-            </div>
-        </div>
-
-        <!-- Живой фид активности -->
-        <div class="section-card">
-            <div class="section-header">
-                <div class="section-title">⚡ Лента активности (Кто какие кнопки нажимает)</div>
-                <input type="text" class="search-box" id="log-search" placeholder="Поиск по действиям..." oninput="filterLogs()">
-            </div>
-            <div class="table-responsive">
-                <table id="logs-table">
-                    <thead>
-                        <tr>
-                            <th>Время (МСК)</th>
-                            <th>Пользователь</th>
-                            <th>Роль</th>
-                            <th>Действие</th>
-                            <th>Детали</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {LOGS_ROWS}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Список зарегистрированных пользователей -->
-        <div class="section-card">
-            <div class="section-header">
-                <div class="section-title">👥 Зарегистрированные пользователи</div>
-                <input type="text" class="search-box" id="user-search" placeholder="Поиск пользователя..." oninput="filterUsers()">
-            </div>
-            <div class="table-responsive">
-                <table id="users-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Username</th>
-                            <th>Роль</th>
-                            <th>Группа / Преподаватель</th>
-                            <th>Пуши</th>
-                            <th>Регистрация</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {USERS_ROWS}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function filterLogs() {
-            const q = document.getElementById('log-search').value.toLowerCase();
-            document.querySelectorAll('#logs-table tbody tr').forEach(tr => {
-                tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-        function filterUsers() {
-            const q = document.getElementById('user-search').value.toLowerCase();
-            document.querySelectorAll('#users-table tbody tr').forEach(tr => {
-                tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-    </script>
-</body>
-</html>
-"""
-
-async def handle_admin_dashboard(request):
+# ЭНДПОИНТ РЕАЛЬНОГО ИИ (СЖАТИЕ ЛЕКЦИИ ПО ТВОЕМУ ПРОМТУ)
+async def handle_api_ai_compress(request):
     try:
+        data = await request.json()
+        raw_text = data.get("text", "").strip()
+        custom_task = data.get("task", "summary") # 'summary', 'cards', 'simple'
+
+        if not raw_text:
+            return cors_response({"status": "error", "message": "Пустой текст"})
+
+        # Если задан GROQ_API_KEY — делаем реальный вызов нейросети Llama 3.3 70B
+        if GROQ_API_KEY:
+            instruction = AI_SYSTEM_PROMPT
+            if custom_task == 'cards':
+                instruction += "\nСделай из этого текста шпаргалку в формате 'Вопрос — Краткий ответ'."
+            elif custom_task == 'simple':
+                instruction += "\nОбъясни смысл этого текста максимально простыми словами, на бытовых аналогиях."
+
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": instruction},
+                    {"role": "user", "content": f"Материал для обработки:\n{raw_text}"}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1200
+            }
+
+            async with ClientSession() as session:
+                async with session.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=20
+                ) as resp:
+                    if resp.status == 200:
+                        res_json = await resp.json()
+                        ai_text = res_json['choices'][0]['message']['content']
+                        return cors_response({"status": "ok", "result": ai_text})
+
+        # Резервный алгоритм, если API-ключ ещё не введён в панели Bothost
+        sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 15]
+        top_sentences = sentences[:5] if len(sentences) >= 5 else sentences
+        fallback_text = "📌 <b>Главные тезисы материала:</b>\n\n" + "\n".join([f"• {s}." for s in top_sentences])
+        fallback_text += "\n\n<i>(Подключите бесплатный GROQ_API_KEY в панели Bothost для полной генерации нейросетью)</i>"
+        return cors_response({"status": "ok", "result": fallback_text})
+
+    except Exception as e:
+        return cors_response({"status": "error", "message": str(e)})
+
+async def handle_api_save_note(request):
+    try:
+        data = await request.json()
+        uid = int(data.get("user_id", 0))
+        n_key = data.get("note_key", "")
+        n_text = data.get("note_text", "").strip()
+        l_subj = data.get("subject", "")
+        l_time = data.get("time", "")
+        l_date = data.get("date", "")
+        remind = int(data.get("remind", 1))
+
+        if not uid or not n_key:
+            return cors_response({"status": "error", "message": "Missing fields"})
+
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
-            c.execute("SELECT count(*) FROM users")
-            total_users = c.fetchone()[0] or 0
+            if n_text:
+                c.execute("""
+                    INSERT OR REPLACE INTO user_notes (user_id, note_key, lesson_date, lesson_time, subject, note_text, remind_evening, remind_sent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+                """, (uid, n_key, l_date, l_time, l_subj, n_text, remind))
+            else:
+                c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
+            conn.commit()
 
-            c.execute("SELECT count(*) FROM users WHERE role = 'student'")
-            students_count = c.fetchone()[0] or 0
-
-            c.execute("SELECT count(*) FROM users WHERE role = 'teacher'")
-            teachers_count = c.fetchone()[0] or 0
-
-            c.execute("SELECT count(*) FROM users WHERE notify_morning = 1")
-            notify_count = c.fetchone()[0] or 0
-
-            c.execute("SELECT count(*) FROM activity_logs")
-            total_clicks = c.fetchone()[0] or 0
-
-            # Последние 60 действий
-            c.execute("""
-                SELECT strftime('%H:%M:%S', created_at, '+3 hours'), 
-                       user_id, username, role, action, details 
-                FROM activity_logs ORDER BY id DESC LIMIT 60
-            """)
-            logs = c.fetchall()
-
-            # Пользователи
-            c.execute("""
-                SELECT user_id, username, role, group_name, teacher_name, 
-                       notify_morning, strftime('%d.%m.%Y %H:%M', created_at, '+3 hours')
-                FROM users ORDER BY created_at DESC LIMIT 60
-            """)
-            users = c.fetchall()
-
-        logs_rows = ""
-        for t_time, uid, uname, urole, uaction, udet in logs:
-            uname_str = f"@{uname}" if uname else f"ID: {uid}"
-            role_badge = f'<span class="badge badge-teacher">👨‍🏫 Преподаватель</span>' if urole == 'teacher' else f'<span class="badge badge-student">🎓 Студент</span>'
-            logs_rows += f"""
-            <tr>
-                <td style="color:var(--text-muted); font-size:12px;">{t_time}</td>
-                <td style="font-weight:600;">{uname_str}</td>
-                <td>{role_badge}</td>
-                <td><span class="badge badge-action">{uaction}</span></td>
-                <td><code>{udet or '—'}</code></td>
-            </tr>
-            """
-
-        users_rows = ""
-        for uid, uname, urole, grp, teach, notif, reg_d in users:
-            uname_str = f"@{uname}" if uname else f"ID: {uid}"
-            target_str = teach if urole == 'teacher' else grp
-            role_badge = f'<span class="badge badge-teacher">Преподаватель</span>' if urole == 'teacher' else f'<span class="badge badge-student">Студент</span>'
-            notif_str = "🔔 Вкл" if notif else "🔕 Выкл"
-            users_rows += f"""
-            <tr>
-                <td><code>{uid}</code></td>
-                <td style="font-weight:600;">{uname_str}</td>
-                <td>{role_badge}</td>
-                <td><b>{target_str}</b></td>
-                <td>{notif_str}</td>
-                <td style="color:var(--text-muted); font-size:12px;">{reg_d}</td>
-            </tr>
-            """
-
-        html = ADMIN_HTML_TEMPLATE \
-            .replace("{TOTAL_USERS}", str(total_users)) \
-            .replace("{STUDENTS_COUNT}", str(students_count)) \
-            .replace("{TEACHERS_COUNT}", str(teachers_count)) \
-            .replace("{NOTIFY_COUNT}", str(notify_count)) \
-            .replace("{TOTAL_CLICKS}", str(total_clicks)) \
-            .replace("{GROUPS_COUNT}", str(len(SCHEDULE_DB))) \
-            .replace("{TEACHERS_BASE_COUNT}", str(len(TEACHERS_LIST))) \
-            .replace("{LOGS_ROWS}", logs_rows or "<tr><td colspan='5' style='text-align:center;'>Нет активности</td></tr>") \
-            .replace("{USERS_ROWS}", users_rows or "<tr><td colspan='6' style='text-align:center;'>Нет пользователей</td></tr>")
-
-        return web.Response(text=html, content_type='text/html')
+        return cors_response({"status": "ok"})
     except Exception as e:
-        return web.Response(text=f"<h1>Ошибка админки: {e}</h1>", content_type='text/html')
+        return cors_response({"status": "error", "error": str(e)})
+
+async def handle_admin_dashboard(request):
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("SELECT count(*) FROM users")
+        total_u = c.fetchone()[0] or 0
+        c.execute("SELECT count(*) FROM user_notes")
+        total_notes = c.fetchone()[0] or 0
+    return web.Response(
+        text=f"<h1>Панель управления Bothost</h1><p>Пользователей: {total_u} · Заметок: {total_notes}</p>",
+        content_type='text/html'
+    )
 
 def create_web_app():
     app = web.Application()
     app.router.add_get('/', handle_admin_dashboard)
     app.router.add_get('/admin', handle_admin_dashboard)
+    app.router.add_get('/api/auth_poll', handle_api_auth_poll)
+    app.router.add_post('/api/ai_compress', handle_api_ai_compress)
+    app.router.add_post('/api/save_note', handle_api_save_note)
+    app.router.add_route('OPTIONS', '/{tail:.*}', handle_options)
     return app
 
 async def main():
     init_db()
-    asyncio.create_task(background_scheduler())
-
     app = create_web_app()
     runner = web.AppRunner(app)
     await runner.setup()
     try:
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
-        logging.info(f"Веб-сервер запущен на 0.0.0.0:{PORT}")
+        logging.info(f"Сервер Bothost запущен на 0.0.0.0:{PORT}")
     except Exception as e:
-        logging.warning(f"Порт не поднят: {e}")
+        logging.warning(f"Ошибка биндинга порта: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
