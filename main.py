@@ -42,14 +42,14 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "KEY")
 PORT = int(os.getenv("PORT", 3000))
 SUPPORT_USERNAME = "@AvaUtility_support"
 
-# Системный промпт для сжатия лекций
-AI_SYSTEM_PROMPT = """Ты — университетский ИИ-ассистент НЧИ КФУ.
-Твоя задача — профессионально и компактно сжимать учебные материалы, лекции и статьи.
-Правила работы:
-1. Выдели 3-5 ключевых тезисов без лишней 'воды'.
-2. Выдели главные термины, определения и формулы, если они есть.
-3. Оформи всё чёткими списками с эмодзи-маркерами (📌, 💡, ⚡).
-4. Пиши строго по делу, понятно, академично, на русском языке."""
+# Системный промпт для «Совёнок AI» (краткий конспект для тетради)
+AI_SYSTEM_PROMPT = """Ты — учебный ассистент «Совёнок AI» в НЧИ КФУ.
+Твоя задача — сжимать длинные лекции и статьи в компактный конспект, который студент успеет переписать в тетрадь.
+Правила:
+1. Пиши кратко, по делу, без вводных фраз («Вот ваш текст...»).
+2. Выделяй 3-4 главных тезиса и ключевые термины.
+3. Форматируй списки без использования двойных звездочек (**), используй дефисы и эмодзи (📌, 💡, ⚡).
+4. Объем результата должен быть сжатым, легко умещающимся на 2-3 страницы тетради."""
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -88,6 +88,9 @@ BELLS_TABLE = {
     "19:20": ("19:20", "20:50", 7)
 }
 
+class Form(StatesGroup):
+    waiting_for_group = State()
+
 def normalize_type(typ: str) -> str:
     t = str(typ).lower().strip()
     if 'лек' in t:
@@ -105,7 +108,7 @@ def get_slot_info(time_str: str):
         st = datetime.time(int(s_str[:2]), int(s_str[3:]))
         et = datetime.time(int(e_str[:2]), int(e_str[3:]))
         return slot, s_str, e_str, st, et
-    return None, str(time_str), "", None, None
+    return None, time_str, "", None, None
 
 def init_db():
     try:
@@ -115,9 +118,7 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
-                    role TEXT DEFAULT 'student',
                     group_name TEXT DEFAULT '7241452',
-                    teacher_name TEXT DEFAULT '',
                     notify_morning INTEGER DEFAULT 1,
                     notify_remind INTEGER DEFAULT 1,
                     notify_hw INTEGER DEFAULT 1,
@@ -167,44 +168,59 @@ def init_db():
     except Exception as e:
         logging.error(f"Ошибка БД: {e}")
 
-def log_activity(user_id: int, username: str, role: str, action: str, details: str = ""):
-    try:
-        with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("INSERT INTO activity_logs (user_id, username, role, action, details) VALUES (?, ?, ?, ?, ?)",
-                      (user_id, username or "", role, action, details))
-            conn.commit()
-    except Exception as e:
-        logging.error(f"Ошибка логирования: {e}")
-
 def get_user(user_id: int):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type, role, teacher_name FROM users WHERE user_id = ?", (user_id,))
-            return c.fetchone()
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
+            return cursor.fetchone()
     except Exception:
         return None
 
-def register_user(user_id: int, username: str, role: str = "student", group_name: str = None, teacher_name: str = None):
+def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP):
     try:
-        existing = get_user(user_id)
-        saved_grp = group_name if group_name is not None else (existing[2] if existing else DEFAULT_GROUP)
-        saved_teacher = teacher_name if teacher_name is not None else (existing[8] if existing else "")
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("""
-                INSERT OR REPLACE INTO users (user_id, username, role, group_name, teacher_name, notify_morning, notify_remind, notify_hw, view_type)
-                VALUES (?, ?, ?, ?, ?,
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO users (user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type)
+                VALUES (?, ?, ?, 
                     COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT notify_remind FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
                     COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text')
                 )
-            """, (user_id, username, role, saved_grp, saved_teacher, user_id, user_id, user_id, user_id))
+            """, (user_id, username, group_name, user_id, user_id, user_id, user_id))
             conn.commit()
     except Exception as e:
         logging.error(f"Ошибка регистрации: {e}")
+
+def update_user_field(user_id: int, field: str, value):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"UPDATE users SET {field} = ? WHERE user_id = ?", (value, user_id))
+            conn.commit()
+    except Exception as e:
+        logging.error(f"Ошибка обновления {field}: {e}")
+
+def get_subscribers(field: str = "notify_morning"):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1")
+            return cursor.fetchall()
+    except Exception:
+        return []
+
+def get_stats():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT count(*), sum(notify_morning) FROM users")
+            row = cursor.fetchone()
+            return (row[0] or 0), (row[1] or 0)
+    except Exception:
+        return 0, 0
 
 def load_schedule() -> dict:
     if os.path.exists(JSON_FILE):
@@ -217,26 +233,27 @@ def load_schedule() -> dict:
 
 SCHEDULE_DB = load_schedule()
 
+def find_group(query: str):
+    clean_q = re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', query).lower()
+    if not clean_q:
+        return None
+    for grp in SCHEDULE_DB.keys():
+        if clean_q == re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
+            return grp
+    for grp in SCHEDULE_DB.keys():
+        if clean_q in re.sub(r'[^a-zA-Z0-9а-яА-Я]', '', grp).lower():
+            return grp
+    return None
+
 def get_group_schedule(group_name: str) -> dict:
     data = SCHEDULE_DB.get(group_name)
+    if not data:
+        matched = find_group(group_name)
+        if matched:
+            data = SCHEDULE_DB.get(matched)
     if isinstance(data, dict) and "schedule" in data:
         return data["schedule"]
     return {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
-
-def get_teacher_schedule(target_teacher: str) -> dict:
-    t_sched = {"в": {d: [] for d in DAYS_ORDER}, "н": {d: [] for d in DAYS_ORDER}}
-    t_clean = target_teacher.lower()
-    for grp, g_data in SCHEDULE_DB.items():
-        g_sched = g_data.get("schedule", {})
-        for wn in ["в", "н"]:
-            for day, lessons in g_sched.get(wn, {}).items():
-                for l in lessons:
-                    if t_clean in (l.get("teacher") or "").lower():
-                        t_sched[wn][day].append({**l, "group": grp})
-    for wn in ["в", "н"]:
-        for day in t_sched[wn]:
-            t_sched[wn][day].sort(key=lambda x: x.get("time", ""))
-    return t_sched
 
 def get_week_info(target_date: datetime.date = None):
     if target_date is None:
@@ -244,14 +261,16 @@ def get_week_info(target_date: datetime.date = None):
     weeks_diff = (target_date - ANCHOR_MONDAY).days // 7
     return ('в', 'Верхняя неделя 🔼') if weeks_diff % 2 == 0 else ('н', 'Нижняя неделя 🔽')
 
-def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str = "", role: str = "student", date_str: str = "") -> str:
+def format_day_text(day_name: str, wn_code: str, lessons: list, group_name: str = "", date_str: str = "") -> str:
     wn_label = "Верхняя неделя 🔼" if wn_code == 'в' else "Нижняя неделя 🔽"
     header_title = f"📅 <b>{day_name}</b>" + (f" ({date_str})" if date_str else "") + f" — <i>{wn_label}</i>"
-    who_label = f"👨‍🏫 Преподаватель: <code>{target_name}</code>" if role == "teacher" else f"👥 Группа: <code>{target_name}</code>"
-    lines = [header_title, who_label, "━━━━━━━━━━━━━━━━━━━━"]
+    lines = [header_title]
+    if group_name:
+        lines.append(f"👥 Группа: <code>{group_name}</code>")
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
 
     if not lessons:
-        lines.append("\n🎉 <b>В этот день пар нет! Можно отдыхать.</b>")
+        lines.append("\n🎉 <b>Пар нет! Можно отдыхать.</b>")
         return "\n".join(lines)
 
     for i, l in enumerate(lessons):
@@ -263,28 +282,25 @@ def format_day_text(day_name: str, wn_code: str, lessons: list, target_name: str
         lines.append(f"📘 <b>{l.get('subject')}</b>")
         if l.get('building') or l.get('room'):
             lines.append(f"📍 {l.get('building', '')}, ауд. <b>{l.get('room', '')}</b>")
-        if role == "teacher":
-            lines.append(f"👥 Группа: <code>{l.get('group', '—')}</code>")
-        else:
-            if l.get('teacher'):
-                lines.append(f"👤 <i>{l.get('teacher')}</i>")
+        if l.get('teacher'):
+            lines.append(f"👤 <i>{l.get('teacher')}</i>")
 
     return "\n".join(lines).strip()
 
-def main_keyboard(role: str = "student", target_name: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    web_url = f"{WEB_APP_URL}?role={role}&group={urllib.parse.quote(target_name)}"
+def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
+    web_url = f"{WEB_APP_URL}?group={user_group}"
     top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
-    change_btn_text = "🔍 Сменить группу" if role == "student" else "🔍 Сменить преподавателя"
     rows = [
         top_button,
         [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
-        [KeyboardButton(text="⏱ Сейчас"), KeyboardButton(text="🗓 Неделя")],
-        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text=change_btn_text)]
+        [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")],
+        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
     ]
     if is_admin:
         rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
+# --- ХЕНДЛЕРЫ БОТА ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
@@ -293,23 +309,21 @@ async def cmd_start(msg: Message, state: FSMContext):
     if args.startswith("auth_"):
         auth_code = args.replace("auth_", "").strip()
         user = get_user(msg.from_user.id)
-        role = user[7] if user and len(user) > 7 else "student"
-        target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+        grp = user[2] if user else DEFAULT_GROUP
 
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
             c.execute("""
                 INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, role, target_name, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'confirmed')
-            """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", role, target_name))
+                VALUES (?, ?, ?, ?, 'student', ?, 'confirmed')
+            """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
             conn.commit()
 
-        log_activity(msg.from_user.id, msg.from_user.username, role, "Вход через WebApp", auth_code)
         await msg.answer(
             f"✅ <b>Вход подтверждён!</b>\n\n"
             f"👤 Имя: <b>{msg.from_user.first_name}</b>\n"
-            f"👥 Расписание: <code>{target_name}</code>\n\n"
-            f"Вернитесь в приложение — синхронизация активирована."
+            f"👥 Группа: <code>{grp}</code>\n\n"
+            f"Вернитесь в приложение — Совёнок AI и облако синхронизированы."
         )
         return
 
@@ -319,51 +333,60 @@ async def cmd_start(msg: Message, state: FSMContext):
 
     user = get_user(msg.from_user.id)
     if not user:
-        register_user(msg.from_user.id, msg.from_user.username or "", role="student", group_name=DEFAULT_GROUP)
-        user = get_user(msg.from_user.id)
+        await state.set_state(Form.waiting_for_group)
+        await msg.answer("👋 <b>Добро пожаловать в бот НЧИ КФУ!</b>\n\nНапиши номер своей группы:")
+        return
 
-    role = user[7]
-    target_name = user[8] if role == "teacher" else user[2]
     _, wn_name = get_week_info()
     is_adm = (msg.from_user.id == ADMIN_ID)
-    log_activity(msg.from_user.id, msg.from_user.username, role, "/start")
-
     await msg.answer(
-        f"👋 <b>Добро пожаловать в сервис расписания НЧИ КФУ!</b>\n\n"
-        f"👥 Текущий профиль: <b>{target_name}</b>\n"
-        f"⚡ Неделя: <b>{wn_name}</b>",
-        reply_markup=main_keyboard(role, target_name, is_admin=is_adm)
+        f"👋 С возвращением! Группа: <code>{user[2]}</code>\n⚡ Неделя: <b>{wn_name}</b>",
+        reply_markup=main_keyboard(user[2], is_admin=is_adm)
+    )
+
+@dp.message(Form.waiting_for_group)
+async def process_custom_group(msg: Message, state: FSMContext):
+    raw_query = msg.text.strip()
+    matched = find_group(raw_query)
+    final_grp = matched if matched else raw_query
+    register_user(msg.from_user.id, msg.from_user.username or "", final_grp)
+    await state.clear()
+    is_adm = (msg.from_user.id == ADMIN_ID)
+    _, wn_name = get_week_info()
+    await msg.answer(
+        f"✅ Установлена группа: <b>{final_grp}</b>\n⚡ Неделя: <b>{wn_name}</b>",
+        reply_markup=main_keyboard(final_grp, is_admin=is_adm)
     )
 
 @dp.message(F.text == "📅 Сегодня")
 @dp.message(Command("today"))
 async def cmd_today(msg: Message):
     user = get_user(msg.from_user.id)
-    role = user[7] if user else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
     wn_code, _ = get_week_info(today)
     day_name = DAYS_MAP[today.weekday()] if today.weekday() < 6 else 'Понедельник'
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    log_activity(msg.from_user.id, msg.from_user.username, role, "📅 Сегодня")
-    await msg.answer(format_day_text(day_name, wn_code, lessons, target_name, role, today.strftime('%d.%m.%Y')))
+    lessons = get_group_schedule(grp).get(wn_code, {}).get(day_name, [])
+    await msg.answer(format_day_text(day_name, wn_code, lessons, grp, today.strftime('%d.%m.%Y')))
 
 @dp.message(F.text == "📅 Завтра")
 @dp.message(Command("tomorrow"))
 async def cmd_tomorrow(msg: Message):
     user = get_user(msg.from_user.id)
-    role = user[7] if user else "student"
-    target_name = user[8] if role == "teacher" else (user[2] if user else DEFAULT_GROUP)
+    grp = user[2] if user else DEFAULT_GROUP
     tom = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
     wn_code, _ = get_week_info(tom)
     day_name = DAYS_MAP[tom.weekday()] if tom.weekday() < 6 else 'Понедельник'
-    sched = get_teacher_schedule(target_name) if role == "teacher" else get_group_schedule(target_name)
-    lessons = sched.get(wn_code, {}).get(day_name, [])
-    log_activity(msg.from_user.id, msg.from_user.username, role, "📅 Завтра")
-    await msg.answer(format_day_text(day_name, wn_code, lessons, target_name, role, tom.strftime('%d.%m.%Y')))
+    lessons = get_group_schedule(grp).get(wn_code, {}).get(day_name, [])
+    await msg.answer(format_day_text(day_name, wn_code, lessons, grp, tom.strftime('%d.%m.%Y')))
 
-# --- API И РАБОТА С НЕЙРОСЕТЬЮ (GROQ API) ---
+@dp.message(F.text.contains("Сменить группу"))
+@dp.message(Command("setgroup"))
+async def cmd_change_group(msg: Message, state: FSMContext):
+    await state.set_state(Form.waiting_for_group)
+    await msg.answer("✍️ Напиши номер новой группы:")
+
+# --- API И СОВЁНОК AI (GROQ API) ---
 def cors_response(data: dict):
     return web.json_response(data, headers={
         "Access-Control-Allow-Origin": "*",
@@ -384,20 +407,18 @@ async def handle_api_auth_poll(request):
         return cors_response({"status": "error"})
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
-        c.execute("SELECT user_id, username, first_name, role, target_name, status FROM auth_sessions WHERE auth_code = ?", (code,))
+        c.execute("SELECT user_id, username, first_name, group_name, status FROM auth_sessions WHERE auth_code = ?", (code,))
         row = c.fetchone()
-    if row and row[5] == 'confirmed':
+    if row and row[4] == 'confirmed':
         return cors_response({
             "status": "confirmed",
             "user_id": row[0],
             "username": row[1],
             "first_name": row[2],
-            "role": row[3],
-            "target": row[4]
+            "target": row[3]
         })
     return cors_response({"status": "pending"})
 
-# ЭНДПОИНТ РЕАЛЬНОГО ИИ (С ПОДРОБНЫМ ЛОГИРОВАНИЕМ В КОНСОЛЬ)
 async def handle_api_ai_compress(request):
     try:
         data = await request.json()
@@ -405,64 +426,44 @@ async def handle_api_ai_compress(request):
         custom_task = data.get("task", "summary")
 
         if not raw_text:
-            return cors_response({"status": "error", "message": "Вставьте текст для обработки"})
+            return cors_response({"status": "error", "message": "Вставьте текст лекции"})
 
-        # Динамическое считывание ключа из переменных Bothost
-        raw_env_key = os.getenv("GROQ_API_KEY", "")
-        active_key = raw_env_key.strip()
-
-        logging.info(f"Запрос к ИИ. Длина ключа: {len(active_key)}, префикс: {active_key[:4] if active_key else 'НЕТ'}")
+        active_key = os.getenv("GROQ_API_KEY", "").strip()
 
         if active_key:
             instruction = AI_SYSTEM_PROMPT
             if custom_task == 'cards':
-                instruction += "\nСделай из этого текста шпаргалку в формате 'Вопрос — Краткий ответ'."
+                instruction += "\nСделай шпаргалку в формате Вопрос — Ответ."
             elif custom_task == 'simple':
-                instruction += "\nОбъясни смысл этого текста максимально простыми словами, на бытовых аналогиях."
+                instruction += "\nОбъясни материал простыми словами."
 
             payload = {
                 "model": "openai/gpt-oss-120b",
                 "messages": [
                     {"role": "system", "content": instruction},
-                    {"role": "user", "content": f"Материал для обработки:\n{raw_text}"}
+                    {"role": "user", "content": f"Лекция для сжатия:\n{raw_text}"}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 1400
+                "max_tokens": 1200
             }
 
             async with ClientSession() as session:
                 async with session.post(
                     "https://api.groq.com/openai/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {active_key}",
-                        "Content-Type": "application/json"
-                    },
+                    headers={"Authorization": f"Bearer {active_key}", "Content-Type": "application/json"},
                     json=payload,
                     timeout=25
                 ) as resp:
-                    resp_text = await resp.text()
-                    logging.info(f"Ответ от Groq API: статус {resp.status}")
-
                     if resp.status == 200:
-                        res_json = json.loads(resp_text)
+                        res_json = await resp.json()
                         ai_text = res_json['choices'][0]['message']['content']
                         return cors_response({"status": "ok", "result": ai_text})
-                    else:
-                        logging.error(f"Ошибка вызова Groq: {resp_text}")
-                        return cors_response({
-                            "status": "error",
-                            "message": f"Ошибка нейросети Groq ({resp.status}). Проверьте правильность ключа."
-                        })
 
-        # Если ключ действительно пустой или отсутствует в Bothost
+        # Резерв без ключа
         sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 5]
-        top_sentences = sentences[:5] if len(sentences) >= 5 else sentences
-        fallback_text = "📌 <b>Главные тезисы материала:</b>\n\n" + "\n".join([f"• {s}." for s in top_sentences])
-        fallback_text += "\n\n<i>(Сервер не обнаружил переменную GROQ_API_KEY. Добавьте её в настройках Bothost и перезапустите бота)</i>"
-        return cors_response({"status": "ok", "result": fallback_text})
-
+        fallback = "📌 Главные тезисы:\n\n" + "\n".join([f"- {s}." for s in sentences[:5]])
+        return cors_response({"status": "ok", "result": fallback})
     except Exception as e:
-        logging.error(f"Сбой в handle_api_ai_compress: {e}")
         return cors_response({"status": "error", "message": str(e)})
 
 async def handle_api_save_note(request):
@@ -471,45 +472,25 @@ async def handle_api_save_note(request):
         uid = int(data.get("user_id", 0))
         n_key = data.get("note_key", "")
         n_text = data.get("note_text", "").strip()
-        l_subj = data.get("subject", "")
-        l_time = data.get("time", "")
-        l_date = data.get("date", "")
-        remind = int(data.get("remind", 1))
-
         if not uid or not n_key:
-            return cors_response({"status": "error", "message": "Missing fields"})
-
+            return cors_response({"status": "error"})
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
             if n_text:
-                c.execute("""
-                    INSERT OR REPLACE INTO user_notes (user_id, note_key, lesson_date, lesson_time, subject, note_text, remind_evening, remind_sent)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-                """, (uid, n_key, l_date, l_time, l_subj, n_text, remind))
+                c.execute("INSERT OR REPLACE INTO user_notes (user_id, note_key, note_text) VALUES (?, ?, ?)", (uid, n_key, n_text))
             else:
                 c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
             conn.commit()
-
         return cors_response({"status": "ok"})
     except Exception as e:
-        return cors_response({"status": "error", "error": str(e)})
+        return cors_response({"status": "error"})
 
 async def handle_admin_dashboard(request):
-    with sqlite3.connect(DB_FILE) as conn:
-        c = conn.cursor()
-        c.execute("SELECT count(*) FROM users")
-        total_u = c.fetchone()[0] or 0
-        c.execute("SELECT count(*) FROM user_notes")
-        total_notes = c.fetchone()[0] or 0
-    return web.Response(
-        text=f"<h1>Панель Bothost</h1><p>Пользователей: {total_u} · Заметок: {total_notes}</p>",
-        content_type='text/html'
-    )
+    return web.Response(text="<h1>Bothost Server Active</h1>", content_type='text/html')
 
 def create_web_app():
     app = web.Application()
     app.router.add_get('/', handle_admin_dashboard)
-    app.router.add_get('/admin', handle_admin_dashboard)
     app.router.add_get('/api/auth_poll', handle_api_auth_poll)
     app.router.add_post('/api/ai_compress', handle_api_ai_compress)
     app.router.add_post('/api/save_note', handle_api_save_note)
@@ -524,9 +505,8 @@ async def main():
     try:
         site = web.TCPSite(runner, '0.0.0.0', PORT)
         await site.start()
-        logging.info(f"Сервер Bothost запущен на 0.0.0.0:{PORT}")
-    except Exception as e:
-        logging.warning(f"Ошибка порта: {e}")
+    except Exception:
+        pass
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
