@@ -127,6 +127,31 @@ textarea.fld { min-height: 100px; resize: none; }
 .ai-lock-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh; }
 #toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9); color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99; opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease; box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* v1.7: палитра, полоска дней, компактный список, ИИ */
+:root{--bg:#F4F1FA;--b1:#DCCFFF;--b2:#BFE9FF}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0A0D1C;--b1:#2B1F6E;--b2:#0B4A63}}
+:root[data-theme="dark"]{--bg:#0A0D1C;--b1:#2B1F6E;--b2:#0B4A63}
+.d.sel{background:var(--acg);box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 40%,transparent)}
+.d.sel b,.d.sel span{color:var(--on)}.d.sel u{background:var(--on)}.d.now:not(.sel) b{color:var(--ac)}
+.hero,.btn:not(.gl),.av{background:var(--acg);color:var(--on)}
+.av{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:34px;font-weight:800;margin:0 auto 10px}
+.cmp{padding:0;overflow:hidden;margin-bottom:12px}
+.cmp-h{display:flex;justify-content:space-between;align-items:center;padding:12px 8px 12px 20px;font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--mu);border-bottom:1px solid var(--ln)}
+.cmp-c{color:var(--ac);display:grid;place-items:center;width:38px;height:38px}
+.cr{display:block;width:100%;text-align:left;padding:14px 20px;border-bottom:1px solid var(--ln)}.cr:last-child{border:0}
+.cr-t{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mu);font-weight:600}.cr-t .tm{margin-left:auto;font-variant-numeric:tabular-nums}
+.nb{margin-left:-20px;padding:0 12px 0 20px;height:26px;border-radius:0 13px 13px 0;background:var(--ln);color:var(--tx);font-weight:800;display:inline-grid;place-items:center}
+.nb.on{background:var(--acg);color:var(--on)}
+.cr-n{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:17px;font-weight:700;margin-top:6px}
+.cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pn{color:var(--mu);flex:none;display:grid}.pn.on{color:var(--ac)}
+.cr-r{font-size:14px;color:var(--mu);margin-top:3px}
+.tiles,.qchips{display:flex;gap:10px;overflow-x:auto;margin:0 -16px 14px;padding:2px 16px}
+.tile{flex:none;width:136px;height:104px;border-radius:26px;padding:14px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;font-weight:800;font-size:15px;color:#fff}
+.qc{flex:none;padding:9px 15px;border-radius:99px;font-weight:700;font-size:13px}
+.composer{position:sticky;bottom:96px;padding:10px 0 4px;background:linear-gradient(transparent,var(--bg) 35%)}
+.composer textarea{margin:0;flex:1;min-height:52px;max-height:130px;resize:none;padding:15px 18px}
+.cstep{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--acg);color:var(--on);flex:none}
 </style>
 </head>
 <body>
@@ -210,7 +235,12 @@ const EXCUSES = [
 ];
 
 const ACC = [
-  ['#0075FF', '#ffffff'], ['#2FD39B', '#042018'], ['#8B7BFF', '#ffffff'], ['#FF7A8A', '#ffffff'], ['#FFC247', '#1A1400']
+  ['#FF8A5B','#2A0A10','linear-gradient(135deg,#FFB35C,#FF6B8B)'],
+  ['#4DB8FF','#04162B','linear-gradient(135deg,#3DD6E8,#5B8CFF)'],
+  ['#B58CFF','#1B0A33','linear-gradient(135deg,#B58CFF,#FF7AD9)'],
+  ['#4BE3A8','#03211A','linear-gradient(135deg,#6CF0B4,#2FB8D8)'],
+  ['#FF5F7E','#ffffff','linear-gradient(135deg,#FF5F7E,#C2185B)'],
+  ['#F5C84B','#1A1400','linear-gradient(135deg,#FFE17A,#F59E0B)']
 ];
 
 const ANCHOR = new Date(2026, 7, 31);
@@ -241,12 +271,12 @@ let date = ds(NOW());
 let P = null;
 let pk = 'g';
 let taps = 0;
-let CUR = [];
+let CUR = [], LD = null;
 let PT = null;
 let pDate = ds(NOW());
 let calM = ds(NOW());
 let manualWeek = null;
-let aiMode = 'summary';
+let aiMode = 'ask';
 
 const key = t => t.k + ':' + t.n;
 const toast = (m, ic = '') => {
@@ -261,7 +291,7 @@ function look() {
   if (cfg.theme === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', cfg.theme);
   const a = ACC[cfg.ac || 0], s = document.documentElement.style;
-  s.setProperty('--ac', a[0]); s.setProperty('--on', a[1]);
+  s.setProperty('--ac', a[0]); s.setProperty('--on', a[1]); s.setProperty('--acg', a[2] || a[0]);
 }
 
 function build() {
@@ -353,6 +383,22 @@ function go(t) {
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
 // Главная: минималистичный стиль с автоматическим переходом на завтра
+
+const PENCIL = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 0 1 3 3L8 19zM14 7l3 3"/></svg>';
+const shortType = t => { t = (t || '').toLowerCase(); return t.startsWith('лек') ? 'лек.' : t.startsWith('лаб') ? 'лаб.' : t.startsWith('пр') ? 'пр.' : (t || 'пара'); };
+function compactDay(t, d, title) {
+  const now = NOW(), w = getWeek(d), gi = d.getDay(), nm = now.getHours() * 60 + now.getMinutes(), today = same(d, now);
+  const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
+  CUR = L; LD = ds(d);
+  const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][gi];
+  let h = `<div class="cmp g"><div class="cmp-h"><span>${title || wd}, ${d.getDate()} ${MO[d.getMonth()]}</span><button class="cmp-c" data-a="tab" data-v="s" aria-label="Открыть расписание">${ico('cal', 22)}</button></div>`;
+  if (!L.length) h += `<div class="empty" style="padding:28px 10px"><b>Пар нет</b>Отдыхаем</div>`;
+  L.forEach((l, i) => {
+    const [a, e] = span(l), live = today && nm >= a && nm < e, note = NOTES[nk(d, l)], no = (BELLS[l.time.slice(0, 5)] || [])[1] || i + 1;
+    h += `<button class="cr" data-a="les" data-v="${i}"><div class="cr-t"><span class="nb${live ? ' on' : ''}">${no}</span><span>${esc(shortType(l.type))}</span><span class="tm">${hm(a)} - ${hm(e)}</span></div><div class="cr-n"><span class="cn">${esc(l.subject)}</span><span class="pn${note ? ' on' : ''}">${PENCIL}</span></div><div class="cr-r">${l.room ? 'ауд.' + esc(l.room) : ''}${l.building ? (l.room ? ', ' : '') + esc(l.building) : ''}</div></button>`;
+  });
+  return h + '</div>';
+}
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -381,14 +427,14 @@ function home() {
     h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и набираемся сил</div></div>`;
   }
 
-  if (isFinished || isWeekend) {
-    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
-    h += `<h2>Расписание на завтра (${tomorrow.getDate()} ${MO[tomorrow.getMonth()]})</h2>`;
-    h += dayHtml(me.target, tomorrow, false);
-  } else {
-    h += `<h2>Расписание на сегодня</h2>`;
-    h += dayHtml(me.target, now, false);
-  }
+  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+  const nn = Object.keys(NOTES).length;
+  h += `<div class="tiles">
+    <button class="tile" data-a="tab" data-v="a" style="background:linear-gradient(135deg,#7F5BFF,#FF7AD9)">${ico('a',26)}Совёнок AI</button>
+    <button class="tile" data-a="tab" data-v="f" style="background:linear-gradient(135deg,#2F8CFF,#35D6C8)">${ico('f',26)}Где препод или друг</button>
+    <button class="tile" data-a="cal" style="background:linear-gradient(135deg,#FF8A5B,#FF5F7E)">${ico('cal',26)}Календарь</button>
+    <button class="tile" data-a="tab" data-v="s" style="background:linear-gradient(135deg,#27C48B,#2FB8D8)">${ico('s',26)}Заметок: ${nn}</button></div>`;
+  h += (isFinished || isWeekend) ? compactDay(me.target, tomorrow, 'Завтра') : compactDay(me.target, now);
 
   if (me.fav && me.fav.length) {
     h += `<h2>Избранное</h2><div class="box g" style="padding:4px 16px">`;
@@ -445,7 +491,7 @@ function sched() {
     s += `<button class="d${has ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}" data-a="day" data-v="${i}"><span>${SH[i]}</span><b>${d.getDate()}</b><u></u></button>`;
   }
   h += `<div class="strip g">${s}</div>`;
-  CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
+  CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]); LD = null;
   h += `<div id="lst" class="slide">${dayHtml(t, date, true)}</div>`;
   $('page').innerHTML = h;
   $('today').hidden = same(date, now);
@@ -476,7 +522,7 @@ function drawWho() {
 }
 
 function lesOpen(i) {
-  const l = CUR[i], k = nk(date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
+  const l = CUR[i], k = nk(LD || date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
   $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Личная заметка</div><textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
   $('sheet').classList.add('on');
 }
@@ -491,99 +537,74 @@ function calOpen() {
 }
 
 // «СОВЁНОК AI»
+let AICHAT = [{ me: 0, t: 'Привет! Я Совёнок AI 🦉 Спроси про расписание любой группы или преподавателя («что завтра у 7241452?», «где сейчас Рязанова?»). А если нужен конспект, выбери режим ниже и вставь текст лекции.' }], AILAST = '';
+const AIMODES = [['ask', 'Спросить'], ['summary', 'Тезисы'], ['cards', 'Вопрос-ответ'], ['simple', 'Просто']];
+const AIQ = ['Что сегодня?', 'Что завтра?', 'Где сейчас пара?', 'Где сейчас Рязанова?'];
+function aiBubbles() { return AICHAT.map(m => `<div class="bub ${m.me ? 'me' : 'g'}">${esc(m.t).replace(/\n/g, '<br>')}${m.cp ? `<br><button class="pill g" data-a="aicopy" style="margin-top:8px;font-size:12px;padding:6px 12px">Копировать</button>` : ''}</div>`).join(''); }
+function aiRender() { const c = $('ai_chat'); if (!c) return; c.innerHTML = aiBubbles(); if (c.lastElementChild) c.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' }); }
 function ai() {
   const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   if (!isAuth) {
-    $('page').innerHTML = `
-      <div class="top"><h1>Совёнок AI</h1></div>
-      <div class="ai-lock-overlay g">
-        <div class="ai-pulse-icon">${ico('a',24)}</div>
-        <h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим помощником</h3>
-        <div class="mu">Синхронизируй расписание и сжимай лекции в пару кликов</div>
-        <button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button>
-      </div>`;
+    $('page').innerHTML = `<div class="top"><h1>Совёнок AI</h1></div>
+      <div class="ai-lock-overlay g"><div class="ai-pulse-icon">${ico('a', 24)}</div>
+      <h3 style="font-size:20px;font-weight:800;">Войди через Telegram, и Совёнок заработает</h3>
+      <div class="mu">Отвечает по расписанию любой группы и сжимает лекции в конспект</div>
+      <button class="btn" data-a="auth" style="max-width:220px;margin-top:10px;">Войти</button></div>`;
     return;
   }
-
-  $('page').innerHTML = `
-    <div class="top">
-      <div><h1>Совёнок AI</h1><div class="mu">Твой личный ассистент КФУ</div></div>
-      <div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a',20)}</div>
-    </div>
-    <div class="box g" style="padding:16px;">
-      <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сократить лекцию для тетради</b>
-      <div class="mu" style="margin-bottom:10px;">Вставь текст — Совёнок выдаст выжимку на 2-3 страницы без лишней воды</div>
-      <div class="seg g" style="margin-bottom:10px;">
-        <button class="${aiMode==='summary'?'on':''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
-        <button class="${aiMode==='cards'?'on':''}" data-a="set_ai_mode" data-v="cards">❓ Вопрос-Ответ</button>
-        <button class="${aiMode==='simple'?'on':''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
-      </div>
-      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции..."></textarea>
-      <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">🦉 Сократить через Совёнок AI</button>
-      <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:rgba(255,255,255,0.04);border:1px dashed var(--ac);padding:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <b style="color:var(--ac);">Конспект от Совёнка:</b>
-          <button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
-        </div>
-        <div id="ai_summary_content" style="font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
-      </div>
-    </div>
-    <div class="lab2">Диалог с Совёнком</div>
-    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про расписание, аудитории или отправь текст для сжатия!</div></div>
-    <div style="display:flex;gap:8px;margin-top:6px"><input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси что-нибудь..."><button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up',22)}</button></div>
-  `;
-  $('ai_send').onclick = handleAiSend;
-  $('ai_input').onkeydown = e => { if (e.key === 'Enter') handleAiSend(); };
+  $('page').innerHTML = `<div class="top"><div><h1>Совёнок AI</h1><div class="mu">Расписание и конспекты в одном месте</div></div><div class="ai-pulse-icon" style="width:40px;height:40px">${ico('a', 20)}</div></div>
+    <div class="qchips">${AIQ.map(q => `<button class="qc g" data-a="aiq" data-v="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px">${aiBubbles()}</div>
+    <div class="composer"><div class="seg g" id="ai_modes" style="margin:0 0 8px">${AIMODES.map(([k, n]) => `<button class="${aiMode === k ? 'on' : ''}" data-a="aimode" data-v="${k}">${n}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;align-items:flex-end"><textarea class="fld g" id="ai_input" rows="1" placeholder="${aiMode === 'ask' ? 'Спроси про расписание...' : 'Вставь текст лекции...'}"></textarea><button class="ib" data-a="aisend" aria-label="Отправить" style="background:var(--acg);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up', 22)}</button></div></div>`;
+  const inp = $('ai_input');
+  inp.oninput = () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 130) + 'px'; };
+  inp.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); } };
 }
-
-async function runAiCompress() {
-  const el = $('lecture_text');
-  const txt = el ? el.value.trim() : '';
-  if (!txt) return toast('Вставьте текст лекции');
-  const btn = $('btn_compress_ai'), resBox = $('ai_summary_result'), resContent =$('ai_summary_content');
-  btn.disabled = true; btn.textContent = '🦉 Совёнок думает...'; resBox.style.display = 'none';
-  try {
-    const res = await fetch(`${API_URL}/api/ai_compress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt, task: aiMode })
-    });
-    const data = await res.json();
-    if (data.status === 'ok') {
-      resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
-      resBox.style.display = 'block';
-      toast('Готово!', '✓');
-    } else {
-      toast(data.message || 'Ошибка');
-    }
-  } catch (e) {
-    toast('Сервер недоступен');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🦉 Сократить через Совёнок AI';
+function aiAnswer(q) {
+  const s = q.toLowerCase(), nz = x => x.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), nq = nz(q), now = NOW();
+  let t = me.target, named = false;
+  const g = Object.keys(DATA).find(k => nq.includes(nz(k)));
+  if (g) { t = { k: 'g', n: g }; named = true; }
+  else {
+    const tn = Object.keys(T).find(n => { const sn = n.split(' ')[0].toLowerCase(); return sn.length > 3 && s.includes(sn.slice(0, Math.max(4, sn.length - 1))); });
+    if (tn) { t = { k: 't', n: tn }; named = true; }
   }
+  let d = new Date(now), lab = 'сегодня', dayHit = false;
+  if (/послезавтра/.test(s)) { d.setDate(d.getDate() + 2); lab = 'послезавтра'; dayHit = true; }
+  else if (/завтра/.test(s)) { d.setDate(d.getDate() + 1); lab = 'завтра'; dayHit = true; }
+  else if (/сегодня/.test(s)) dayHit = true;
+  else {
+    const wi = [/понедельник/, /вторник/, /сред/, /четверг/, /пятниц/, /суббот/].findIndex(r => r.test(s));
+    if (wi >= 0) { for (let i = 0; i < 7; i++) { const x = new Date(now); x.setDate(x.getDate() + i); if (x.getDay() === wi + 1) { d = x; break; } } lab = DN[wi].toLowerCase(); dayHit = true; }
+  }
+  if (!dayHit && !named && !/где|сейчас|пар|расписан|кабинет|аудитор|ауд|когда|что/.test(s)) return 'Не совсем понял 🦉 Попробуй: «что завтра?», «где сейчас Рязанова?» или выбери режим «Тезисы» и вставь лекцию.';
+  if (/где|сейчас|кабинет|аудитор|ауд/.test(s) && lab === 'сегодня') {
+    const st = status(t, now);
+    if (st.live) return `${t.n} сейчас на паре «${st.live.l.subject}»\n${where(st.live.l).replace(/&amp;/g, '&')}, до ${hm(st.live.e)}`;
+    if (st.next) return `${t.n} сейчас без пары. Дальше в ${hm(st.next.s)}: «${st.next.l.subject}»\n${where(st.next.l).replace(/&amp;/g, '&')}`;
+    return `${t.n}: ${st.L.length ? 'пары на сегодня закончились' : 'сегодня пар нет'}`;
+  }
+  const gi = d.getDay(), L = gi === 0 ? [] : lessonsOf(t, getWeek(d), DN[gi - 1]);
+  if (!L.length) return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}): пар нет`;
+  return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}):\n` + L.map((l, i) => `${i + 1}. ${hm(span(l)[0])}-${hm(span(l)[1])} ${l.subject}, ${l.room ? 'ауд. ' + l.room : 'без аудитории'}${l.building ? ' (' + l.building + ')' : ''}`).join('\n');
 }
-
-function copyAiResult() {
-  const t = $('ai_summary_content').innerText;
-  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Скопировано', '✓'));
-}
-
-function postAiMsg(text, isMe = false) {
-  const c = $('ai_chat'); if(!c) return;
-  const div = document.createElement('div');
-  div.className = 'bub ' + (isMe ? 'me' : 'g');
-  div.innerHTML = esc(text).replace(/\n/g, '<br>');
-  c.appendChild(div);
-  div.scrollIntoView({ behavior: 'smooth' });
-}
-
-function handleAiSend() {
-  const inp = $('ai_input'), q = inp.value.trim();
+async function aiSend(txt) {
+  const inp = $('ai_input'), q = (txt || (inp ? inp.value : '')).trim();
   if (!q) return;
-  postAiMsg(q, true);
-  inp.value = '';
-  setTimeout(() => postAiMsg('🦉 Совёнок AI на связи! Используй верхнее поле, чтобы сжать лекцию в тезисы для тетради.'), 280);
+  if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+  const lecture = aiMode !== 'ask' || q.length > 400;
+  AICHAT.push({ me: 1, t: q.length > 300 ? q.slice(0, 160) + '…' : q });
+  if (!lecture) { AICHAT.push({ me: 0, t: aiAnswer(q) }); return aiRender(); }
+  AICHAT.push({ me: 0, t: 'Совёнок думает…' }); aiRender();
+  const idx = AICHAT.length - 1;
+  try {
+    const r = await fetch(`${API_URL}/api/ai_compress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: q, task: aiMode === 'ask' ? 'summary' : aiMode }) });
+    const d = await r.json();
+    AICHAT[idx] = d.status === 'ok' ? { me: 0, t: d.result, cp: 1 } : { me: 0, t: d.message || 'Не получилось, попробуй ещё раз' };
+    if (d.status === 'ok') AILAST = d.result;
+  } catch (e) { AICHAT[idx] = { me: 0, t: 'Сервер недоступен, попробуй позже' }; }
+  aiRender();
 }
 
 // ПРОФИЛЬ СО ВСЕМИ РАЗДЕЛАМИ
@@ -599,7 +620,7 @@ function prof() {
     <div class="top"><h1>Профиль</h1></div>
     <div class="box g" style="text-align:center;padding:24px 16px">
       <div class="kfu-avatar-wrap">
-        <img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./logo.png';" alt="Герб">
+        <img src="./logo.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'av',textContent:'${esc((userName||'Н')[0].toUpperCase())}'}))">
       </div>
       <h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1>
       <div class="mu" style="margin-top:3px">${roleLabel} · ${esc(targetLabel)}</div>
@@ -617,7 +638,7 @@ function prof() {
     <div class="box g" style="padding:4px 16px">
       ${isAuth
         ? item('tg', esc(me.tgUser.first_name), (me.tgUser.username ? '@' + esc(me.tgUser.username) + ' · ' : '') + 'Облачная синхронизация включена ✓', 'x')
-        : `<button class="it" onclick="startTgAuth()">
+        : `<button class="it" data-a="auth">
             <span class="ic">${ico('tg')}</span>
             <span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI и облако</small></span>
             <span class="chev">›</span>
@@ -641,7 +662,7 @@ function prof() {
     </div>
 
     <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки на устройстве</button>
-    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.6</button>
+    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.7</button>
   `;
 }
 
@@ -657,7 +678,7 @@ function lookOpen() {
     </div>
     <div class="lab2">Цвет акцента</div>
     <div class="dots">
-      ${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[0]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}
+      ${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[2]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}
     </div>
   `;
   $('sheet').classList.add('on');
@@ -714,30 +735,38 @@ const pickRole = (r, lock) => {
 
 const closeS = () => $('sheet').classList.remove('on');
 
-// АВТОРИЗАЦИЯ ЧЕРЕЗ TELEGRAM
-let authPollTimer = null;
-function startTgAuth() {
-  const authCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  window.open(`https://t.me/${BOT}?start=auth_${authCode}`, '_blank');
-  toast('Подтвердите вход в боте', '💬');
-
-  clearInterval(authPollTimer);
-  authPollTimer = setInterval(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth_poll?code=${authCode}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.status === 'confirmed') {
-        clearInterval(authPollTimer);
-        me = me || { org: 'НЧИ КФУ', fav: [] };
-        me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
-        if (data.target && DATA[data.target]) me.target = { k: 'g', n: data.target };
-        sv('me', me);
-        toast(`Вход: ${data.first_name}`, '✓');
-        go('a');
-      }
-    } catch(e){}
-  }, 2000);
+// АВТОРИЗАЦИЯ ЧЕРЕЗ TELEGRAM: команды /login и /profile в боте, код вводится на сайте
+function startTgAuth() { authOpen(); }
+function authOpen() {
+  $('pnl').innerHTML = `<h1 style="font-size:24px">Вход через Telegram</h1><div class="mu" style="margin:6px 0 14px">Бот даст код, ты введёшь его здесь. Группа и заметки подтянутся сами.</div>
+    <div class="box g" style="padding:6px 16px">
+      <div class="it"><span class="cstep">1</span><span class="t"><b>Открой бота</b><small>@${BOT}</small></span></div>
+      <div class="it"><span class="cstep">2</span><span class="t"><b>Отправь команду /login</b><small>или /profile, это одно и то же</small></span></div>
+      <div class="it"><span class="cstep">3</span><span class="t"><b>Введи код из ответа</b><small>Он действует 15 минут</small></span></div>
+    </div>
+    <a class="btn" href="https://t.me/${BOT}" target="_blank" rel="noopener">Открыть бота</a>
+    <input class="fld" id="acode" placeholder="Код из бота" maxlength="6" autocapitalize="characters" autocomplete="off" style="text-align:center;font-size:22px;font-weight:800;letter-spacing:4px">
+    <button class="btn" data-a="acode">Войти</button><div class="mu" id="aerr" style="text-align:center;margin-top:8px;min-height:18px"></div>`;
+  $('sheet').classList.add('on');
+}
+function applyAuth(data) {
+  me = me || { org: 'НЧИ КФУ', fav: [] };
+  me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
+  if (data.target && DATA[data.target] && !me.target) me.target = { k: 'g', n: data.target };
+  sv('me', me); closeS(); toast(`Вход: ${data.first_name}`, '✓');
+  if (!me.target) return onboard();
+  go(tab);
+}
+async function authWithCode() {
+  const code = ($('acode').value || '').trim().toUpperCase(), err = $('aerr');
+  if (code.length < 4) { err.textContent = 'Введи код из бота'; return; }
+  err.textContent = 'Проверяю…';
+  try {
+    const r = await fetch(`${API_URL}/api/auth_poll?code=${encodeURIComponent(code)}`);
+    const data = await r.json();
+    if (data.status === 'confirmed') applyAuth(data);
+    else err.textContent = 'Код не найден или устарел. Отправь /login боту ещё раз.';
+  } catch (e) { err.textContent = 'Сервер недоступен, попробуй позже'; }
 }
 
 // Проверка кода из адресной строки (если перешли по ссылке из бота)
@@ -785,7 +814,7 @@ const A = {
         });
       } catch(e){}
     }
-    toast('Сохранено','✓'); closeS(); sched();
+    toast('Сохранено','✓'); closeS(); ({h:home,s:sched}[tab]||(()=>{}))();
   },
   who: v => whoOpen(v),
   fav: () => {
@@ -808,7 +837,13 @@ const A = {
 document.addEventListener('click', e => { const c = e.target.closest('[data-a]'); if (c && A[c.dataset.a]) A[c.dataset.a](c.dataset.v); });
 document.addEventListener('input', e => { if (e.target.id === 'q') items(); if (e.target.id === 'fq') flist(); });
 
-function initSheetGestures() {
+Object.assign(A, {
+  auth: () => authOpen(), acode: () => authWithCode(),
+  aimode: v => { aiMode = v; ai(); }, aisend: () => aiSend(), aiq: v => { aiMode = 'ask'; aiSend(v); },
+  aicopy: () => { if (navigator.clipboard) navigator.clipboard.writeText(AILAST).then(() => toast('Скопировано', '✓'), () => toast('Не удалось скопировать')); }
+});
+let _sg = false;
+function initSheetGestures() { if (_sg) return; _sg = true;
   ['pnl', 'apnl'].forEach(id => {
     const p = $(id); if (!p) return;
     let sY = 0, cY = 0, drag = false;
