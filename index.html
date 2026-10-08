@@ -10,30 +10,82 @@
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #E6EEF5; --gl: rgba(255,255,255,.7); --gb: rgba(255,255,255,.95); --ln: rgba(12,26,42,.1);
-  --tx: #0C1A2A; --mu: #587087; --ac: #0075FF; --on: #ffffff;
-  --lec: #3F5FD6; --pra: #12906A; --lab: #D6426A; --b1: #9FD6F0; --b2: #B8EBD8;
-  box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #E6EEF5;
+  --gl: rgba(255,255,255,.75);
+  --gb: rgba(255,255,255,.95);
+  --ln: rgba(12,26,42,.1);
+  --tx: #0C1A2A;
+  --mu: #587087;
+  --ac: #0075FF;
+  --on: #ffffff;
+  --lec: #3F5FD6;
+  --pra: #12906A;
+  --lab: #D6426A;
+  --b1: #9FD6F0;
+  --b2: #B8EBD8;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #07121F; --gl: rgba(255,255,255,.075); --gb: rgba(255,255,255,.15); --ln: rgba(255,255,255,.1);
-    --tx: #EEF4FA; --mu: #8EA2B8; --ac: #2FD39B; --on: #042018;
-    --lec: #7C9CFF; --pra: #4FD1A5; --lab: #FF8FA3; --b1: #0f3554; --b2: #084337;
+    --bg: #07121F;
+    --gl: rgba(255,255,255,.075);
+    --gb: rgba(255,255,255,.15);
+    --ln: rgba(255,255,255,.1);
+    --tx: #EEF4FA;
+    --mu: #8EA2B8;
+    --ac: #2FD39B;
+    --on: #042018;
+    --lec: #7C9CFF;
+    --pra: #4FD1A5;
+    --lab: #FF8FA3;
+    --b1: #0f3554;
+    --b2: #084337;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #07121F; --gl: rgba(255,255,255,.075); --gb: rgba(255,255,255,.15); --ln: rgba(255,255,255,.1);
-  --tx: #EEF4FA; --mu: #8EA2B8; --ac: #2FD39B; --on: #042018;
-  --lec: #7C9CFF; --pra: #4FD1A5; --lab: #FF8FA3; --b1: #0f3554; --b2: #084337;
+  --bg: #07121F;
+  --gl: rgba(255,255,255,.075);
+  --gb: rgba(255,255,255,.15);
+  --ln: rgba(255,255,255,.1);
+  --tx: #EEF4FA;
+  --mu: #8EA2B8;
+  --ac: #2FD39B;
+  --on: #042018;
+  --lec: #7C9CFF;
+  --pra: #4FD1A5;
+  --lab: #FF8FA3;
+  --b1: #0f3554;
+  --b2: #084337;
 }
-* { box-sizing: border-box; margin: 0; font-family: Onest, system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; color: var(--tx); background: radial-gradient(70% 45% at 0% 0%, var(--b1), transparent 70%), radial-gradient(60% 45% at 100% 35%, var(--b2), transparent 70%), var(--bg); background-attachment: fixed; scrollbar-width: none; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  font-family: Onest, system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  height: 100%;
+  color: var(--tx);
+  background: radial-gradient(70% 45% at 0% 0%, var(--b1), transparent 70%),
+              radial-gradient(60% 45% at 100% 35%, var(--b2), transparent 70%),
+              var(--bg);
+  background-attachment: fixed;
+  scrollbar-width: none;
+}
 ::-webkit-scrollbar { display: none; }
 #app { height: 100%; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; }
 #page { flex: 1; overflow-y: auto; padding: 0 16px 120px; scrollbar-width: none; }
-.view-enter { animation: viewSlideIn .24s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-@keyframes viewSlideIn { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.view-enter {
+  animation: viewSlideIn .24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes viewSlideIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 button { border: 0; background: none; color: inherit; cursor: pointer; font-size: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -41,6 +93,7 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
 h2 { font-size: 19px; font-weight: 800; margin: 22px 4px 10px; }
 .mu { color: var(--mu); font-size: 13px; }
 .g { background: var(--gl); border: 1px solid var(--gb); border-radius: 26px; -webkit-backdrop-filter: blur(26px) saturate(1.5); backdrop-filter: blur(26px) saturate(1.5); }
+
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px 4px 10px; }
 .pill { font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 99px; white-space: nowrap; display: inline-flex; align-items: center; cursor: pointer; }
 .pill i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ac); margin-right: 7px; }
@@ -51,6 +104,8 @@ h2 { font-size: 19px; font-weight: 800; margin: 22px 4px 10px; }
 .hero h3 { font-size: 23px; font-weight: 800; margin: 6px 0 10px; line-height: 1.25; }
 .bar { height: 6px; border-radius: 6px; background: var(--ln); margin-top: 14px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--ac); }
+.hero .bar { background: rgba(0,0,0,.15); }
+.hero .bar i { background: var(--on); }
 .it { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 13px 4px; border-bottom: 1px solid var(--ln); }
 .it:last-child { border: 0; }
 .it b { display: block; font-weight: 700; font-size: 15px; }
@@ -75,8 +130,10 @@ textarea.fld { min-height: 100px; resize: none; }
 .who { text-align: left; min-width: 0; flex: 1; }
 .who h1 { font-size: 25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 .who small { display: block; font-size: 13px; color: var(--mu); max-width: 48vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .day-nav-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 10px; }
 .day-nav-btn { font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 99px; }
+
 .strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 6px; margin-bottom: 14px; border-radius: 28px; }
 .d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; border-radius: 22px; }
 .d span { font-size: 11px; color: var(--mu); font-weight: 600; }
@@ -85,12 +142,17 @@ textarea.fld { min-height: 100px; resize: none; }
 .d.has u { background: var(--mu); }
 .d.now b { color: var(--ac); }
 .d.sel { background: var(--ac); color: var(--on); }
+.d.sel span, .d.sel b { color: var(--on); }
+.d.sel u { background: var(--on); }
 .row { display: grid; grid-template-columns: 50px 1fr; gap: 10px; margin-bottom: 12px; }
 .no { display: flex; flex-direction: column; align-items: flex-end; padding-top: 14px; font-size: 12px; color: var(--mu); }
 .no b { font-size: 15px; color: var(--tx); font-weight: 800; }
 .card { display: block; width: 100%; text-align: left; padding: 14px 16px 14px 18px; position: relative; overflow: hidden; }
 .card:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c); }
-.lec { --c: var(--lec); } .pra { --c: var(--pra); } .lab { --c: var(--lab); } .oth { --c: var(--mu); }
+.lec { --c: var(--lec); }
+.pra { --c: var(--pra); }
+.lab { --c: var(--lab); }
+.oth { --c: var(--mu); }
 .tp { font-size: 12px; font-weight: 700; color: var(--c); margin-bottom: 3px; text-transform: uppercase; }
 .card h3 { font-size: 16px; font-weight: 700; line-height: 1.3; }
 .meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--mu); }
@@ -103,29 +165,72 @@ textarea.fld { min-height: 100px; resize: none; }
 .slide { animation: sl .2s ease-out; }
 @keyframes sl { from { opacity: .2; transform: translateX(var(--dx, 16px)); } }
 #today { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); background: var(--ac); color: var(--on); font-weight: 800; padding: 12px 20px; border-radius: 99px; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 3; }
+
 .sheet { position: fixed; inset: 0; display: none; z-index: 6; }
 .sheet.on { display: block; }
 .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(3px); }
-.panel { position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; max-height: 88%; min-height: 40%; background: var(--bg); border-radius: 32px 32px 0 0; display: flex; flex-direction: column; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; scrollbar-width: none; touch-action: pan-y; }
-.panel:before { content: ""; width: 44px; height: 5px; border-radius: 5px; background: var(--ln); margin: 4px auto 14px; flex: none; }
+.panel {
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto;
+  max-height: 88%; min-height: 40%; background: var(--bg); border-radius: 32px 32px 0 0;
+  display: flex; flex-direction: column; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; scrollbar-width: none; touch-action: pan-y;
+}
+.panel:before {
+  content: ""; width: 44px; height: 5px; border-radius: 5px; background: var(--ln);
+  margin: 4px auto 14px; flex: none; cursor: grab;
+}
+
 .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
 .ch { font-size: 12px; color: var(--mu); font-style: normal; font-weight: 700; padding: 6px 0; }
 .cd { aspect-ratio: 1; border-radius: 50%; font-weight: 700; font-size: 14px; }
-.cd.has { background: var(--ln); } .cd.now { color: var(--ac); } .cd.sel { background: var(--ac); color: var(--on); }
+.cd.has { background: var(--ln); }
+.cd.now { color: var(--ac); }
+.cd.sel { background: var(--ac); color: var(--on); }
 .onb { padding-top: 10vh; }
 .onb p { color: var(--mu); margin: 6px 0 24px; font-size: 15px; }
 .big { display: block; width: 100%; text-align: left; padding: 20px; font-size: 20px; font-weight: 800; margin-bottom: 12px; }
 .big small { display: block; font-size: 13px; font-weight: 500; color: var(--mu); margin-top: 4px; }
-.kfu-avatar-wrap { width: 96px; height: 96px; border-radius: 28px; background: #ffffff; border: 2px solid var(--ac); box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; overflow: hidden; padding: 6px; }
+
+.kfu-avatar-wrap {
+  width: 96px; height: 96px; border-radius: 28px; background: #ffffff; border: 2px solid var(--ac);
+  box-shadow: 0 8px 24px rgba(0, 117, 255, 0.22); display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px; overflow: hidden; padding: 6px;
+}
 .kfu-avatar-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
 .bub { padding: 12px 16px; border-radius: 20px; margin-bottom: 10px; max-width: 90%; font-size: 14px; line-height: 1.4; }
 .bub.me { margin-left: auto; background: var(--ac); color: var(--on); font-weight: 600; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .chip { padding: 8px 13px; border-radius: 99px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.ai-pulse-icon { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #0075FF, #2FD39B); display: grid; place-items: center; color: #fff; box-shadow: 0 0 20px rgba(0, 117, 255, 0.4); animation: aiPulse 2.4s infinite ease-in-out; }
-@keyframes aiPulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(47, 211, 155, 0.35); } 100% { transform: scale(1); } }
-.ai-lock-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh; }
-#toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9); color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16); -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6); padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99; opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease; box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+/* Пульсирующая иконка Совёнка AI */
+.ai-pulse-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, #0075FF, #2FD39B);
+  display: grid; place-items: center; color: #fff;
+  box-shadow: 0 0 20px rgba(0, 117, 255, 0.4);
+  animation: aiPulse 2.4s infinite ease-in-out;
+}
+@keyframes aiPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0.5); }
+  50% { transform: scale(1.06); box-shadow: 0 0 20px 8px rgba(47, 211, 155, 0.35); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 117, 255, 0); }
+}
+
+.ai-lock-overlay {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 40px 20px; gap: 16px; min-height: 50vh;
+}
+
+#toast {
+  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.9);
+  color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+  padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 99;
+  opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -143,7 +248,46 @@ if (window.Telegram && window.Telegram.WebApp) {
   window.Telegram.WebApp.expand();
 }
 
-let DATA = {};
+// Запасные группы в коде, чтобы экран никогда не был пустым даже без интернета
+let DATA = {
+  "7241452": {
+    "spec": "Информационные системы и программирование",
+    "schedule": {
+      "в": {
+        "Понедельник": [{"time":"16:00","subject":"Численные Методы","building":"УЛК-1","room":"405","type":"Лекция","teacher":"Рязанова А.Н."}],
+        "Вторник": [{"time":"08:30","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"405","type":"Лекция","teacher":"Волкова А.А."},{"time":"10:20","subject":"Системное программирование","building":"УЛК-1","room":"363","type":"Практика","teacher":"Сайханов М.А."},{"time":"12:30","subject":"Системное программирование","building":"УЛК-1","room":"314","type":"Практика","teacher":"Сайханов М.А."}],
+        "Среда": [{"time":"08:30","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"360","type":"Практика","teacher":"Волкова А.А."},{"time":"10:20","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"360","type":"Практика","teacher":"Волкова А.А."},{"time":"12:30","subject":"Численные Методы","building":"УЛК-1","room":"350","type":"Практика","teacher":"Рязанова А.Н."}],
+        "Четверг": [{"time":"08:30","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"314","type":"Практика","teacher":"Сулейманов А.И."},{"time":"10:20","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"417","type":"Лекция","teacher":"Сулейманов А.И."},{"time":"12:30","subject":"Физическая культура","building":"УЛК-6/Спортманеж","room":"","type":"Практика","teacher":"Фатыхов И.Ф."}],
+        "Пятница": [{"time":"10:20","subject":"Иностранный язык","building":"УЛК-1","room":"109","type":"Практика","teacher":"Кошенкова А.А."},{"time":"12:30","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"421","type":"Лекция","teacher":"Сулейманов А.И."},{"time":"14:20","subject":"Системное программирование","building":"УЛК-1","room":"417","type":"Лекция","teacher":"Сайханов М.А."},{"time":"16:00","subject":"Системное программирование","building":"УЛК-1","room":"417","type":"Лекция","teacher":"Сайханов М.А."}],
+        "Суббота": []
+      },
+      "н": {
+        "Понедельник": [{"time":"14:20","subject":"Численные Методы","building":"УЛК-1","room":"405","type":"Лекция","teacher":"Рязанова А.Н."},{"time":"16:00","subject":"Численные Методы","building":"УЛК-1","room":"405","type":"Лекция","teacher":"Рязанова А.Н."},{"time":"17:40","subject":"Иностранный язык","building":"УЛК-1","room":"109","type":"Практика","teacher":"Кошенкова А.А."}],
+        "Вторник": [{"time":"08:30","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"405","type":"Лекция","teacher":"Волкова А.А."},{"time":"10:20","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"417","type":"Лекция","teacher":"Волкова А.А."},{"time":"12:30","subject":"Системное программирование","building":"УЛК-1","room":"314","type":"Практика","teacher":"Сайханов М.А."}],
+        "Среда": [{"time":"08:30","subject":"Архитектура аппаратных средств","building":"УЛК-1","room":"360","type":"Практика","teacher":"Волкова А.А."},{"time":"10:20","subject":"Иностранный язык","building":"УЛК-1","room":"109","type":"Практика","teacher":"Кошенкова А.А."},{"time":"12:30","subject":"Численные Методы","building":"УЛК-1","room":"350","type":"Практика","teacher":"Рязанова А.Н."}],
+        "Четверг": [{"time":"08:30","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"417","type":"Лекция","teacher":"Сулейманов А.И."},{"time":"14:20","subject":"Физическая культура","building":"УЛК-6/Спортманеж","room":"","type":"Практика","teacher":"Фатыхов И.Ф."}],
+        "Пятница": [{"time":"10:20","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"316","type":"Практика","teacher":"Сулейманов А.И."},{"time":"12:30","subject":"Разработка мобильных приложений","building":"УЛК-1","room":"316","type":"Практика","teacher":"Сулейманов А.И."},{"time":"14:20","subject":"Численные Методы","building":"УЛК-1","room":"363","type":"Практика","teacher":"Рязанова А.Н."},{"time":"16:00","subject":"Системное программирование","building":"УЛК-1","room":"421","type":"Лекция","teacher":"Сайханов М.А."}],
+        "Суббота": [{"time":"10:20","subject":"Физическая культура","building":"Спорткомплекс","room":"","type":"Практика","teacher":"Фатыхов И.Ф."}]
+      }
+    }
+  },
+  "18.2-545": {
+    "spec": "Филология (ВШЭиП, УЛК-7)",
+    "schedule": {
+      "в": {
+        "Понедельник": [{"time":"11:50","subject":"Практический курс английского языка","building":"УЛК-7","room":"306","type":"Практика","teacher":"Хузин И.Р."}],
+        "Вторник": [{"time":"09:40","subject":"Элективные курсы по физической культуре","building":"сп.комп-кс","room":"сп.зал","type":"Практика","teacher":"Нихорошкина А.В."}],
+        "Среда": [], "Четверг": [], "Пятница": [], "Суббота": []
+      },
+      "н": {
+        "Понедельник": [{"time":"11:50","subject":"Практический курс английского языка","building":"УЛК-7","room":"306","type":"Практика","teacher":"Хузин И.Р."}],
+        "Вторник": [{"time":"09:40","subject":"Элективные курсы по физической культуре","building":"сп.комп-кс","room":"сп.зал","type":"Практика","teacher":"Нихорошкина А.В."}],
+        "Среда": [], "Четверг": [], "Пятница": [], "Суббота": []
+      }
+    }
+  }
+};
+
 const BOT = 'NCHKFU_Schedule_Bot';
 const ADMIN_PIN = '0000';
 const TEACHER_PIN = '1804';
@@ -206,6 +350,7 @@ let taps = 0;
 let CUR = [];
 let PT = null;
 let pDate = ds(NOW());
+let calM = ds(NOW());
 let manualWeek = null;
 let aiMode = 'summary';
 
@@ -313,7 +458,7 @@ function go(t) {
 
 const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
 
-// Главная страница: компактный информативный вид (Скриншот 3)
+// Главная страница
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -337,7 +482,7 @@ function home() {
     const l = s.next.l;
     h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
   } else if (isFinished) {
-    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать</div></div>`;
+    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div></div>`;
   } else {
     h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и набираемся сил</div></div>`;
   }
@@ -366,7 +511,7 @@ function dayHtml(t, d, click) {
   const now = NOW(), w = getWeek(d), gi = d.getDay();
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   const today = same(d, now), nm = now.getHours() * 60 + now.getMinutes();
-  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий не запланировано</div>`;
+  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий по расписанию не запланировано</div>`;
 
   const f = span(L[L.length - 1]);
   let h = `<div class="mu" style="margin:0 4px 12px">${L.length} пар · до ${hm(f[1])}</div>`;
@@ -418,7 +563,7 @@ function shiftDay(n) {
 }
 
 function find() {
-  let h = `<div class="top"><h1>Найти</h1></div><div class="seg g"><button class="${seg==='f'?'on':''}" data-a="seg" data-v="f">Избранное</button><button class="${seg==='g'?'on':''}" data-a="seg" data-v="g">Группы</button><button class="${seg==='t'?'on':''}" data-a="seg" data-v="t">Преподаватели</button></div><input class="fld g" id="fq" placeholder="Поиск..." autocomplete="off"><div id="flist"></div>`;
+  let h = `<div class="top"><h1>Найти</h1></div><div class="seg g"><button class="${seg==='f'?'on':''}" data-a="seg" data-v="f">Избранное</button><button class="${seg==='g'?'on':''}" data-a="seg" data-v="g">Группы</button><button class="${seg==='t'?'on':''}" data-a="seg" data-v="t">Преподаватели</button></div><input class="fld g" id="fq" placeholder="Поиск по номеру или фамилии..." autocomplete="off"><div id="flist"></div>`;
   $('page').innerHTML = h; flist();
 }
 
@@ -438,7 +583,7 @@ function drawWho() {
 
 function lesOpen(i) {
   const l = CUR[i], k = nk(date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
-  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Заметка</div><textarea class="fld" id="note" placeholder="Заметка...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
+  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Заметка</div><textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
@@ -451,33 +596,46 @@ function calOpen() {
   $('sheet').classList.add('on');
 }
 
-// СОВЁНОК AI С АВТОРИЗАЦИЕЙ И КОНСПЕКТАМИ
+// «СОВЁНОК AI»
 function ai() {
-  const isAuth = Boolean(me.tgUser && me.tgUser.id);
+  const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   if (!isAuth) {
-    $('page').innerHTML = `<div class="top"><h1>Совёнок AI</h1></div><div class="ai-lock-overlay g"><div class="ai-pulse-icon">${ico('a',24)}</div><h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим помощником</h3><div class="mu">Синхронизируй расписание и сжимай лекции</div><button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button></div>`;
+    $('page').innerHTML = `
+      <div class="top"><h1>Совёнок AI</h1></div>
+      <div class="ai-lock-overlay g">
+        <div class="ai-pulse-icon">${ico('a',24)}</div>
+        <h3 style="font-size:20px;font-weight:800;">Войди в аккаунт — и Совёнок AI станет твоим помощником</h3>
+        <div class="mu">Синхронизируй расписание и сжимай лекции в пару кликов</div>
+        <button class="btn" onclick="startTgAuth()" style="max-width:220px;margin-top:10px;">Войти</button>
+      </div>`;
     return;
   }
 
   $('page').innerHTML = `
-    <div class="top"><div><h1>Совёнок AI</h1><div class="mu">Твой умный ассистент КФУ</div></div><div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a',20)}</div></div>
+    <div class="top">
+      <div><h1>Совёнок AI</h1><div class="mu">Твой личный ассистент КФУ</div></div>
+      <div class="ai-pulse-icon" style="width:38px;height:38px;">${ico('a',20)}</div>
+    </div>
     <div class="box g" style="padding:16px;">
       <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сократить лекцию для тетради</b>
-      <div class="mu" style="margin-bottom:10px;">Вставь текст — Совёнок выдаст тезисы без воды</div>
+      <div class="mu" style="margin-bottom:10px;">Вставь текст — Совёнок выдаст выжимку на 2-3 страницы без лишней воды</div>
       <div class="seg g" style="margin-bottom:10px;">
         <button class="${aiMode==='summary'?'on':''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
         <button class="${aiMode==='cards'?'on':''}" data-a="set_ai_mode" data-v="cards">❓ Вопрос-Ответ</button>
         <button class="${aiMode==='simple'?'on':''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
       </div>
-      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь текст лекции..."></textarea>
+      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции..."></textarea>
       <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">🦉 Сократить через Совёнок AI</button>
       <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:rgba(255,255,255,0.04);border:1px dashed var(--ac);padding:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="color:var(--ac);">Конспект:</b><button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <b style="color:var(--ac);">Конспект от Совёнка:</b>
+          <button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
+        </div>
         <div id="ai_summary_content" style="font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
       </div>
     </div>
     <div class="lab2">Диалог с Совёнком</div>
-    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про расписание или аудитории КФУ!</div></div>
+    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про расписание, аудитории или отправь текст для сжатия!</div></div>
     <div style="display:flex;gap:8px;margin-top:6px"><input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси что-нибудь..."><button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up',22)}</button></div>
   `;
   $('ai_send').onclick = handleAiSend;
@@ -490,32 +648,66 @@ async function runAiCompress() {
   const btn = $('btn_compress_ai'), resBox = $('ai_summary_result'), resContent =$('ai_summary_content');
   btn.disabled = true; btn.textContent = '🦉 Совёнок думает...'; resBox.style.display = 'none';
   try {
-    const res = await fetch(`${API_URL}/api/ai_compress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: txt, task: aiMode }) });
+    const res = await fetch(`${API_URL}/api/ai_compress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: txt, task: aiMode })
+    });
     const data = await res.json();
-    if (data.status === 'ok') { resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>'); resBox.style.display = 'block'; toast('Готово!', '✓'); }
-    else toast(data.message || 'Ошибка');
-  } catch (e) { toast('Сервер недоступен'); }
-  finally { btn.disabled = false; btn.textContent = '🦉 Сократить через Совёнок AI'; }
+    if (data.status === 'ok') {
+      resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
+      resBox.style.display = 'block';
+      toast('Готово!', '✓');
+    } else {
+      toast(data.message || 'Ошибка');
+    }
+  } catch (e) {
+    toast('Сервер недоступен');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🦉 Сократить через Совёнок AI';
+  }
 }
 
-function copyAiResult() { const t = $('ai_summary_content').innerText; if (navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast('Скопировано','✓')); }
-function postAiMsg(text, isMe = false) { const c = $('ai_chat'); if(!c) return; const div = document.createElement('div'); div.className = 'bub ' + (isMe ? 'me' : 'g'); div.innerHTML = esc(text).replace(/\n/g, '<br>'); c.appendChild(div); div.scrollIntoView({ behavior: 'smooth' }); }
-function handleAiSend() { const inp = $('ai_input'), q = inp.value.trim(); if (!q) return; postAiMsg(q, true); inp.value = ''; setTimeout(() => postAiMsg('🦉 Совёнок AI на связи! Используй верхнее поле для сжатия лекций.'), 280); }
+function copyAiResult() {
+  const t = $('ai_summary_content').innerText;
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Скопировано', '✓'));
+}
+
+function postAiMsg(text, isMe = false) {
+  const c = $('ai_chat'); if(!c) return;
+  const div = document.createElement('div');
+  div.className = 'bub ' + (isMe ? 'me' : 'g');
+  div.innerHTML = esc(text).replace(/\n/g, '<br>');
+  c.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth' });
+}
+
+function handleAiSend() {
+  const inp = $('ai_input'), q = inp.value.trim();
+  if (!q) return;
+  postAiMsg(q, true);
+  inp.value = '';
+  setTimeout(() => postAiMsg('🦉 Совёнок AI на связи! Используй верхнее поле, чтобы сжать лекцию в тезисы для тетради.'), 280);
+}
 
 function prof() {
-  const isTeacher = me.target.k === 't', roleLabel = isTeacher ? '👨‍🏫 Преподаватель' : '🎓 Студент', targetLabel = isTeacher ? me.target.n : `Группа ${me.target.n}`;
-  const userName = (me.tgUser && me.tgUser.first_name) ? me.tgUser.first_name : (me.nick || 'Студент НЧИ КФУ'), isAuth = Boolean(me.tgUser && me.tgUser.id);
+  const isTeacher = me && me.target && me.target.k === 't';
+  const roleLabel = isTeacher ? '👨‍🏫 Преподаватель' : '🎓 Студент';
+  const targetLabel = isTeacher ? me.target.n : (me && me.target ? `Группа ${me.target.n}` : 'Группа не выбрана');
+  const userName = (me && me.tgUser && me.tgUser.first_name) ? me.tgUser.first_name : (me && me.nick ? me.nick : 'Студент НЧИ КФУ');
+  const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   $('page').innerHTML = `
     <div class="top"><h1>Профиль</h1></div>
     <div class="box g" style="text-align:center;padding:24px 16px"><div class="kfu-avatar-wrap"><img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./logo.png';" alt="Герб"></div><h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1><div class="mu" style="margin-top:3px">${roleLabel} · ${esc(targetLabel)}</div><button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button></div>
     <div class="lab2">Авторизация</div><div class="box g" style="padding:4px 16px">${isAuth ? item('tg', esc(me.tgUser.first_name), 'Облачная синхронизация ✓', 'x') : `<button class="it" onclick="startTgAuth()"><span class="ic">${ico('tg')}</span><span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI</small></span><span class="chev">›</span></button>`}</div>
-    <div class="lab2">Поддержка</div><div class="box g" style="padding:4px 16px"><a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none"><span class="ic">${ico('help')}</span><span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span><span class="chev">›</span></a></div>
+    <div class="lab2">Поддержка</div><div class="box g" style="padding:4px 16px"><a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none"><span class="ic">${ico('tg')}</span><span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span><span class="chev">›</span></a></div>
     <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки</button>
   `;
 }
 
 function lookOpen() { $('pnl').innerHTML = `<h1 style="font-size:22px">Оформление</h1><div class="seg g"><button class="${cfg.theme==='auto'?'on':''}" data-a="th" data-v="auto">Авто</button><button class="${cfg.theme==='light'?'on':''}" data-a="th" data-v="light">Светлая</button><button class="${cfg.theme==='dark'?'on':''}" data-a="th" data-v="dark">Тёмная</button></div>`; $('sheet').classList.add('on'); }
-function editOpen() { $('pnl').innerHTML = `<h1 style="font-size:22px">Имя</h1><input class="fld" id="nick" value="${esc(me.nick||'')}"><button class="btn" data-a="save">Сохранить</button>`; $('sheet').classList.add('on'); }
+function editOpen() { $('pnl').innerHTML = `<h1 style="font-size:22px">Имя</h1><input class="fld" id="nick" value="${esc((me&&me.nick)||'')}"><button class="btn" data-a="save">Сохранить</button>`; $('sheet').classList.add('on'); }
 function onboard() { $('tabs').hidden = true; $('page').innerHTML = `<div class="onb"><h1>Расписание</h1><p>Кто вы?</p><button class="big g" data-a="role" data-v="g">🎓 Студент<small>Выбрать группу</small></button><button class="big g" data-a="role" data-v="t">👨‍🏫 Преподаватель<small>По коду</small></button></div>`; }
 function picker(o) { P = o; pk = o.k; $('pnl').innerHTML = `<h1 style="font-size:22px">${o.title}</h1><input class="fld" id="q" placeholder="Поиск..."><div id="items"></div>`; $('sheet').classList.add('on'); items(); }
 function items() { const n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g,''), q = n($('q').value); const ls = pk==='g'?Object.keys(DATA):Object.keys(T).sort((a,b)=>a.localeCompare(b,'ru'));$('items').innerHTML = ls.filter(k=>!q||n(k).includes(q)).map(k=>item(pk==='g'?'users':'c',esc(k),'','pick',k)).join('')||'<div class="empty">Ничего</div>'; }
@@ -539,6 +731,7 @@ function startTgAuth() {
       const data = await res.json();
       if (data.status === 'confirmed') {
         clearInterval(authPollTimer);
+        me = me || {};
         me.tgUser = { id: data.user_id, username: data.username, first_name: data.first_name };
         if (data.target && DATA[data.target]) me.target = { k: 'g', n: data.target };
         sv('me', me); toast(`Вход: ${data.first_name}`, '✓'); go('a');
@@ -557,15 +750,23 @@ const A = {
   cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth()+ +v, 1); calOpen(); },
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
-  savenote: async v => { const val = $('note') ?$('note').value.trim() : ''; if(val) NOTES[v]=val; else delete NOTES[v]; sv('notes', NOTES); toast('Сохранено','✓'); closeS(); sched(); },
+  savenote: async v => {
+    const val = $('note') ?$('note').value.trim() : '';
+    if (val) NOTES[v] = val; else delete NOTES[v];
+    sv('notes', NOTES);
+    if (me && me.tgUser && me.tgUser.id) {
+      try { await fetch(`${API_URL}/api/save_note`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: me.tgUser.id, note_key: v, note_text: val }) }); } catch(e){}
+    }
+    toast('Сохранено','✓'); closeS(); sched();
+  },
   who: v => whoOpen(v),
   fav: () => { const k = key(PT); me.fav = me.fav.some(x=>key(x)===k)?me.fav.filter(x=>key(x)!==k):[...me.fav,PT]; sv('me',me); drawWho(); },
   pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate()+ +v); drawWho(); },
   seg: v => { seg = v; find(); }, chg: () => pickRole(me.role, false), favs: () => { seg='f'; go('f'); },
-  edit: editOpen, save: () => { me.nick = $('nick').value.trim(); sv('me',me); closeS(); prof(); },
+  edit: editOpen, save: () => { me.nick = $('nick').value.trim(); me.org = 'НЧИ КФУ'; sv('me',me); closeS(); prof(); },
   look: lookOpen, acc: v => { cfg.ac=+v; sv('cfg',cfg); look(); lookOpen(); }, th: v => { cfg.theme=v; sv('cfg',cfg); look(); lookOpen(); },
   shr: () => { if(navigator.share) navigator.share({title:'Расписание',url:location.href}).catch(()=>{}); },
-  reset: () => { if(confirm('Сбросить?')) { localStorage.clear(); me=null; go(); } },
+  reset: () => { if(confirm('Сбросить настройки?')) { localStorage.clear(); me=null; go(); } },
   ver: () => { if(++taps>=5){taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN) adminOpen();} },
   x: () => {}, pick: v => { closeS(); P.cb({k:pk, n:v}); }
 };
@@ -579,7 +780,9 @@ function initSheetGestures() {
     let sY = 0, cY = 0, drag = false;
     p.addEventListener('touchstart', e => { if (p.scrollTop <= 0) { sY = e.touches[0].clientY; cY = sY; drag = true; } else drag = false; }, { passive: true });
     p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transform = `translateY(${d}px)`; } }, { passive: true });
-    p.addEventListener('touchend', () => { if (!drag) return; drag = false; if (cY - sY > 75) closeS(); p.style.transform = ''; });
+    p.addEventListener('touchend', () => {
+      if (!drag) return; drag = false; if (cY - sY > 75) closeS(); p.style.transform = '';
+    });
   });
 }
 
@@ -593,7 +796,18 @@ function init() {
   if (!me) onboard(); else go();
 }
 
-fetch('./schedule.json').then(r => r.ok ? r.json() : null).then(j => { if (j && Object.keys(j).length) { DATA = j; build(); init(); } }).catch(() => init());
+// Загрузка полного расписания
+init();
+fetch('./schedule.json')
+  .then(r => r.ok ? r.json() : null)
+  .then(j => {
+    if (j && Object.keys(j).length) {
+      DATA = j;
+      build();
+      init();
+    }
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>
