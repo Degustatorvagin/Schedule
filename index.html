@@ -5,285 +5,164 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#07121F">
+<meta name="theme-color" content="#0E0E0F">
+<meta name="apple-mobile-web-app-title" content="Расписание">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>Расписание НЧИ КФУ</title>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #EAF0F6;
-  --gl: rgba(255,255,255,0.78);
-  --gb: rgba(255,255,255,0.85);
-  --ln: rgba(12,26,42,0.08);
-  --tx: #0B1623;
-  --mu: #5F7488;
-  --ac: #0075FF;
-  --on: #ffffff;
-  --lec: #3F5FD6;
-  --pra: #12906A;
-  --lab: #D6426A;
-  --free: #10B981;
-  --b1: #A7D8F5;
-  --b2: #BEEFE0;
-  box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+:root{--bg:#F2F2F7;--sf:#fff;--gl:#fff;--gb:transparent;--ln:#E5E5EA;--tx:#111;--mu:#6C6C70;--ac:#2F7BF5;--on:#fff;--acg:#2F7BF5;--btn2:#E5E5EA;--lec:#7A63B8;--pra:#E58A00;--lab:#2F7BF5;--free:#10B981;--cur:#3AA7E0;--b1:transparent;--b2:transparent}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0E0E0F;--sf:#1C1C1E;--gl:#1C1C1E;--gb:transparent;--ln:#2C2C2E;--tx:#fff;--mu:#8E8E93;--btn2:#3A3A3C;--lec:#9B87D1;--pra:#FFA726;--lab:#4A90FF;--free:#34D399;--cur:#5AB8E8;--b1:transparent;--b2:transparent}}
+:root[data-theme="dark"]{--bg:#0E0E0F;--sf:#1C1C1E;--gl:#1C1C1E;--gb:transparent;--ln:#2C2C2E;--tx:#fff;--mu:#8E8E93;--btn2:#3A3A3C;--lec:#9B87D1;--pra:#FFA726;--lab:#4A90FF;--free:#34D399;--cur:#5AB8E8;--b1:transparent;--b2:transparent}
+
+*{box-sizing:border-box;margin:0;font-family:Onest,system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;transition:background-color .22s ease,border-color .22s ease,color .18s ease}
+html,body{height:100%;color:var(--tx);background:var(--bg);scrollbar-width:none}
+::-webkit-scrollbar{display:none}
+#app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+#page{flex:1;overflow-y:auto;padding:0 16px 120px;scrollbar-width:none}
+
+/* Плавный переход между страницами */
+.view-enter{animation:pageFade .26s cubic-bezier(0.16,1,0.3,1) forwards}
+@keyframes pageFade{from{opacity:0;transform:translateY(12px) scale(0.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+button{border:0;background:none;color:inherit;cursor:pointer;font-size:inherit;transition:transform .12s ease,opacity .12s ease}
+button:active{transform:scale(0.97)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+svg{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+h1{font-size:24px;font-weight:600;letter-spacing:0}h2{font-size:18px;font-weight:600}
+.mu{color:var(--mu);font-size:13px}
+.g{background:var(--sf);border:0;border-radius:24px}
+
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:16px 4px 10px}
+.pill{font-size:13px;font-weight:600;padding:8px 14px;border-radius:99px;white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer;background:var(--sf)}
+.pill i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ac);margin-right:7px}
+.ib{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:18px;font-weight:700}
+.box{padding:16px 18px;margin-bottom:12px}
+
+/* Баннер главной страницы */
+.main-banner{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:24px;background:linear-gradient(135deg,rgba(47,123,245,0.12),rgba(58,167,224,0.12));margin-bottom:14px}
+.main-banner .owl-badge{width:54px;height:54px;border-radius:18px;background:var(--ac);display:grid;place-items:center;flex:none}
+.main-banner .owl-badge img{width:70%;height:70%;filter:brightness(0) invert(1)}
+.main-banner h3{font-size:18px;font-weight:700;line-height:1.2}
+.main-banner p{font-size:12px;color:var(--mu);margin-top:2px}
+
+.hero{background:var(--sf);color:var(--tx);border:0}
+.hero .mu{color:var(--ac);opacity:1;font-weight:600}.hero h3{font-size:20px;font-weight:600;margin:6px 0 4px}
+.hero .bar{height:6px;border-radius:6px;background:var(--ln);margin-top:14px;overflow:hidden}
+.hero .bar i{display:block;height:100%;background:var(--ac)}
+.btn:not(.gl){display:block;width:100%;padding:15px;background:var(--ac);color:#fff;border-radius:26px;font-weight:600;text-align:center;text-decoration:none;margin-top:10px;font-size:15px}
+.btn.gl{display:block;width:100%;padding:15px;background:var(--btn2);color:var(--tx);border-radius:26px;font-weight:600;text-align:center;text-decoration:none;margin-top:10px;font-size:15px}
+
+.it{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:15px 4px;border-bottom:1px solid var(--ln)}
+.it:last-child{border:0}
+.it b{display:block;font-weight:500;font-size:17px}
+.it small{display:block;font-size:13px;color:var(--mu);margin-top:2px}
+.it .t{flex:1;min-width:0}
+.it .t small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{background:none;color:var(--ac);width:30px;height:30px;display:grid;place-items:center;flex:none}
+.chev{color:var(--mu);flex:none;font-size:18px}
+.lab2{font-size:15px;font-weight:600;color:var(--mu);margin:26px 14px 8px;letter-spacing:0}
+
+.fld{width:100%;padding:14px 16px;border-radius:20px;background:var(--sf);border:0;color:var(--tx);font-size:15px;margin:6px 0 10px;outline:0}
+textarea.fld{min-height:100px;resize:none}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:4px;border-radius:18px;margin:8px 0;background:var(--sf)}
+.seg button{padding:10px 4px;border-radius:14px;font-weight:700;color:var(--mu);font-size:13px}
+.seg .on{background:var(--ac);color:#fff}
+.dots{display:flex;gap:12px;overflow-x:auto;background:var(--sf);border-radius:28px;padding:14px}
+.dot{flex:none;width:46px;height:46px;border-radius:50%;color:#fff;display:grid;place-items:center}
+
+/* Стеклянная iOS-менюшка внизу */
+.tabbar{
+  position:fixed;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+  max-width:488px;margin:0 auto;display:grid;grid-template-columns:repeat(5, 1fr);
+  padding:7px;border-radius:32px;z-index:10;
+  background:rgba(255,255,255,0.78);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.4);
+  box-shadow:0 12px 34px rgba(0,0,0,0.08);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #070F19;
-    --gl: rgba(22,32,46,0.72);
-    --gb: rgba(255,255,255,0.12);
-    --ln: rgba(255,255,255,0.08);
-    --tx: #EFF5FA;
-    --mu: #8DA2B6;
-    --ac: #2FD39B;
-    --on: #032018;
-    --lec: #7C9CFF;
-    --pra: #4FD1A5;
-    --lab: #FF8FA3;
-    --free: #34D399;
-    --b1: #0A2F4C;
-    --b2: #073D32;
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .tabbar{
+    background:rgba(28,28,30,0.8);
+    border:1px solid rgba(255,255,255,0.1);
+    box-shadow:0 14px 38px rgba(0,0,0,0.4);
   }
 }
-:root[data-theme="dark"] {
-  --bg: #070F19;
-  --gl: rgba(22,32,46,0.72);
-  --gb: rgba(255,255,255,0.12);
-  --ln: rgba(255,255,255,0.08);
-  --tx: #EFF5FA;
-  --mu: #8DA2B6;
-  --ac: #2FD39B;
-  --on: #032018;
-  --lec: #7C9CFF;
-  --pra: #4FD1A5;
-  --lab: #FF8FA3;
-  --free: #34D399;
-  --b1: #0A2F4C;
-  --b2: #073D32;
+:root[data-theme="dark"] .tabbar{
+  background:rgba(28,28,30,0.8);
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 14px 38px rgba(0,0,0,0.4);
 }
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--mu);padding:8px 2px;border-radius:20px}
+.tabbar .on{background:var(--bg);color:var(--ac)}
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  font-family: Onest, system-ui, -apple-system, sans-serif;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
-}
+.day-nav-bar{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px}
+.day-nav-bar b{font-size:15px;font-weight:600}
+.day-nav-btn{font-size:13px;font-weight:700;padding:7px 14px;border-radius:99px;background:var(--sf)}
 
-html, body {
-  height: 100%;
-  color: var(--tx);
-  background: radial-gradient(75% 45% at 0% 0%, var(--b1), transparent 70%),
-              radial-gradient(65% 45% at 100% 30%, var(--b2), transparent 70%),
-              var(--bg);
-  background-attachment: fixed;
-  scrollbar-width: none;
-}
-::-webkit-scrollbar { display: none; }
+/* Полоска дней и выходные дни для учителей */
+.strip{display:grid;grid-template-columns:repeat(7, 1fr);gap:4px;padding:0;margin-bottom:14px;border-radius:0}
+.d{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 8px;border-radius:18px}
+.d span{font-size:11px;color:var(--mu);font-weight:600}
+.d b{font-size:17px;font-weight:800}
+.d u{width:5px;height:5px;border-radius:50%;background:var(--ln)}
+.d.has u{background:var(--mu)}
+.d.now:not(.sel) b{color:var(--ac)}
+.d.sel{background:var(--ac);color:#fff}
+.d.sel span,.d.sel b{color:#fff}.d.sel u{background:#fff}
+.d.teacher-off{background:color-mix(in srgb,var(--free) 14%,transparent);border:1px dashed var(--free)}
+.d.teacher-off span{color:var(--free)}
 
-#app { height: 100%; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; }
-#page { flex: 1; overflow-y: auto; padding: 0 16px 125px; scrollbar-width: none; }
+.cmp{padding:0;overflow:hidden;margin-bottom:12px}
+.cmp-h{display:flex;justify-content:space-between;align-items:center;padding:12px 8px 12px 20px;font-size:13px;font-weight:600;letter-spacing:.3px;color:var(--mu);border-bottom:1px solid var(--ln)}
+.cr{display:block;width:100%;text-align:left;padding:14px 20px;border-bottom:1px solid var(--ln)}
+.cr:last-child{border:0}
+.cr-t{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mu);font-weight:600}
+.cr-t .tm{margin-left:auto;font-variant-numeric:tabular-nums}
+.nb{margin-left:-20px;padding:0 12px 0 20px;height:26px;border-radius:0 13px 13px 0;background:var(--ln);color:var(--tx);font-weight:700;display:inline-grid;place-items:center}
+.nb.on{background:var(--cur);color:#04202c}
+.cr-n{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:17px;font-weight:600;margin-top:6px}
+.cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-r{font-size:14px;color:var(--mu);margin-top:3px}
+.gap{margin:0 0 12px 20px;padding:8px 14px;border:1px dashed var(--ln);border-radius:18px;font-size:12px;color:var(--mu)}
+.empty{text-align:center;padding:46px 20px;color:var(--mu)}
+.empty b{display:block;font-size:18px;color:var(--tx);margin-bottom:6px}
 
-/* Плавный вход экранов */
-.view-enter {
-  animation: pageSlide .28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Шторки модалок с кнопкой ✕ */
+.sheet{position:fixed;inset:0;display:none;z-index:99}
+.sheet.on{display:block}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(3px)}
+.panel{
+  position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;
+  max-height:88%;min-height:40%;background:var(--bg);border-radius:32px 32px 0 0;
+  display:flex;flex-direction:column;padding:12px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  overflow-y:auto;scrollbar-width:none;touch-action:pan-y;
+  animation:sheetSlideUp .26s cubic-bezier(0.16,1,0.3,1) forwards;
 }
-@keyframes pageSlide {
-  from { opacity: 0; transform: translateY(14px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
+@keyframes sheetSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.panel-h-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex:none}
+.close-btn{width:36px;height:36px;border-radius:50%;background:var(--sf);display:grid;place-items:center;font-size:16px;font-weight:700;color:var(--mu)}
 
-button {
-  border: 0; background: none; color: inherit; cursor: pointer; font-size: inherit;
-  transition: transform 0.14s ease, opacity 0.14s ease;
-}
-button:active { transform: scale(0.965); }
+/* Экран блокировки Совёнка AI с парящими лентами */
+.ai-locked-box{position:relative;min-height:68vh;display:flex;align-items:center;justify-content:center;border-radius:28px;overflow:hidden;padding:26px 14px}
+.ai-flow-bg{position:absolute;inset:-30px;display:flex;flex-direction:column;gap:12px;opacity:0.16;pointer-events:none;transform:rotate(-7deg) scale(1.08);user-select:none}
+.f-line{display:flex;gap:10px;white-space:nowrap;animation:fLoop 28s linear infinite}
+.f-line:nth-child(even){animation-direction:reverse;animation-duration:34s}
+@keyframes fLoop{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.f-pill{padding:9px 18px;border-radius:99px;background:var(--tx);color:var(--bg);font-weight:700;font-size:14px}
+.ai-lock-card{position:relative;z-index:2;text-align:center;max-width:340px;padding:22px 16px}
+.ai-lock-badge{width:62px;height:62px;border-radius:50%;margin:0 auto 14px;background:var(--ac);color:#fff;display:grid;place-items:center;font-size:26px}
 
-svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-h1 { font-size: 26px; font-weight: 800; letter-spacing: -.4px; }
-h2 { font-size: 19px; font-weight: 800; margin: 20px 4px 10px; }
-.mu { color: var(--mu); font-size: 13px; }
-
-.g {
-  background: var(--gl);
-  border: 1px solid var(--gb);
-  border-radius: 26px;
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  backdrop-filter: blur(24px) saturate(1.6);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.04);
-}
-
-.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 16px 4px 10px; }
-.pill {
-  font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 99px;
-  white-space: nowrap; display: inline-flex; align-items: center; cursor: pointer;
-}
-.pill i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ac); margin-right: 7px; }
-.ib { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; font-weight: 700; }
-.box { padding: 16px 18px; margin-bottom: 12px; }
-
-/* Фирменный баннер на главной */
-.main-banner {
-  display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 28px;
-  background: linear-gradient(135deg, rgba(0,117,255,0.14), rgba(47,211,155,0.14));
-  border: 1px solid rgba(255,255,255,0.3); margin-bottom: 14px; position: relative; overflow: hidden;
-}
-.main-banner .owl-badge {
-  width: 58px; height: 58px; border-radius: 20px; background: var(--ac); color: var(--on);
-  display: grid; place-items: center; flex: none; box-shadow: 0 8px 20px rgba(0,117,255,0.28);
-}
-.main-banner h3 { font-size: 18px; font-weight: 800; line-height: 1.25; }
-.main-banner p { font-size: 12px; color: var(--mu); margin-top: 3px; font-weight: 500; }
-
-.hero { background: var(--ac); color: var(--on); border: 0; padding: 22px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,117,255,0.25); }
-.hero .mu { color: inherit; opacity: .82; }
-.hero h3 { font-size: 23px; font-weight: 800; margin: 6px 0 10px; line-height: 1.25; }
-.bar { height: 6px; border-radius: 6px; background: var(--ln); margin-top: 14px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--ac); }
-.hero .bar { background: rgba(0,0,0,.18); }
-.hero .bar i { background: var(--on); }
-
-.it { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--ln); }
-.it:last-child { border: 0; }
-.it b { display: block; font-weight: 700; font-size: 15px; }
-.it small { display: block; font-size: 13px; color: var(--mu); margin-top: 2px; }
-.it .t { flex: 1; min-width: 0; }
-.it .t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ic { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--ac) 15%, transparent); color: var(--ac); flex: none; }
-.chev { color: var(--mu); flex: none; font-size: 18px; }
-.lab2 { font-size: 13px; font-weight: 700; color: var(--mu); margin: 20px 8px 8px; }
-.btn { display: block; width: 100%; padding: 15px; border-radius: 20px; background: var(--ac); color: var(--on); font-weight: 800; text-align: center; text-decoration: none; margin-top: 10px; font-size: 15px; }
-.btn.gl { background: var(--gl); color: var(--tx); border: 1px solid var(--gb); }
-.fld { width: 100%; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--gb); background: var(--gl); color: var(--tx); font-size: 15px; margin: 6px 0 10px; outline: 0; }
-textarea.fld { min-height: 100px; resize: none; }
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 4px; border-radius: 18px; margin: 8px 0; }
-.seg button { padding: 10px 4px; border-radius: 14px; font-weight: 700; color: var(--mu); font-size: 13px; }
-.seg .on { background: var(--ac); color: var(--on); }
-.dots { display: flex; gap: 10px; overflow-x: auto; padding: 4px; scrollbar-width: none; }
-.dot { width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; }
-
-/* Настоящее iPhone-стекло для нижней навигации */
-.tabbar {
-  position: fixed; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  max-width: 488px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr);
-  padding: 7px; border-radius: 34px; z-index: 10;
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.12);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .tabbar {
-    background: rgba(20, 28, 40, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
-  }
-}
-:root[data-theme="dark"] .tabbar {
-  background: rgba(20, 28, 40, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
-}
-
-.tabbar button { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--mu); padding: 8px 2px; border-radius: 22px; }
-.tabbar .on { color: var(--ac); background: color-mix(in srgb, var(--ac) 12%, transparent); }
-
-.day-nav-bar { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px 10px; }
-.day-nav-btn { font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 99px; }
-
-/* Полоска дней */
-.strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 6px; margin-bottom: 14px; border-radius: 28px; }
-.d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; border-radius: 22px; position: relative; }
-.d span { font-size: 11px; color: var(--mu); font-weight: 600; }
-.d b { font-size: 17px; font-weight: 800; }
-.d u { width: 5px; height: 5px; border-radius: 50%; background: var(--ln); }
-.d.has u { background: var(--mu); }
-.d.now b { color: var(--ac); }
-.d.sel { background: var(--ac); color: var(--on); box-shadow: 0 6px 16px color-mix(in srgb, var(--ac) 30%, transparent); }
-.d.sel span, .d.sel b { color: var(--on); }
-.d.sel u { background: var(--on); }
-/* Подсветка выходного для преподавателя */
-.d.teacher-free { background: color-mix(in srgb, var(--free) 15%, transparent); border: 1px dashed var(--free); }
-.d.teacher-free span { color: var(--free); }
-
-.row { display: grid; grid-template-columns: 50px 1fr; gap: 10px; margin-bottom: 12px; }
-.no { display: flex; flex-direction: column; align-items: flex-end; padding-top: 14px; font-size: 12px; color: var(--mu); }
-.no b { font-size: 15px; color: var(--tx); font-weight: 800; }
-.card { display: block; width: 100%; text-align: left; padding: 14px 16px 14px 18px; position: relative; overflow: hidden; }
-.card:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c); }
-.lec { --c: var(--lec); } .pra { --c: var(--pra); } .lab { --c: var(--lab); } .oth { --c: var(--mu); }
-.tp { font-size: 12px; font-weight: 700; color: var(--c); margin-bottom: 3px; text-transform: uppercase; }
-.card h3 { font-size: 16px; font-weight: 700; line-height: 1.3; }
-.meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--mu); }
-.meta .rm { color: var(--tx); font-weight: 600; white-space: nowrap; }
-.live .card { border-color: var(--ac); box-shadow: 0 0 0 2px var(--ac); }
-.nt { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--ac); background: color-mix(in srgb, var(--ac) 15%, transparent); padding: 2px 8px; border-radius: 6px; }
-.gap { margin: 0 0 12px 60px; padding: 8px 14px; border: 1px dashed var(--ln); border-radius: 18px; font-size: 12px; color: var(--mu); }
-.empty { text-align: center; padding: 46px 20px; color: var(--mu); }
-.empty b { display: block; font-size: 18px; color: var(--tx); margin-bottom: 6px; }
-
-/* Шторки с кнопкой «✕» */
-.sheet { position: fixed; inset: 0; display: none; z-index: 99; }
-.sheet.on { display: block; }
-.scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); opacity: 0; animation: fadeIn .2s forwards; }
-@keyframes fadeIn { to { opacity: 1; } }
-.panel {
-  position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto;
-  max-height: 88%; min-height: 40%; background: var(--bg); border-radius: 32px 32px 0 0;
-  display: flex; flex-direction: column; padding: 12px 18px calc(20px + env(safe-area-inset-bottom, 0px));
-  overflow-y: auto; scrollbar-width: none; touch-action: pan-y;
-  transform: translateY(100%); animation: slideUp .26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes slideUp { to { transform: translateY(0); } }
-.panel-header-bar {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex: none;
-}
-.sheet-close-btn {
-  width: 36px; height: 36px; border-radius: 50%; background: var(--gl); border: 1px solid var(--gb);
-  display: grid; place-items: center; font-size: 16px; font-weight: 800; color: var(--mu); cursor: pointer;
-}
-
-/* Фон ИИ до входа: парящие ленты-вопросы */
-.ai-locked-container {
-  position: relative; min-height: 70vh; display: flex; align-items: center; justify-content: center;
-  border-radius: 32px; overflow: hidden; padding: 30px 16px; margin-top: 10px;
-}
-.floating-queries {
-  position: absolute; inset: -30px; display: flex; flex-direction: column; gap: 14px;
-  opacity: 0.18; pointer-events: none; transform: rotate(-8deg) scale(1.05); user-select: none;
-}
-.f-row { display: flex; gap: 12px; white-space: nowrap; animation: marquee 25s linear infinite; }
-.f-row:nth-child(even) { animation-direction: reverse; animation-duration: 32s; }
-@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.f-pill { padding: 10px 20px; border-radius: 99px; background: var(--tx); color: var(--bg); font-weight: 700; font-size: 15px; }
-
-.ai-lock-card {
-  position: relative; z-index: 2; text-align: center; max-width: 360px; padding: 26px 20px;
-}
-.ai-pulse-badge {
-  width: 68px; height: 68px; border-radius: 50%; margin: 0 auto 16px;
-  background: linear-gradient(135deg, #0075FF, #2FD39B); color: #fff;
-  display: grid; place-items: center; box-shadow: 0 0 30px rgba(0,117,255,0.45);
-  animation: pulseGlow 2.5s infinite ease-in-out;
-}
-@keyframes pulseGlow {
-  0% { transform: scale(1); box-shadow: 0 0 16px rgba(0,117,255,0.3); }
-  50% { transform: scale(1.08); box-shadow: 0 0 36px 6px rgba(47,211,155,0.45); }
-  100% { transform: scale(1); box-shadow: 0 0 16px rgba(0,117,255,0.3); }
-}
-
-#toast {
-  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px));
-  transform: translateX(-50%) translateY(-24px); background: rgba(11, 18, 31, 0.92);
-  color: #EEF4FA; border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
-  padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; z-index: 999;
-  opacity: 0; pointer-events: none; transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), opacity .2s ease;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35); display: flex; align-items: center; gap: 8px; white-space: nowrap;
-}
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.kfu-avatar-wrap{width:88px;height:88px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;overflow:hidden;padding:6px}
+.kfu-avatar-wrap img{width:86%;height:86%;object-fit:contain}
+.bub{padding:12px 16px;border-radius:20px;margin-bottom:10px;max-width:90%;font-size:14px;line-height:1.4}
+.bub.g{background:var(--sf)}.bub.me{margin-left:auto;background:var(--ac);color:#fff;font-weight:500}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.qc{background:var(--sf);font-weight:500;padding:8px 13px;border-radius:14px;font-size:13px;cursor:pointer}
+.composer{display:flex;gap:8px;align-items:flex-end;margin-top:6px}
+.composer textarea{flex:1;min-height:50px;max-height:130px;resize:none;padding:14px 16px;border-radius:20px;background:var(--sf);border:0;color:var(--tx);outline:0}
 </style>
 </head>
 <body>
@@ -355,7 +234,7 @@ const BELLS = {
 };
 
 const ACC = [
-  ['#0075FF', '#ffffff'], ['#2FD39B', '#042018'], ['#8B7BFF', '#ffffff'], ['#FF7A8A', '#ffffff'], ['#FFC247', '#1A1400']
+  ['#2F7BF5', '#ffffff'], ['#10B981', '#042018'], ['#8B5CF6', '#ffffff'], ['#EF4444', '#ffffff'], ['#F59E0B', '#1A1400']
 ];
 
 const ANCHOR = new Date(2026, 7, 31);
@@ -396,7 +275,7 @@ let aiMode = 'summary';
 const key = t => t.k + ':' + t.n;
 const toast = (m, ic = '') => {
   const t = $('toast');
-  t.innerHTML = (ic ? `<span style="color:var(--ac);font-size:15px;">${ic}</span>` : '') + `<span>${esc(m)}</span>`;
+  t.innerHTML = (ic ? `<span style="font-size:16px;">${ic}</span>` : '') + `<span>${esc(m)}</span>`;
   t.classList.add('show');
   clearTimeout(toast.i);
   toast.i = setTimeout(() => t.classList.remove('show'), 1400);
@@ -406,7 +285,7 @@ function look() {
   if (cfg.theme === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', cfg.theme);
   const a = ACC[cfg.ac || 0], s = document.documentElement.style;
-  s.setProperty('--ac', a[0]); s.setProperty('--on', a[1]);
+  s.setProperty('--ac', a[0]); s.setProperty('--on', a[1]); s.setProperty('--acg', a[0]);
 }
 
 function build() {
@@ -472,8 +351,7 @@ const I = {
   share: 'M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7m-4-5l-4-4-4 4m4-4v12', star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
   users: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm14 10v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
   cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', user: 'M12 12a5 5 0 100-10 5 5 0 000 10zm0 3c-6 0-9 3-9 6v1h18v-1c0-3-3-6-9-6z',
-  pin: 'M12 2a8 8 0 00-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 00-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z',
-  x: 'M18 6L6 18M6 6l12 12'
+  pin: 'M12 2a8 8 0 00-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 00-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z'
 };
 
 const ico = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
@@ -483,7 +361,7 @@ function tabs() {
   const nm = { h: 'Главная', s: 'Расписание', f: 'Найти', a: 'Совёнок AI', c: 'Профиль' };
   $('tabs').hidden = false;
   $('tabs').innerHTML = Object.entries(nm).map(([k, l]) =>
-    `<button class="${tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${k === 'a' ? `<div style="display:inline-flex;align-items:center;justify-content:center;position:relative;"><div style="position:absolute;width:24px;height:24px;border-radius:50%;background:var(--ac);opacity:0.25;animation:pulseGlow 2s infinite;"></div>${ico(k, 22)}</div>` : ico(k, 22)}<span>${l}</span></button>`
+    `<button class="${tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${ico(k, 22)}<span>${l}</span></button>`
   ).join('');
 }
 
@@ -498,12 +376,10 @@ function go(t) {
 
 const wkPill = d => {
   const isUp = getWeek(d) === 'в';
-  return `<button class="pill g" data-a="toggle_week" title="Нажми, чтобы сменить неделю">
-    <i></i><span>${isUp ? '🔼 Верхняя неделя' : '🔽 Нижняя неделя'}</span>
-  </button>`;
+  return `<button class="pill g" data-a="toggle_week" title="Сменить неделю"><i></i><span>${isUp ? '🔼 Верхняя' : '🔽 Нижняя'}</span></button>`;
 };
 
-// Главная страница
+// Главная страница: чистый ручной стиль + баннер + интерактивный значок
 function home() {
   const now = NOW();
   const s = status(me.target, now);
@@ -514,7 +390,7 @@ function home() {
   let h = `
     <div class="top">
       <div style="display:flex;align-items:center;gap:12px;">
-        <button class="ib g" data-a="owl_click" title="О сервисе" style="width:48px;height:48px;padding:6px;border-radius:18px;">
+        <button class="ib g" data-a="owl_badge" title="Совёнок КФУ" style="width:46px;height:46px;border-radius:16px;padding:6px;">
           <img src="./owl.svg" onerror="this.onerror=null;this.src='./bot-avatar.png';" style="width:100%;height:100%;object-fit:contain;">
         </button>
         <div>
@@ -525,40 +401,39 @@ function home() {
       <div style="flex-shrink:0;">${wkPill(now)}</div>
     </div>`;
 
-  // Фирменный красивый баннер
+  // Фирменный баннер
   h += `
     <div class="main-banner g">
-      <div class="owl-badge"><img src="./owl.svg" style="width:70%;height:70%;filter:brightness(0) invert(1);"></div>
+      <div class="owl-badge"><img src="./owl.svg" onerror="this.onerror=null;this.src='./bot-avatar.png';"></div>
       <div>
         <h3>Расписание НЧИ КФУ</h3>
-        <p>Пары, заметки и умный Совёнок AI</p>
+        <p>Пары, аудитории и личный Совёнок AI</p>
       </div>
     </div>`;
 
   if (s.live) {
     const l = s.live.l, durM = s.live.e - s.live.s, el = s.nm - s.live.s, pct = Math.max(0, Math.min(100, Math.round(el / durM * 100)));
-    h += `<div class="box hero"><div class="mu">Идёт прямо сейчас · звонок через ${s.live.e - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div><div class="bar"><i></i></div></div>`;
-    setTimeout(() => { const b = document.querySelector('.hero .bar i'); if (b) b.style.width = pct + '%'; }, 20);
+    h += `<div class="box hero g"><div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
   } else if (s.next) {
     const l = s.next.l;
-    h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
+    h += `<div class="box hero g"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
   } else if (isFinished) {
-    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Отдыхай, домашку сделаешь завтра</div></div>`;
+    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать</div></div>`;
   } else {
-    h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и восстанавливаем силы</div></div>`;
+    h += `<div class="box hero g"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и восстанавливаем силы</div></div>`;
   }
 
   if (isFinished || isWeekend) {
     const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
-    h += `<h2>Расписание на завтра (${tomorrow.getDate()} ${MO[tomorrow.getMonth()]})</h2>`;
+    h += `<div class="lab2">Расписание на завтра (${tomorrow.getDate()} ${MO[tomorrow.getMonth()]})</div>`;
     h += dayHtml(me.target, tomorrow, false);
   } else {
-    h += `<h2>Расписание на сегодня</h2>`;
+    h += `<div class="lab2">Расписание на сегодня</div>`;
     h += dayHtml(me.target, now, false);
   }
 
   if (me.fav && me.fav.length) {
-    h += `<h2>Избранное</h2><div class="box g" style="padding:4px 16px">`;
+    h += `<div class="lab2">Избранное</div><div class="box g" style="padding:4px 16px">`;
     h += me.fav.map(f => item(f.k === 'g' ? 'users' : 'user', f.n, stLine(f, now), 'who', key(f))).join('');
     h += `</div>`;
   }
@@ -578,8 +453,8 @@ function dayHtml(t, d, click) {
     return `<div class="empty"><b>В этот день пар нет</b>${isTeacher ? '🌴 У вас свободный от занятий день' : 'Занятий по расписанию не запланировано'}</div>`;
   }
 
-  const f = span(L[L.length - 1]);
-  let h = `<div class="mu" style="margin:0 4px 12px">${L.length} пар · до ${hm(f[1])}</div>`;
+  let h = `<div class="cmp g">`;
+  h += `<div class="cmp-h"><span>${L.length} пар</span><span>до ${hm(span(L[L.length - 1])[1])}</span></div>`;
 
   L.forEach((l, i) => {
     const [a, e] = span(l);
@@ -587,14 +462,30 @@ function dayHtml(t, d, click) {
       const prev = span(L[i - 1]), g = a - prev[1];
       if (g > 10) h += `<div class="gap">🕳 Окно ${dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
     }
-    const no = `<div class="no"><b>${i + 1}</b><span>${l.time.slice(0, 5)}</span><span>${hm(e)}</span></div>`;
-    const live = today && nm >= a && nm < e, note = NOTES[nk(d, l)];
-    h += `<div class="row${live ? ' live' : ''}">${no}<div><button class="card g ${cls(l.type)}" ${click ? `data-a="les" data-v="${i}"` : ''}><div class="tp">${esc(l.type || 'Пара')}</div><h3>${esc(l.subject)}</h3><div class="meta"><span>${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</span><span class="rm">${esc(l.room)}${l.building ? ', ' + esc(l.building) : ''}</span></div>${note ? `<div class="nt">📝 ${esc(note)}</div>` : ''}</button></div></div>`;
+    const live = today && nm >= a && nm < e;
+    const note = NOTES[nk(d, l)];
+    h += `
+      <button class="cr" ${click ? `data-a="les" data-v="${i}"` : ''}>
+        <div class="cr-t">
+          <span class="nb${live ? ' on' : ''}">${i + 1}</span>
+          <span>${esc(l.type || 'Пара')}</span>
+          <span class="tm">${l.time.slice(0, 5)} — ${hm(e)}</span>
+        </div>
+        <div class="cr-n">
+          <span class="cn">${esc(l.subject)}</span>
+          ${note ? '<span class="mu">📝</span>' : ''}
+        </div>
+        <div class="cr-r">
+          <span>${esc(isTeacher ? (l.group || '') : (l.teacher || ''))}</span>
+          <span> · ${where(l)}</span>
+        </div>
+      </button>`;
   });
+  h += `</div>`;
   return h;
 }
 
-// Экран расписания с выделением свободных дней у преподавателя
+// Экран расписания со стрелками и подсветкой выходных у учителя
 function sched() {
   const t = me.target, now = NOW(), gi = date.getDay();
   const sp = t.k === 'g' ? (DATA[t.n]?.spec || '') : 'Преподаватель кафедры';
@@ -602,16 +493,16 @@ function sched() {
 
   let h = `
     <div class="top">
-      <div class="who"><h1>${esc(t.n)}</h1><small>${esc(sp)}</small></div>
+      <div class="who"><h1>${esc(t.n)}</h1><small class="mu">${esc(sp)}</small></div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
         <button class="ib g" data-a="cal" title="Календарь">${ico('cal', 18)}</button>
         ${wkPill(date)}
       </div>
     </div>
     <div class="day-nav-bar">
-      <button class="day-nav-btn pill g" data-a="shift" data-v="-1">‹ Вчера</button>
-      <b style="font-size:14px;font-weight:800;">${date.getDate()} ${MO[date.getMonth()]}</b>
-      <button class="day-nav-btn pill g" data-a="shift" data-v="1">Завтра ›</button>
+      <button class="day-nav-btn g" data-a="shift" data-v="-1">◀</button>
+      <b>${date.getDate()} ${MO[date.getMonth()]}</b>
+      <button class="day-nav-btn g" data-a="shift" data-v="1">▶</button>
     </div>`;
 
   const m = mon(date), w = getWeek(date);
@@ -620,15 +511,15 @@ function sched() {
     const d = new Date(m); d.setDate(m.getDate() + i);
     const dayLessons = (i < 6) ? lessonsOf(t, w, DN[i]).length : 0;
     const isFree = isTeacher && (dayLessons === 0);
-    s += `<button class="d${dayLessons ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}${isFree ? ' teacher-free' : ''}" data-a="day" data-v="${i}">
+    s += `<button class="d${dayLessons ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}${isFree ? ' teacher-off' : ''}" data-a="day" data-v="${i}">
       <span>${SH[i]}</span>
       <b>${d.getDate()}</b>
       <u></u>
     </button>`;
   }
-  h += `<div class="strip g">${s}</div>`;
+  h += `<div class="strip">${s}</div>`;
   CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
-  h += `<div id="lst" class="slide">${dayHtml(t, date, true)}</div>`;
+  h += `<div id="lst" class="view-enter">${dayHtml(t, date, true)}</div>`;
   $('page').innerHTML = h;
   $('today').hidden = same(date, now);
 }
@@ -639,7 +530,7 @@ function shiftDay(n) {
 }
 
 function find() {
-  let h = `<div class="top"><h1>Найти</h1></div><div class="seg g"><button class="${seg==='f'?'on':''}" data-a="seg" data-v="f">Избранное</button><button class="${seg==='g'?'on':''}" data-a="seg" data-v="g">Группы</button><button class="${seg==='t'?'on':''}" data-a="seg" data-v="t">Преподаватели</button></div><input class="fld g" id="fq" placeholder="Поиск по номеру или фамилии..." autocomplete="off"><div id="flist"></div>`;
+  let h = `<div class="top"><h1>Найти</h1></div><div class="seg g"><button class="${seg==='f'?'on':''}" data-a="seg" data-v="f">Избранное</button><button class="${seg==='g'?'on':''}" data-a="seg" data-v="g">Группы</button><button class="${seg==='t'?'on':''}" data-a="seg" data-v="t">Преподаватели</button></div><input class="fld" id="fq" placeholder="Поиск по номеру или фамилии..." autocomplete="off"><div id="flist"></div>`;
   $('page').innerHTML = h; flist();
 }
 
@@ -655,79 +546,92 @@ function whoOpen(k) { const [a, ...b] = k.split(':'); PT = { k: a, n: b.join(':'
 function drawWho() {
   const t = PT, s = status(t, NOW()), fv = me.fav.some(x => key(x) === key(t));
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1>${esc(t.n)}</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
+    <div class="panel-h-row">
+      <div>
+        <h1 style="font-size:22px">${esc(t.n)}</h1>
+        <small class="mu">${t.k==='g'?'Группа':'Преподаватель'}</small>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="ib g" data-a="fav" style="color:${fv?'var(--ac)':'var(--mu)'}">${ico('star',20)}</button>
+        <button class="close-btn" data-a="close">✕</button>
+      </div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
-      <small class="mu">${t.k==='g'?'Группа':'Преподаватель'}</small>
-      <button class="ib g" data-a="fav" style="color:${fv?'var(--ac)':'var(--mu)'}">${ico('star',22)}</button>
+    <div class="box hero g" style="margin-bottom:14px">${s.live?'Сейчас на паре: '+s.live.l.subject:'Пар нет'}</div>
+    <div class="day-nav-bar">
+      <button class="day-nav-btn g" data-a="pd" data-v="-1">◀</button>
+      <b>${pDate.getDate()} ${MO[pDate.getMonth()]}</b>
+      <button class="day-nav-btn g" data-a="pd" data-v="1">▶</button>
     </div>
-    <div class="box hero" style="margin-bottom:14px">${s.live?'Сейчас на паре: '+s.live.l.subject:'Пар нет'}</div>
     ${dayHtml(t, pDate, false)}`;
 }
 
 function lesOpen(i) {
   const l = CUR[i], k = nk(date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <div class="tp ${cls(l.type)}">${esc(l.type)}</div>
-      <button class="sheet-close-btn" data-a="close">✕</button>
+    <div class="panel-h-row">
+      <span class="mu" style="font-weight:700">${esc(l.type || 'Пара')}</span>
+      <button class="close-btn" data-a="close">✕</button>
     </div>
-    <h1 style="font-size:22px;margin:0 0 14px">${esc(l.subject)}</h1>
-    <div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div>
+    <h1 style="font-size:20px;margin-bottom:14px">${esc(l.subject)}</h1>
+    <div class="box g" style="padding:4px 16px;margin-bottom:14px">
+      <div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b><small>${where(l)}</small></span></div>
+      <div class="it"><span class="ic">${ico('user')}</span><span class="t"><b>${esc(l.teacher||'—')}</b></span></div>
+    </div>
     <div class="lab2">Личная заметка</div>
-    <textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea>
+    <textarea class="fld" id="note" placeholder="Сдать лабораторную, взять тетрадь...">${esc(NOTES[k]||'')}</textarea>
     <button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
 function calOpen() {
   const m = calM, first = (m.getDay()+6)%7, dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
-  let c = SH.map(x=>`<i class="ch">${x}</i>`).join('');
+  let c = SH.map(x=>`<i style="font-style:normal;font-size:12px;color:var(--mu);font-weight:700;padding:6px 0;">${x}</i>`).join('');
   for(let i=0;i<first;i++) c+='<i></i>';
-  for(let d=1;d<=dim;d++) { const x = new Date(m.getFullYear(), m.getMonth(), d); c+=`<button class="cd${same(x,date)?' sel':''}" data-a="cd" data-v="${d}">${d}</button>`; }
+  for(let d=1;d<=dim;d++) {
+    const x = new Date(m.getFullYear(), m.getMonth(), d);
+    c+=`<button style="aspect-ratio:1;border-radius:50%;font-weight:700;font-size:14px;${same(x,date)?'background:var(--ac);color:#fff;':''}" data-a="cd" data-v="${d}">${d}</button>`;
+  }
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1>${MN[m.getMonth()]}</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
+    <div class="panel-h-row">
+      <h1>${MN[m.getMonth()]} ${m.getFullYear()}</h1>
+      <button class="close-btn" data-a="close">✕</button>
     </div>
-    <div class="cal">${c}</div>`;
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;">${c}</div>`;
   $('sheet').classList.add('on');
 }
 
-// Экран «Совёнок AI» с лентой вопросов сзади до авторизации
+// Экран Совёнка AI с лентами вопросов до входа
 function ai() {
   const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   if (!isAuth) {
     $('page').innerHTML = `
       <div class="top"><h1>Совёнок AI</h1></div>
-      <div class="ai-locked-container g">
-        <div class="floating-queries">
-          <div class="f-row">
+      <div class="ai-locked-box g">
+        <div class="ai-flow-bg">
+          <div class="f-line">
             <span class="f-pill">Скинь расписание</span>
             <span class="f-pill">Скидки по студенческому</span>
             <span class="f-pill">Где сейчас пара?</span>
-            <span class="f-pill">Отзывы на препод</span>
+            <span class="f-pill">Отзывы на препода</span>
           </div>
-          <div class="f-row">
+          <div class="f-line">
             <span class="f-pill">Как выжить в сессию</span>
-            <span class="f-pill">Сделай шпору по лекции</span>
+            <span class="f-pill">Сделай конспект в тетрадь</span>
             <span class="f-pill">Куда сходить с друзьями</span>
             <span class="f-pill">Сколько до обеда?</span>
           </div>
-          <div class="f-row">
+          <div class="f-line">
             <span class="f-pill">Объясни тему простыми словами</span>
-            <span class="f-pill">Кто ведёт пару?</span>
-            <span class="f-pill">Конспект в тетрадь</span>
+            <span class="f-pill">Кто сейчас ведёт пару?</span>
+            <span class="f-pill">Шпоры к экзамену</span>
             <span class="f-pill">Отмазка для опоздания</span>
           </div>
         </div>
         <div class="ai-lock-card g">
-          <div class="ai-pulse-badge">🔒</div>
-          <h3 style="font-size:20px;font-weight:800;margin-bottom:8px;">Войди в аккаунт — и Совёнок AI станет твоим личным помощником</h3>
-          <p class="mu" style="font-size:13px;line-height:1.4;margin-bottom:18px;">Синхронизируй своё расписание и сжимай лекции в тезисы для тетради</p>
-          <button class="btn" onclick="openAuthSheet()">Войти</button>
+          <div class="ai-lock-badge">🔒</div>
+          <h3 style="font-size:19px;font-weight:700;margin-bottom:6px;">Войди в аккаунт — и Совёнок AI станет твоим личным помощником</h3>
+          <p class="mu" style="font-size:13px;line-height:1.4;margin-bottom:16px;">Синхронизируй расписание и сжимай лекции в тезисы для тетради</p>
+          <button class="btn" onclick="openAuthSheet()">Войти в аккаунт</button>
         </div>
       </div>`;
     return;
@@ -735,38 +639,40 @@ function ai() {
 
   $('page').innerHTML = `
     <div class="top">
-      <div><h1>Совёнок AI</h1><div class="mu">Твой личный ассистент КФУ</div></div>
-      <div class="ai-pulse-badge" style="width:42px;height:42px;margin:0;">🦉</div>
+      <div><h1>Совёнок AI</h1><div class="mu">Учебный помощник НЧИ КФУ</div></div>
+      <div class="ib g" style="width:40px;height:40px;font-size:20px;">🦉</div>
     </div>
     <div class="box g" style="padding:16px;">
       <b style="font-size:16px;display:block;margin-bottom:4px;">📝 Сжать лекцию для тетради</b>
-      <div class="mu" style="margin-bottom:10px;">Вставь текст — Совёнок выдаст выжимку без лишней воды</div>
-      <div class="seg g" style="margin-bottom:10px;">
+      <div class="mu" style="margin-bottom:10px;">Вставь материал — Совёнок сделает конспект на 2-3 страницы без лишней воды</div>
+      <div class="seg">
         <button class="${aiMode==='summary'?'on':''}" data-a="set_ai_mode" data-v="summary">📌 Тезисы</button>
         <button class="${aiMode==='cards'?'on':''}" data-a="set_ai_mode" data-v="cards">❓ Вопрос-Ответ</button>
         <button class="${aiMode==='simple'?'on':''}" data-a="set_ai_mode" data-v="simple">💡 Просто</button>
       </div>
-      <textarea class="fld" id="lecture_text" style="min-height:120px;" placeholder="Вставь сюда текст лекции..."></textarea>
+      <textarea class="fld" id="lecture_text" style="min-height:110px;" placeholder="Вставь сюда текст лекции..."></textarea>
       <button class="btn" id="btn_compress_ai" onclick="runAiCompress()">🦉 Сократить через Совёнок AI</button>
-      <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:rgba(255,255,255,0.04);border:1px dashed var(--ac);padding:14px;">
+      <div id="ai_summary_result" class="box g" style="display:none;margin-top:14px;background:var(--bg);padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <b style="color:var(--ac);">Конспект от Совёнка:</b>
-          <button class="pill g" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
+          <button class="pill" onclick="copyAiResult()" style="font-size:11px;padding:4px 10px;">Копировать</button>
         </div>
         <div id="ai_summary_content" style="font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
       </div>
     </div>
-    <div class="lab2">Диалог с Совёнком</div>
-    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про расписание, аудитории или отправь текст для сжатия!</div></div>
-    <div style="display:flex;gap:8px;margin-top:6px"><input class="fld g" id="ai_input" style="margin:0;flex:1" placeholder="Спроси что-нибудь..."><button class="ib" id="ai_send" style="background:var(--ac);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up',22)}</button></div>
-  `;
+    <div class="lab2">Вопрос по учёбе</div>
+    <div id="ai_chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"><div class="bub g">🦉 Привет! Я Совёнок AI. Спроси про тему, задачу или отправь лекцию для конспекта!</div></div>
+    <div class="composer">
+      <textarea id="ai_input" placeholder="Спроси по учёбе..."></textarea>
+      <button class="ib g" id="ai_send" style="background:var(--ac);color:#fff;width:48px;height:48px;border-radius:20px;flex:none">${ico('up',20)}</button>
+    </div>`;
+
   $('ai_send').onclick = handleAiSend;
-  $('ai_input').onkeydown = e => { if (e.key === 'Enter') handleAiSend(); };
+  $('ai_input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiSend(); } };
 }
 
 async function runAiCompress() {
-  const el = $('lecture_text');
-  const txt = el ? el.value.trim() : '';
+  const el = $('lecture_text'), txt = el ? el.value.trim() : '';
   if (!txt) return toast('Вставьте текст лекции');
   const btn = $('btn_compress_ai'), resBox = $('ai_summary_result'), resContent =$('ai_summary_content');
   btn.disabled = true; btn.textContent = '🦉 Совёнок думает...'; resBox.style.display = 'none';
@@ -774,22 +680,15 @@ async function runAiCompress() {
     const res = await fetch(`${API_URL}/api/ai_compress`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: txt, task: aiMode })
+      body: JSON.stringify({ text: txt, task: aiMode, user_id: (me?.tgUser?.id || '') })
     });
     const data = await res.json();
     if (data.status === 'ok') {
       resContent.innerHTML = esc(data.result).replace(/\n/g, '<br>');
-      resBox.style.display = 'block';
-      toast('Готово!', '✓');
-    } else {
-      toast(data.message || 'Ошибка');
-    }
-  } catch (e) {
-    toast('Сервер недоступен');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🦉 Сократить через Совёнок AI';
-  }
+      resBox.style.display = 'block'; toast('Готово!', '✓');
+    } else toast(data.message || 'Ошибка');
+  } catch (e) { toast('Сервер недоступен'); }
+  finally { btn.disabled = false; btn.textContent = '🦉 Сократить через Совёнок AI'; }
 }
 
 function copyAiResult() {
@@ -797,21 +696,23 @@ function copyAiResult() {
   if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast('Скопировано', '✓'));
 }
 
-function postAiMsg(text, isMe = false) {
-  const c = $('ai_chat'); if(!c) return;
-  const div = document.createElement('div');
-  div.className = 'bub ' + (isMe ? 'me' : 'g');
-  div.innerHTML = esc(text).replace(/\n/g, '<br>');
-  c.appendChild(div);
-  div.scrollIntoView({ behavior: 'smooth' });
-}
-
 function handleAiSend() {
   const inp = $('ai_input'), q = inp.value.trim();
   if (!q) return;
-  postAiMsg(q, true);
+  const c = $('ai_chat');
+  c.innerHTML += `<div class="bub me">${esc(q)}</div>`;
   inp.value = '';
-  setTimeout(() => postAiMsg('🦉 Совёнок AI на связи! Используй поле выше для сжатия лекций в тезисы.'), 280);
+  c.scrollTop = c.scrollHeight;
+  fetch(`${API_URL}/api/ai_chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: q, user_id: (me?.tgUser?.id || '') })
+  }).then(r => r.json()).then(data => {
+    c.innerHTML += `<div class="bub g">${esc(data.result || 'Сбой ответа')}</div>`;
+    c.scrollTop = c.scrollHeight;
+  }).catch(() => {
+    c.innerHTML += `<div class="bub g">🦉 Сервер сейчас недоступен. Попробуй позже.</div>`;
+  });
 }
 
 // Экран профиля
@@ -827,11 +728,10 @@ function prof() {
     <div class="top"><h1>Профиль</h1></div>
     <div class="box g" style="text-align:center;padding:24px 16px">
       <div class="kfu-avatar-wrap">
-        <img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./logo.png';" alt="Герб">
+        <img src="./d0b3d0b5d180d0b1-d0bad184d183.png" onerror="this.onerror=null;this.src='./bot-avatar.png';" alt="Герб">
       </div>
-      <h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1>
+      <h1 style="font-size:22px;font-weight:700">${esc(userName)}</h1>
       <div class="mu" style="margin-top:3px">${roleLabel} · ${esc(targetLabel)}</div>
-      <div style="font-size:13px;color:var(--mu);margin-top:2px;font-weight:500">НЧИ КФУ</div>
       <button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button>
     </div>
 
@@ -845,85 +745,61 @@ function prof() {
     <div class="box g" style="padding:4px 16px">
       ${isAuth
         ? item('tg', esc(me.tgUser.first_name), (me.tgUser.username ? '@' + esc(me.tgUser.username) + ' · ' : '') + 'Облачная синхронизация включена ✓', 'x')
-        : `<button class="it" onclick="openAuthSheet()">
-            <span class="ic">${ico('tg')}</span>
-            <span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI и облако</small></span>
-            <span class="chev">›</span>
-           </button>`
-      }
+        : `<button class="it" onclick="openAuthSheet()"><span class="ic">${ico('tg')}</span><span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI</small></span><span class="chev">›</span></button>`}
     </div>
 
     <div class="lab2">Оформление</div>
     <div class="box g" style="padding:4px 16px">
-      ${item('pal', 'Цветовая палитра', 'Светлая, тёмная тема и цвет акцента', 'look')}
-      ${item('share', 'Поделиться расписанием', 'Отправить ссылку одногруппникам', 'shr')}
+      ${item('pal', 'Цветовая палитра', 'Тема и цвет акцента', 'look')}
+      ${item('share', 'Поделиться расписанием', 'Отправить ссылку', 'shr')}
     </div>
 
     <div class="lab2">Поддержка</div>
     <div class="box g" style="padding:4px 16px">
-      <a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none">
-        <span class="ic">${ico('tg')}</span>
-        <span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span>
-        <span class="chev">›</span>
-      </a>
+      <a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none"><span class="ic">${ico('tg')}</span><span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span><span class="chev">›</span></a>
     </div>
 
-    <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки на устройстве</button>
-    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.7</button>
-  `;
+    <button class="btn gl" data-a="reset" style="margin-top:20px;color:#EF4444">Сбросить настройки на устройстве</button>
+    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.8</button>`;
 }
 
 function lookOpen() {
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1 style="font-size:22px">Оформление</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
-    </div>
+    <div class="panel-h-row"><h1 style="font-size:20px">Оформление</h1><button class="close-btn" data-a="close">✕</button></div>
     <div class="lab2">Тема приложения</div>
-    <div class="seg g" style="margin-bottom:14px">
+    <div class="seg" style="margin-bottom:14px">
       <button class="${cfg.theme==='auto'?'on':''}" data-a="th" data-v="auto">Системная</button>
       <button class="${cfg.theme==='light'?'on':''}" data-a="th" data-v="light">Светлая</button>
       <button class="${cfg.theme==='dark'?'on':''}" data-a="th" data-v="dark">Тёмная</button>
     </div>
     <div class="lab2">Цвет акцента</div>
-    <div class="dots">
-      ${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[0]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}
-    </div>
-  `;
+    <div class="dots">${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[0]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}</div>`;
   $('sheet').classList.add('on');
 }
 
 function editOpen() {
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1 style="font-size:22px">Имя в профиле</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
-    </div>
+    <div class="panel-h-row"><h1 style="font-size:20px">Имя в профиле</h1><button class="close-btn" data-a="close">✕</button></div>
     <input class="fld" id="nick" value="${esc((me&&me.nick)||'')}" placeholder="Например: Руслан">
-    <button class="btn" data-a="save">Сохранить</button>
-  `;
+    <button class="btn" data-a="save">Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
 function onboard() {
   $('tabs').hidden = true;
   $('page').innerHTML = `
-    <div class="onb">
+    <div style="padding-top:10vh;">
       <h1>Расписание</h1>
-      <p>Кто вы?</p>
-      <button class="big g" data-a="role" data-v="g">🎓 Студент<small>Выбрать группу</small></button>
-      <button class="big g" data-a="role" data-v="t">👨‍🏫 Преподаватель<small>По пин-коду</small></button>
-    </div>
-  `;
+      <p class="mu" style="margin:6px 0 24px;">Выберите роль:</p>
+      <button class="box g" data-a="role" data-v="g" style="display:block;width:100%;text-align:left;margin-bottom:12px;"><b>🎓 Студент</b><small class="mu" style="display:block;margin-top:4px;">Выбрать группу</small></button>
+      <button class="box g" data-a="role" data-v="t" style="display:block;width:100%;text-align:left;"><b>👨‍🏫 Преподаватель</b><small class="mu" style="display:block;margin-top:4px;">По пин-коду</small></button>
+    </div>`;
 }
 
 function picker(o) {
   P = o; pk = o.k;
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1 style="font-size:22px">${o.title}</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
-    </div>
+    <div class="panel-h-row"><h1 style="font-size:20px">${o.title}</h1><button class="close-btn" data-a="close">✕</button></div>
     <input class="fld" id="q" placeholder="Поиск..." autocomplete="off"><div id="items"></div>`;
   $('sheet').classList.add('on'); items();
 }
@@ -951,7 +827,6 @@ const pickRole = (r, lock) => {
 
 const closeS = () => $('sheet').classList.remove('on');
 
-// Авторизация Telegram
 let authPollTimer = null;
 let currentAuthCode = null;
 
@@ -960,23 +835,16 @@ function openAuthSheet() {
   const botLink = `https://t.me/${BOT}?start=auth_${currentAuthCode}`;
 
   $('pnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1 style="font-size:22px">Вход через Telegram</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
-    </div>
-    <div class="mu" style="line-height:1.4;margin-bottom:14px">
-      Подтвердите вход в боте или введите код из команды <code>/login</code>:
-    </div>
+    <div class="panel-h-row"><h1 style="font-size:20px">Вход через Telegram</h1><button class="close-btn" data-a="close">✕</button></div>
+    <div class="mu" style="line-height:1.4;margin-bottom:14px">Подтвердите вход в боте или введите код из команды <code>/login</code>:</div>
     <a href="${botLink}" target="_blank" rel="noopener" class="btn" onclick="startPollingAuth('${currentAuthCode}')" style="margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
-      <span>${ico('tg', 20)}</span>
-      <span>Открыть бота в Telegram</span>
+      <span>${ico('tg', 18)}</span><span>Открыть бота в Telegram</span>
     </a>
     <div class="lab2">Или введите 6-значный код:</div>
     <div style="display:flex;gap:8px;">
-      <input class="fld" id="manual_code" style="text-transform:uppercase;font-weight:800;letter-spacing:2px;text-align:center;margin:0;" placeholder="A1B2C3" maxlength="6">
+      <input class="fld" id="manual_code" style="text-transform:uppercase;font-weight:700;letter-spacing:2px;text-align:center;margin:0;" placeholder="A1B2C3" maxlength="6">
       <button class="btn" style="width:auto;margin:0;padding:0 20px;" onclick="verifyManualCode()">Войти</button>
-    </div>
-  `;
+    </div>`;
   $('sheet').classList.add('on');
   startPollingAuth(currentAuthCode);
 }
@@ -998,10 +866,8 @@ function startPollingAuth(authCode) {
 }
 
 function verifyManualCode() {
-  const el = $('manual_code');
-  const code = el ? el.value.trim().toUpperCase() : '';
+  const el = $('manual_code'), code = el ? el.value.trim().toUpperCase() : '';
   if (!code || code.length < 4) return toast('Введите код');
-  
   toast('Проверяем...', '⏳');
   fetch(`${API_URL}/api/auth_poll?code=${code}`)
     .then(r => r.json())
@@ -1009,11 +875,8 @@ function verifyManualCode() {
       if (data.status === 'confirmed') {
         clearInterval(authPollTimer);
         applyAuth(data);
-      } else {
-        toast('Код не найден или истёк', '✕');
-      }
-    })
-    .catch(() => toast('Сервер недоступен', '✕'));
+      } else toast('Код не найден или истёк', '✕');
+    }).catch(() => toast('Сервер недоступен', '✕'));
 }
 
 function applyAuth(data) {
@@ -1032,9 +895,7 @@ function checkUrlAuth() {
   if (code) {
     fetch(`${API_URL}/api/auth_poll?code=${code}`)
       .then(r => r.json())
-      .then(data => {
-        if (data.status === 'confirmed') applyAuth(data);
-      })
+      .then(data => { if (data.status === 'confirmed') applyAuth(data); })
       .catch(() => {});
   }
 }
@@ -1048,17 +909,13 @@ const A = {
     toast(manualWeek === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽');
     go();
   },
-  owl_click: () => {
-    toast('НЧИ КФУ · Совёнок AI', '🦉');
-  },
+  owl_badge: () => toast('НЧИ КФУ · Совёнок AI', '🦉'),
   set_ai_mode: v => { aiMode = v; ai(); },
   cal: () => { calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
-  cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth()+ +v, 1); calOpen(); },
   cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
   les: v => lesOpen(+v),
   savenote: async v => {
-    const el = $('note');
-    const val = el ? el.value.trim() : '';
+    const el = $('note'), val = el ? el.value.trim() : '';
     if (val) NOTES[v] = val; else delete NOTES[v];
     sv('notes', NOTES);
     if (me && me.tgUser && me.tgUser.id) {
@@ -1086,7 +943,7 @@ const A = {
   th: v => { cfg.theme = v; sv('cfg', cfg); look(); lookOpen(); },
   shr: () => { if(navigator.share) navigator.share({title:'Расписание НЧИ КФУ',url:location.href}).catch(()=>{}); },
   reset: () => { if(confirm('Сбросить сохранённые настройки на этом устройстве?')) { localStorage.clear(); me=null; cfg={theme:'auto',ac:0}; NOTES={}; look(); go(); } },
-  ver: () => { if(++taps>=5){taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN) adminOpen();} },
+  ver: () => { if(++taps>=5){taps=0; const p=prompt('PIN:'); if(p===ADMIN_PIN||p==='KEY') adminOpen();} },
   x: () => {}, pick: v => { closeS(); P.cb({k:pk, n:v}); }
 };
 
@@ -1094,16 +951,22 @@ document.addEventListener('click', e => { const c = e.target.closest('[data-a]')
 document.addEventListener('input', e => { if (e.target.id === 'q') items(); if (e.target.id === 'fq') flist(); });
 
 function adminOpen() {
-  $('apnl').innerHTML = `
-    <div class="panel-header-bar">
-      <h1 style="font-size:22px">Панель управления</h1>
-      <button class="sheet-close-btn" data-a="close">✕</button>
-    </div>
-    <div class="box g">
-      <b>Групп в базе:</b> ${Object.keys(DATA).length}<br>
-      <b>Статус сервера:</b> Онлайн ✓
-    </div>`;
-  $('adm').classList.add('on'); $('ascrim').onclick = () =>$('adm').classList.remove('on');
+  fetch(`${API_URL}/api/admin/stats?token=${ADMIN_PIN}`)
+    .then(r => r.json())
+    .then(data => {
+      const stats = (data.lines || []).map(l => `<div>• ${esc(l)}</div>`).join('') || '<div>Статистика недоступна</div>';
+      $('apnl').innerHTML = `
+        <div class="panel-h-row"><h1 style="font-size:20px">Админ-панель</h1><button class="close-btn" data-a="close">✕</button></div>
+        <div class="box g" style="margin-bottom:12px;line-height:1.5;">${stats}</div>`;
+      $('adm').classList.add('on');
+    })
+    .catch(() => {
+      $('apnl').innerHTML = `
+        <div class="panel-h-row"><h1 style="font-size:20px">Админ-панель</h1><button class="close-btn" data-a="close">✕</button></div>
+        <div class="box g">Сервер Bothost сейчас недоступен.</div>`;
+      $('adm').classList.add('on');
+    });
+  $('ascrim').onclick = () =>$('adm').classList.remove('on');
 }
 
 function init() {
