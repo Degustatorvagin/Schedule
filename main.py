@@ -50,12 +50,12 @@ AI_SYSTEM_PROMPT = """Ты — «Совёнок AI», учебный помощ�
 Правила:
 1. Пиши кратко, по делу, без вводных фраз и без воды.
 2. Выдели 3-5 главных тезисов, ключевые термины и формулы.
-3. Форматируй списками через дефис. Не используй звёздочки (**), решётки и лишние эмодзи.
+3. Форматируй списками через дефис. Не используй звёздочки (**), решётки и эмодзи.
 4. Объём: не больше 2-3 страниц тетради."""
 
 AI_CHAT_PROMPT = """Ты — «Совёнок AI», университетский помощник студентов НЧИ КФУ.
 Помогай с учёбой, предметами, задачами и объяснением терминов.
-Отвечай грамотно, вежливо, на русском языке, без лишних звёздочек (**) и разметки."""
+Отвечай грамотно, вежливо, на русском языке, без звёздочек (**) и Markdown-разметки."""
 
 BAD_RE = re.compile(r"(?<![а-яё])(?:ху[йеёяию]\w*|пизд\w*|[её]б[аеёиоуы]\w*|бляд\w*|блять|бля|сук[аиу]|муд[аи]\w*|мудил\w*|долбо[её]б\w*|говн\w*|залуп\w*|шлюх\w*|пидор\w*|пидр\w*|гандон\w*|ублюд\w*|чмо|лох|лошар\w*|дебил\w*|идиот\w*|тупиц\w*)(?![а-яё])", re.I)
 AI_HITS = {}
@@ -455,9 +455,9 @@ def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarku
 
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="◀️ Вчера", callback_data=f"nav_{prev_d.isoformat()}_{wn_code}"),
+            InlineKeyboardButton(text="◀️", callback_data=f"nav_{prev_d.isoformat()}_{wn_code}"),
             InlineKeyboardButton(text="📅 Сегодня", callback_data="nav_today"),
-            InlineKeyboardButton(text="Завтра ▶️", callback_data=f"nav_{next_d.isoformat()}_{wn_code}")
+            InlineKeyboardButton(text="▶️", callback_data=f"nav_{next_d.isoformat()}_{wn_code}")
         ],
         [
             InlineKeyboardButton(text=f"🔄 Сменить: {opp_label}", callback_data=f"nav_{date_str}_{opp_wn}"),
@@ -898,9 +898,8 @@ async def handle_api_ai_chat(request):
     except Exception:
         return cors_response({"status": "error", "message": "Сбой соединения"})
 
-# Проверка доступа к админке: подходит пароль 0000, KEY или значение из Bothost
 def admin_ok(token) -> bool:
-    t = str(token or "")
+    t = str(token or "").strip()
     allowed = {ADMIN_TOKEN, "0000", "KEY"}
     return t in allowed or (bool(ADMIN_TOKEN) and hmac.compare_digest(t, ADMIN_TOKEN))
 
