@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#07121F">
+<meta name="theme-color" content="#0E0E0F">
+<meta name="apple-mobile-web-app-title" content="Расписание">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>Расписание НЧИ КФУ</title>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -164,6 +167,52 @@ textarea.fld { min-height: 100px; resize: none; }
 .msg{display:flex;gap:8px;align-items:flex-end}.msg .bub{max-width:calc(100% - 42px)}
 .aitools{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.aitools .pill{font-size:12px;padding:6px 12px}
 .aitools .pill.on{background:var(--acg);color:var(--on)}
+
+/* v2.0: плоский стиль без градиентов и стекла, одна синяя краска */
+:root{--bg:#F2F2F7;--sf:#fff;--gl:#fff;--gb:transparent;--ln:#E5E5EA;--tx:#111;--mu:#6C6C70;--ac:#2F7BF5;--on:#fff;--acg:#2F7BF5;--btn2:#E5E5EA;--lec:#7A63B8;--pra:#E58A00;--lab:#2F7BF5;--cur:#3AA7E0;--b1:transparent;--b2:transparent}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0E0E0F;--sf:#1C1C1E;--gl:#1C1C1E;--gb:transparent;--ln:#2C2C2E;--tx:#fff;--mu:#8E8E93;--btn2:#3A3A3C;--lec:#9B87D1;--pra:#FFA726;--lab:#4A90FF;--cur:#5AB8E8;--b1:transparent;--b2:transparent}}
+:root[data-theme="dark"]{--bg:#0E0E0F;--sf:#1C1C1E;--gl:#1C1C1E;--gb:transparent;--ln:#2C2C2E;--tx:#fff;--mu:#8E8E93;--btn2:#3A3A3C;--lec:#9B87D1;--pra:#FFA726;--lab:#4A90FF;--cur:#5AB8E8;--b1:transparent;--b2:transparent}
+html,body{background:var(--bg);background-attachment:scroll}
+.g{background:var(--sf);border:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;border-radius:24px}
+h1{font-size:24px;font-weight:600;letter-spacing:0}h2{font-size:18px;font-weight:600}
+.hero{background:var(--sf);color:var(--tx);border:0}
+.hero .mu{color:var(--ac);opacity:1;font-weight:600}.hero h3{font-size:20px;font-weight:600;margin:6px 0 4px}
+.hero .bar{background:var(--ln)}.hero .bar i,.bar i{background:var(--ac)}
+.btn:not(.gl){background:var(--ac);color:#fff;border-radius:26px;font-weight:600}
+.btn.gl{background:var(--btn2);color:var(--tx);border:0;border-radius:26px;font-weight:600}
+.ava{box-shadow:none;background:#fff}.av{background:var(--ac);color:#fff}
+.tabbar{background:var(--sf);border:1px solid var(--ln);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+.tabbar button{font-weight:600}.tabbar .on{background:var(--bg);color:var(--ac)}
+.strip{background:none;padding:0;border-radius:0}
+.d.sel{background:var(--ac);box-shadow:none;border-radius:18px}.d.sel b,.d.sel span{color:#fff}.d.sel u{background:#fff}.d.now:not(.sel) b{color:var(--ac)}
+.nb{background:var(--ln);color:var(--tx);font-weight:700}.nb.on{background:var(--cur);color:#04202c}
+.cmp-h{justify-content:flex-start;gap:4px;padding:8px 8px 8px 10px;font-weight:600;letter-spacing:.3px}
+.cmp-d{flex:1;text-align:center}
+.ar{width:36px;height:36px;border-radius:50%;font-size:24px;line-height:1;color:var(--mu);flex:none}.ar:active{background:var(--ln)}
+.cr-n{font-weight:600}
+.day-nav-bar{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px}.day-nav-bar b{font-size:15px;font-weight:600}
+.ic{background:none;color:var(--ac);width:30px;height:30px;border-radius:0}
+.it{padding:15px 4px}.it b{font-weight:500;font-size:17px}
+.lab2{font-size:15px;font-weight:600;color:var(--mu);margin:26px 14px 8px;letter-spacing:0}
+.pad{padding:2px 16px}.prow{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px}
+.prow b{display:block;font-weight:600;font-size:18px}.prow small{display:block;color:var(--mu);font-size:14px;margin-top:2px}.prow .t{flex:1}
+.plain{display:block;width:100%;text-align:center;color:#FF6B6B;padding:14px;margin-top:18px;font-weight:500}
+.verb{display:block;width:100%;text-align:center;padding:10px;margin-top:4px}
+.sh-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.seg.g{background:var(--sf)}.seg .on{background:var(--ac);color:#fff}
+.dots{display:flex;gap:12px;overflow-x:auto;background:var(--sf);border-radius:28px;padding:14px}
+.dot{flex:none;width:46px;height:46px;border-radius:50%;box-shadow:none;color:#fff;display:grid;place-items:center}
+.bub.g{background:var(--sf)}.bub.me{background:var(--ac);color:#fff;font-weight:500}
+.aiwrap .qchips{flex-wrap:wrap;overflow:visible;margin:0 0 8px;gap:6px;padding:0}
+.qc{background:var(--sf);font-weight:500;padding:8px 13px;border-radius:14px;font-size:13px;max-width:100%}
+.composer textarea{border-radius:22px;background:var(--sf)}
+.ai-pulse-icon{animation:none;box-shadow:none}
+.pill.g{background:var(--sf);font-weight:600}.pill i{background:var(--ac)}
+.fld{background:var(--sf);border:0;border-radius:20px}
+.ls-h{display:flex;gap:14px;align-items:flex-start;margin-bottom:20px}
+.ls-dot{width:26px;height:26px;border-radius:8px;flex:none;margin-top:4px;background:var(--lab)}.ls-dot.lec{background:var(--lec)}.ls-dot.pra{background:var(--pra)}
+.ls-r{display:flex;gap:16px;align-items:center;font-size:19px;padding:12px 2px}.ls-r svg{color:var(--mu);flex:none}
+.ls-r.top{align-items:flex-start}.ls-r textarea{flex:1;min-height:120px;margin:0}
 </style>
 </head>
 <body>
@@ -215,12 +264,8 @@ const EXCUSES = [
 ];
 
 const ACC = [
-  ['#FF8A5B','#2A0A10','linear-gradient(135deg,#FFB35C,#FF6B8B)'],
-  ['#4DB8FF','#04162B','linear-gradient(135deg,#3DD6E8,#5B8CFF)'],
-  ['#B58CFF','#1B0A33','linear-gradient(135deg,#B58CFF,#FF7AD9)'],
-  ['#4BE3A8','#03211A','linear-gradient(135deg,#6CF0B4,#2FB8D8)'],
-  ['#FF5F7E','#ffffff','linear-gradient(135deg,#FF5F7E,#C2185B)'],
-  ['#F5C84B','#1A1400','linear-gradient(135deg,#FFE17A,#F59E0B)']
+  ['#4A90FF', '#fff', '#4A90FF'], ['#4DAACF', '#fff', '#4DAACF'], ['#0F78B5', '#fff', '#0F78B5'],
+  ['#3FADA8', '#fff', '#3FADA8'], ['#8672A8', '#fff', '#8672A8'], ['#FF6E6E', '#fff', '#FF6E6E'], ['#D6365B', '#fff', '#D6365B']
 ];
 
 const ANCHOR = new Date(2026, 7, 31);
@@ -256,6 +301,8 @@ let PT = null;
 let pDate = ds(NOW());
 let calM = ds(NOW());
 let manualWeek = null;
+let homeD = null, calCtx = 's', HB = null, ANN = '';
+const SUPPORT_URL = 'https://t.me/AvaUtility_support'; // куда ведёт «Задать вопрос». Поставь сюда свою ссылку
 let aiMode = 'ask';
 
 const key = t => t.k + ':' + t.n;
@@ -341,6 +388,7 @@ const I = {
 };
 
 const ico = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
+Object.assign(I, { clock: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', key: 'M15 3a6 6 0 11-4.2 10.3L9 15H7v2H5v2H2v-3l7.7-7.7A6 6 0 0115 3zM16 8h.01', edit: 'M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19zM14 7l3 3', chk: 'M5 12l5 5L20 7' });
 const item = (ic, t, sub, a, v = '', r = '') => `<button class="it" data-a="${a}" data-v="${esc(v)}">${(a === 'who' || a === 'pick') ? ava(42) : `<span class="ic">${ico(ic)}</span>`}<span class="t"><b>${esc(t)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${r ? `<span class="mu" style="font-size:13px">${esc(r)}</span>` : '<span class="chev">›</span>'}</button>`;
 
 function tabs() {
@@ -360,7 +408,7 @@ function go(t) {
   p.classList.toggle('ai', tab === 'a'); if (tab === 'h') home(); else if (tab === 's') sched(); else if (tab === 'f') find(); else if (tab === 'a') ai(); else if (tab === 'c') prof();
 }
 
-const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя 🔼' : 'Нижняя неделя 🔽'}</button>`;
+const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя' : 'Нижняя неделя'}</button>`;
 
 // Главная: минималистичный стиль с автоматическим переходом на завтра
 
@@ -369,9 +417,9 @@ const shortType = t => { t = (t || '').toLowerCase(); return t.startsWith('ле�
 function compactDay(t, d, title) {
   const now = NOW(), w = getWeek(d), gi = d.getDay(), nm = now.getHours() * 60 + now.getMinutes(), today = same(d, now);
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
-  CUR = L; LD = ds(d);
+  CUR = L; LD = ds(d); HB = ds(d);
   const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][gi];
-  let h = `<div class="cmp g"><div class="cmp-h"><span>${title || wd}, ${d.getDate()} ${MO[d.getMonth()]}</span><button class="cmp-c" data-a="tab" data-v="s" aria-label="Открыть расписание">${ico('cal', 22)}</button></div>`;
+  let h = `<div class="cmp g"><div class="cmp-h"><button class="ar" data-a="hd" data-v="-1" aria-label="Назад">‹</button><span class="cmp-d">${wd}, ${d.getDate()} ${MO[d.getMonth()]}</span><button class="ar" data-a="hd" data-v="1" aria-label="Вперёд">›</button><button class="cmp-c" data-a="calh" aria-label="Календарь">${ico('cal', 22)}</button></div>`;
   if (!L.length) h += `<div class="empty" style="padding:28px 10px"><b>Пар нет</b>Отдыхаем</div>`;
   L.forEach((l, i) => {
     const [a, e] = span(l), live = today && nm >= a && nm < e, note = NOTES[nk(d, l)], no = (BELLS[l.time.slice(0, 5)] || [])[1] || i + 1;
@@ -393,6 +441,7 @@ function home() {
       <div style="flex-shrink:0;">${wkPill(now)}</div>
     </div>`;
 
+  h += annHtml();
   if (s.live) {
     const l = s.live.l, durM = s.live.e - s.live.s, el = s.nm - s.live.s, pct = Math.max(0, Math.min(100, Math.round(el / durM * 100)));
     h += `<div class="box hero"><div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div><div class="bar"><i></i></div></div>`;
@@ -401,19 +450,13 @@ function home() {
     const l = s.next.l;
     h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
   } else if (isFinished) {
-    h += `<div class="box g"><b>🎉 Все пары на сегодня завершились!</b><div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div></div>`;
+    h += `<div class="box g"><b>Все пары на сегодня закончились</b><div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div></div>`;
   } else {
-    h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Выходной день 🎉</h3><div>Отдыхаем и набираемся сил</div></div>`;
+    h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Сегодня выходной</h3><div>Отдыхаем и набираемся сил</div></div>`;
   }
 
   const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
-  const nn = Object.keys(NOTES).length;
-  h += `<div class="tiles">
-    <button class="tile" data-a="tab" data-v="a" style="background:linear-gradient(135deg,#7F5BFF,#FF7AD9)"><span class="ava" style="width:36px;height:36px">${owl(28)}</span>Совёнок AI</button>
-    <button class="tile" data-a="tab" data-v="f" style="background:linear-gradient(135deg,#2F8CFF,#35D6C8)">${ico('f',26)}Где препод или друг</button>
-    <button class="tile" data-a="cal" style="background:linear-gradient(135deg,#FF8A5B,#FF5F7E)">${ico('cal',26)}Календарь</button>
-    <button class="tile" data-a="tab" data-v="s" style="background:linear-gradient(135deg,#27C48B,#2FB8D8)">${ico('s',26)}Заметок: ${nn}</button></div>`;
-  h += (isFinished || isWeekend) ? compactDay(me.target, tomorrow, 'Завтра') : compactDay(me.target, now);
+  h += compactDay(me.target, homeD || ((isFinished || isWeekend) ? tomorrow : now));
 
   if (me.fav && me.fav.length) {
     h += `<h2>Избранное</h2><div class="box g" style="padding:4px 16px">`;
@@ -439,11 +482,11 @@ function dayHtml(t, d, click) {
     const [a, e] = span(l);
     if (i > 0) {
       const prev = span(L[i - 1]), g = a - prev[1];
-      if (g > 10) h += `<div class="gap">🕳 Окно ${dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
+      if (g > 10) h += `<div class="gap">Окно ${dur(g)} (${hm(prev[1])} – ${hm(a)})</div>`;
     }
     const no = `<div class="no"><b>${i + 1}</b><span>${l.time.slice(0, 5)}</span><span>${hm(e)}</span></div>`;
     const live = today && nm >= a && nm < e, note = NOTES[nk(d, l)];
-    h += `<div class="row${live ? ' live' : ''}">${no}<div><button class="card g ${cls(l.type)}" ${click ? `data-a="les" data-v="${i}"` : ''}><div class="tp">${esc(l.type || 'Пара')}</div><h3>${esc(l.subject)}</h3><div class="meta"><span>${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</span><span class="rm">${esc(l.room)}${l.building ? ', ' + esc(l.building) : ''}</span></div>${note ? `<div class="nt">📝 ${esc(note)}</div>` : ''}</button></div></div>`;
+    h += `<div class="row${live ? ' live' : ''}">${no}<div><button class="card g ${cls(l.type)}" ${click ? `data-a="les" data-v="${i}"` : ''}><div class="tp">${esc(l.type || 'Пара')}</div><h3>${esc(l.subject)}</h3><div class="meta"><span>${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</span><span class="rm">${esc(l.room)}${l.building ? ', ' + esc(l.building) : ''}</span></div>${note ? `<div class="nt"> ${esc(note)}</div>` : ''}</button></div></div>`;
   });
   return h;
 }
@@ -457,9 +500,9 @@ function sched() {
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;"><button class="ib g" data-a="cal">${ico('cal', 18)}</button>${wkPill(date)}</div>
     </div>
     <div class="day-nav-bar">
-      <button class="day-nav-btn pill g" data-a="shift" data-v="-1">‹ Вчера</button>
-      <b style="font-size:13px;font-weight:700;">${date.getDate()} ${MO[date.getMonth()]}</b>
-      <button class="day-nav-btn pill g" data-a="shift" data-v="1">Завтра ›</button>
+      <button class="ar" data-a="shift" data-v="-1" aria-label="Предыдущий день">‹</button>
+      <b>${['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][date.getDay()]}, ${date.getDate()} ${MO[date.getMonth()]}</b>
+      <button class="ar" data-a="shift" data-v="1" aria-label="Следующий день">›</button>
     </div>`;
 
   const m = mon(date), w = getWeek(date);
@@ -496,13 +539,27 @@ function flist() {
 
 function whoOpen(k) { const [a, ...b] = k.split(':'); PT = { k: a, n: b.join(':') }; pDate = ds(NOW()); drawWho(); $('sheet').classList.add('on'); }
 function drawWho() {
-  const t = PT, s = status(t, NOW()), fv = me.fav.some(x => key(x) === key(t));
-  $('pnl').innerHTML = `<div style="display:flex;justify-content:space-between"><h1>${esc(t.n)}</h1><button class="ib g" data-a="fav" style="color:${fv?'var(--ac)':'var(--mu)'}">${ico('star',22)}</button></div><div class="box hero" style="margin:14px 0">${s.live?'Сейчас на паре: '+s.live.l.subject:'Пар нет'}</div>${dayHtml(t, pDate, false)}`;
+  const t = PT, now = NOW(), s = status(t, now), fv = me.fav.some(x => key(x) === key(t));
+  let st;
+  if (s.live) st = `<div class="mu">Сейчас на паре, до ${hm(s.live.e)}</div><h3>${where(s.live.l)}</h3><div class="mu">${esc(s.live.l.subject)}</div>`;
+  else if (s.next) st = `<div class="mu">Дальше в ${hm(s.next.s)}, через ${dur(s.next.s - s.nm)}</div><h3>${where(s.next.l)}</h3><div class="mu">${esc(s.next.l.subject)}</div>`;
+  else st = `<div class="mu">Сейчас</div><h3>${s.L.length ? 'Пары на сегодня закончились' : 'Сегодня пар нет'}</h3>`;
+  const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][pDate.getDay()];
+  $('pnl').innerHTML = `<div class="sh-h"><h1>${esc(t.n)}</h1><button class="ib g" data-a="fav" aria-label="Избранное" style="color:${fv ? 'var(--ac)' : 'var(--mu)'}">${ico('star', 22)}</button></div>
+    <div class="box hero">${st}</div>
+    <div class="day-nav-bar"><button class="ar" data-a="pd" data-v="-1" aria-label="Назад">‹</button><b>${wd}, ${pDate.getDate()} ${MO[pDate.getMonth()]}</b><button class="ar" data-a="pd" data-v="1" aria-label="Вперёд">›</button></div>
+    ${dayHtml(t, pDate, false)}`;
 }
 
 function lesOpen(i) {
   const l = CUR[i], k = nk(LD || date, l), [a, e] = span(l); window.NK = k; window.ACTIVE_LESSON = l;
-  $('pnl').innerHTML = `<div class="tp ${cls(l.type)}">${esc(l.type)}</div><h1 style="font-size:22px;margin:4px 0 14px">${esc(l.subject)}</h1><div class="box g" style="padding:4px 16px;margin-bottom:16px"><div class="it"><span class="ic">${ico('cal')}</span><span class="t"><b>${l.time.slice(0,5)} — ${hm(e)}</b></span></div></div><div class="lab2">Личная заметка</div><textarea class="fld" id="note" placeholder="Что взять, что сдать...">${esc(NOTES[k]||'')}</textarea><button class="btn" data-a="savenote" data-v="${esc(k)}">💾 Сохранить</button>`;
+  $('pnl').innerHTML = `<div class="ls-h"><span class="ls-dot ${cls(l.type)}"></span><div><h1>${esc(l.subject)}</h1><div class="mu">${esc(l.type || '')}</div></div></div>
+    <div class="ls-r">${ico('clock', 24)}<span>${hm(a)} - ${hm(e)}</span></div>
+    <div class="ls-r">${ico('user', 24)}<span>${esc(l.teacher || l.group || 'Не указан')}</span></div>
+    <div class="ls-r">${ico('key', 24)}<span>${where(l)}</span></div>
+    <div class="ls-r top">${ico('edit', 24)}<textarea class="fld" id="note" placeholder="Заметка к паре: что взять, что сдать, что спросить">${esc(NOTES[k] || '')}</textarea></div>
+    <button class="btn" data-a="shn" data-v="${esc(k)}">Поделиться заметкой</button>
+    <button class="btn gl" data-a="savenote" data-v="${esc(k)}">Сохранить</button>`;
   $('sheet').classList.add('on');
 }
 
@@ -510,13 +567,13 @@ function calOpen() {
   const m = calM, first = (m.getDay()+6)%7, dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
   let c = SH.map(x=>`<i class="ch">${x}</i>`).join('');
   for(let i=0;i<first;i++) c+='<i></i>';
-  for(let d=1;d<=dim;d++) { const x = new Date(m.getFullYear(), m.getMonth(), d); c+=`<button class="cd${same(x,date)?' sel':''}" data-a="cd" data-v="${d}">${d}</button>`; }
+  for(let d=1;d<=dim;d++) { const x = new Date(m.getFullYear(), m.getMonth(), d); c+=`<button class="cd${same(x, calCtx === 'h' ? (HB || date) : date)?' sel':''}" data-a="cd" data-v="${d}">${d}</button>`; }
   $('pnl').innerHTML = `<div class="top"><h1>${MN[m.getMonth()]}</h1></div><div class="cal">${c}</div>`;
   $('sheet').classList.add('on');
 }
 
 // «СОВЁНОК AI»
-let AICHAT = [{ me: 0, t: 'Привет! Я Совёнок 🦉 Кинь мне лекцию, и я сожму её в конспект. Или спроси про расписание: где препод, что у группы завтра, какая пара сейчас.' }], AILAST = '', AILEC = '';
+let AICHAT = [{ me: 0, t: 'Привет! Я Совёнок. Помогаю с учёбой: объясню тему, разберу задачу, сожму лекцию в конспект. Ещё знаю расписание: спроси, что завтра или где сейчас преподаватель.' }], AILAST = '', AILEC = '';
 const AISTYLES = [['summary', 'Тезисы'], ['cards', 'Вопрос-ответ'], ['simple', 'Просто']];
 function aiTeacher() { const Sd = me.target.k === 'g' && DATA[me.target.n] && DATA[me.target.n].schedule; if (Sd) for (const w in Sd) for (const d in Sd[w]) for (const l of Sd[w][d]) if (l.teacher) return l.teacher.split(' ')[0]; return 'препод'; }
 function aiBubbles() {
@@ -534,36 +591,39 @@ function ai() {
       <button class="btn" data-a="auth" style="max-width:220px;margin-top:10px;">Войти</button></div>`;
     return;
   }
-  const chips = ['Что сегодня?', 'Что завтра?', 'Где сейчас пара?', `Где сейчас ${aiTeacher()}?`];
+  const chips = ['Что сегодня?', 'Что завтра?', 'Где пара сейчас?', `Где ${aiTeacher()}?`];
   $('page').innerHTML = `<div class="aiwrap">
     <div class="top" style="flex:none;align-items:center"><div style="display:flex;gap:12px;align-items:center"><span class="ava" style="width:52px;height:52px">${owl(42)}</span><div><h1>Совёнок AI</h1><div class="mu">Лекции и расписание в одном чате</div></div></div></div>
     <div class="aichat" id="ai_chat">${aiBubbles()}</div>
     <div class="qchips" style="flex:none">${chips.map(q => `<button class="qc g" data-a="aiq" data-v="${esc(q)}">${esc(q)}</button>`).join('')}<button class="qc g" data-a="aihint" style="color:var(--ac)">Сжать лекцию</button></div>
-    <div class="composer"><textarea class="fld g" id="ai_input" rows="1" placeholder="Вставь лекцию или спроси про расписание"></textarea><button class="ib" data-a="aisend" aria-label="Отправить" style="background:var(--acg);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up', 22)}</button></div></div>`;
+    <div class="composer"><textarea class="fld g" id="ai_input" rows="1" placeholder="Вопрос по учёбе, расписание или лекция"></textarea><button class="ib" data-a="aisend" aria-label="Отправить" style="background:var(--acg);color:var(--on);width:52px;height:52px;border-radius:18px;flex:none">${ico('up', 22)}</button></div></div>`;
   const inp = $('ai_input');
   inp.oninput = () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 120) + 'px'; };
   inp.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); } };
   const c = $('ai_chat'); if (c) c.scrollTop = c.scrollHeight;
 }
 function aiAnswer(q) {
-  const s = q.toLowerCase(), nz = x => x.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), nq = nz(q), now = NOW();
-  let t = me.target, named = false;
-  const g = Object.keys(DATA).find(k => nq.includes(nz(k)));
-  if (g) { t = { k: 'g', n: g }; named = true; }
+  const s = q.toLowerCase(), words = s.split(/[^а-яё0-9]+/).filter(Boolean), nz = x => x.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), nq = nz(q), now = NOW();
+  let t = me.target, groupNamed = false;
+  const g = Object.keys(DATA).find(k => k.length >= 4 && nq.includes(nz(k)));
+  if (g) { t = { k: 'g', n: g }; groupNamed = true; }
   else {
-    const tn = Object.keys(T).find(n => { const sn = n.split(' ')[0].toLowerCase(); return sn.length > 3 && s.includes(sn.slice(0, Math.max(4, sn.length - 1))); });
-    if (tn) { t = { k: 't', n: tn }; named = true; }
+    const tn = Object.keys(T).find(n => { const sn = n.split(' ')[0].toLowerCase(); return sn.length > 4 && words.some(w => w.startsWith(sn.slice(0, Math.max(4, sn.length - 2)))); });
+    if (tn) t = { k: 't', n: tn };
   }
+  const SCHED = ['расписание', 'расписания', 'пара', 'пары', 'пар', 'паре', 'пару', 'парах', 'где', 'кабинет', 'аудитория', 'аудитории', 'ауд', 'когда'];
+  const WD = [['понедельник', 'понедельника'], ['вторник', 'вторника'], ['среда', 'среду'], ['четверг', 'четверга'], ['пятница', 'пятницу'], ['суббота', 'субботу']];
   let d = new Date(now), lab = 'сегодня', dayHit = false;
-  if (/послезавтра/.test(s)) { d.setDate(d.getDate() + 2); lab = 'послезавтра'; dayHit = true; }
-  else if (/завтра/.test(s)) { d.setDate(d.getDate() + 1); lab = 'завтра'; dayHit = true; }
-  else if (/сегодня/.test(s)) dayHit = true;
+  if (words.includes('послезавтра')) { d.setDate(d.getDate() + 2); lab = 'послезавтра'; dayHit = true; }
+  else if (words.includes('завтра')) { d.setDate(d.getDate() + 1); lab = 'завтра'; dayHit = true; }
+  else if (words.includes('сегодня')) dayHit = true;
   else {
-    const wi = [/понедельник/, /вторник/, /сред/, /четверг/, /пятниц/, /суббот/].findIndex(r => r.test(s));
-    if (wi >= 0) { for (let i = 0; i < 7; i++) { const x = new Date(now); x.setDate(x.getDate() + i); if (x.getDay() === wi + 1) { d = x; break; } } lab = DN[wi].toLowerCase(); dayHit = true; }
+    const wi = WD.findIndex(a => a.some(w => words.includes(w)));
+    if (wi >= 0) { for (let i = 0; i < 7; i++) { const x = new Date(now); x.setDate(x.getDate() + i); if (x.getDay() === wi + 1) { d = x; break; } } lab = WD[wi][1]; dayHit = true; }
   }
-  if (!dayHit && !named && !/где|сейчас|пар|расписан|кабинет|аудитор|ауд|когда|что/.test(s)) return 'Не совсем понял 🦉 Попробуй: «что завтра?», «где сейчас Рязанова?» или выбери режим «Тезисы» и вставь лекцию.';
-  if (/где|сейчас|кабинет|аудитор|ауд/.test(s) && lab === 'сегодня') {
+  const schedWord = words.some(w => SCHED.includes(w)), asks = words.some(w => ['что', 'какие', 'какая', 'есть'].includes(w));
+  if (!schedWord && !groupNamed && !(dayHit && asks)) return null;
+  if (words.some(w => ['где', 'кабинет', 'аудитория', 'аудитории', 'ауд', 'сейчас'].includes(w)) && lab === 'сегодня') {
     const st = status(t, now);
     if (st.live) return `${t.n} сейчас на паре «${st.live.l.subject}»\n${where(st.live.l).replace(/&amp;/g, '&')}, до ${hm(st.live.e)}`;
     if (st.next) return `${t.n} сейчас без пары. Дальше в ${hm(st.next.s)}: «${st.next.l.subject}»\n${where(st.next.l).replace(/&amp;/g, '&')}`;
@@ -578,10 +638,21 @@ async function aiCompress(text, style) {
   AICHAT.push({ me: 0, t: 'Совёнок думает…' }); aiRender();
   const idx = AICHAT.length - 1;
   try {
-    const r = await fetch(`${API_URL}/api/ai_compress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, task: style }) });
+    const r = await fetch(`${API_URL}/api/ai_compress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, task: style, user_id: me && me.tgUser ? me.tgUser.id : 0 }) });
     const d = await r.json();
     AICHAT[idx] = d.status === 'ok' ? { me: 0, t: d.result, cp: 1 } : { me: 0, t: d.message || 'Не получилось, попробуй ещё раз' };
     if (d.status === 'ok') AILAST = d.result;
+  } catch (e) { AICHAT[idx] = { me: 0, t: 'Сервер недоступен, попробуй позже' }; }
+  aiRender();
+}
+async function aiAsk(q) {
+  const hist = AICHAT.filter(m => m.t && m.t !== 'Совёнок думает…').slice(-7, -1).map(m => ({ role: m.me ? 'user' : 'assistant', content: String(m.t).slice(0, 600) }));
+  AICHAT.push({ me: 0, t: 'Совёнок думает…' }); aiRender();
+  const idx = AICHAT.length - 1;
+  try {
+    const r = await fetch(`${API_URL}/api/ai_chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: hist, user_id: me && me.tgUser ? me.tgUser.id : 0 }) });
+    const d = await r.json();
+    AICHAT[idx] = { me: 0, t: d.result || d.message || 'Не получилось ответить, попробуй ещё раз' };
   } catch (e) { AICHAT[idx] = { me: 0, t: 'Сервер недоступен, попробуй позже' }; }
   aiRender();
 }
@@ -591,82 +662,47 @@ async function aiSend(txt) {
   if (inp) { inp.value = ''; inp.style.height = 'auto'; }
   const lecture = q.length > 300 || q.split(/\s+/).length > 50 || /^(сожми|сократи|конспект|тезис|упрости)/i.test(q);
   AICHAT.push({ me: 1, t: q.length > 200 ? q.slice(0, 120) + '… (лекция, ' + q.length + ' симв.)' : q });
-  if (!lecture) { AICHAT.push({ me: 0, t: aiAnswer(q) }); return aiRender(); }
+  if (!lecture) { const ans = aiAnswer(q); if (ans) { AICHAT.push({ me: 0, t: ans }); return aiRender(); } aiRender(); return aiAsk(q); }
   await aiCompress(q, aiMode);
 }
 
 // ПРОФИЛЬ СО ВСЕМИ РАЗДЕЛАМИ
 function prof() {
   const isTeacher = me && me.target && me.target.k === 't';
-  const roleLabel = isTeacher ? '👨‍🏫 Преподаватель' : '🎓 Студент';
-  const targetLabel = isTeacher ? me.target.n : (me && me.target ? `Группа ${me.target.n}` : 'Группа не выбрана');
   const userName = dispName() || (isTeacher ? 'Преподаватель' : 'Студент НЧИ КФУ');
   const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   const favCount = (me && me.fav) ? me.fav.length : 0;
-
+  const sub = isTeacher ? 'Преподаватель, НЧИ КФУ' : 'Группа ' + me.target.n + ', НЧИ КФУ';
   $('page').innerHTML = `
     <div class="top"><h1>Профиль</h1></div>
-    <div class="box g" style="text-align:center;padding:24px 16px">
-      <div style="display:grid;place-items:center;margin-bottom:10px">${ava(96)}</div>
-      <h1 style="font-size:22px;font-weight:800">${esc(userName)}</h1>
-      <div class="mu" style="margin-top:3px">${roleLabel}${isTeacher ? '' : ' · ' + esc(targetLabel)}</div>
-      <div style="font-size:13px;color:var(--mu);margin-top:2px;font-weight:500">НЧИ КФУ</div>
-      <button class="btn gl" data-a="edit" style="margin-top:14px;padding:12px">Изменить имя</button>
-    </div>
-
+    <button class="box g prow" data-a="edit">${ava(64)}<span class="t"><b>${esc(userName)}</b><small>${esc(sub)}</small></span><span class="chev">›</span></button>
     <div class="lab2">Моё расписание</div>
-    <div class="box g" style="padding:4px 16px">
-      ${item('users', isTeacher ? 'Сменить фамилию преподавателя' : 'Сменить группу', 'Сейчас: ' + esc(me.target.n), 'chg')}
-      ${item('star', 'Избранное', 'Сохранённые расписания: ' + favCount, 'favs')}
+    <div class="box g pad">
+      ${item('users', isTeacher ? 'Сменить фамилию' : 'Сменить группу', 'Сейчас: ' + me.target.n, 'chg')}
+      ${item('star', 'Избранное', 'Группы друзей и преподаватели: ' + favCount, 'favs')}
     </div>
-
-    <div class="lab2">Авторизация</div>
-    <div class="box g" style="padding:4px 16px">
-      ${isAuth
-        ? item('tg', esc(me.tgUser.first_name), (me.tgUser.username ? '@' + esc(me.tgUser.username) + ' · ' : '') + 'Облачная синхронизация включена ✓', 'x')
-        : `<button class="it" data-a="auth">
-            <span class="ic">${ico('tg')}</span>
-            <span class="t"><b>Войти через Telegram</b><small>Разблокировать Совёнок AI и облако</small></span>
-            <span class="chev">›</span>
-           </button>`
-      }
+    <div class="lab2">Аккаунт</div>
+    <div class="box g pad">
+      ${isAuth ? item('tg', me.tgUser.first_name, (me.tgUser.username ? '@' + me.tgUser.username + ', ' : '') + 'заметки сохраняются на сервере', 'x') : item('tg', 'Войти через Telegram', 'Откроется бот, там подтверди вход', 'auth')}
     </div>
-
-    <div class="lab2">Оформление</div>
-    <div class="box g" style="padding:4px 16px">
-      ${item('pal', 'Цветовая палитра', 'Светлая, тёмная тема и цвет акцента', 'look')}
-      ${item('share', 'Поделиться расписанием', 'Отправить ссылку одногруппникам', 'shr')}
+    <div class="lab2">Техподдержка</div>
+    <div class="box g pad">
+      <a class="it" href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="ic">${ico('help')}</span><span class="t"><b>Задать вопрос</b><small>Есть вопрос? Напишите нам.</small></span><span class="chev">›</span></a>
     </div>
-
-    <div class="lab2">Поддержка</div>
-    <div class="box g" style="padding:4px 16px">
-      <a class="it" href="https://t.me/AvaUtility_support" target="_blank" style="color:inherit;text-decoration:none">
-        <span class="ic">${ico('tg')}</span>
-        <span class="t"><b>Поддержка КФУ</b><small>@AvaUtility_support</small></span>
-        <span class="chev">›</span>
-      </a>
+    <div class="lab2">Приложение</div>
+    <div class="box g pad">
+      ${item('share', 'Поделиться приложением', 'Отправь ссылку одногруппникам', 'shr')}
+      ${item('pal', 'Внешний вид', 'Тема и цвет акцента', 'look')}
     </div>
-
-    <button class="btn gl" data-a="reset" style="margin-top:20px;color:var(--lab)">Сбросить настройки на устройстве</button>
-    <button class="mu" data-a="ver" style="display:block;width:100%;text-align:center;margin-top:16px;padding:8px">НЧИ КФУ · Версия 1.8</button>
-  `;
+    <button class="plain" data-a="reset">Сбросить данные на устройстве</button>
+    <button class="mu verb" data-a="ver">НЧИ КФУ, версия 2.0</button>`;
 }
 
-// ОКНО ОФОРМЛЕНИЯ И ПАЛИТРЫ
 function lookOpen() {
-  $('pnl').innerHTML = `
-    <h1 style="font-size:22px;margin-bottom:12px">Оформление</h1>
-    <div class="lab2">Тема приложения</div>
-    <div class="seg g" style="margin-bottom:14px">
-      <button class="${cfg.theme==='auto'?'on':''}" data-a="th" data-v="auto">Системная</button>
-      <button class="${cfg.theme==='light'?'on':''}" data-a="th" data-v="light">Светлая</button>
-      <button class="${cfg.theme==='dark'?'on':''}" data-a="th" data-v="dark">Тёмная</button>
-    </div>
-    <div class="lab2">Цвет акцента</div>
-    <div class="dots">
-      ${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" style="background:${c[2]}">${cfg.ac === i ? '✓' : ''}</button>`).join('')}
-    </div>
-  `;
+  const th = (v, n) => `<button class="it" data-a="th" data-v="${v}"><span class="t"><b>${n}</b></span>${cfg.theme === v ? `<span style="color:var(--ac)">${ico('chk', 22)}</span>` : ''}</button>`;
+  $('pnl').innerHTML = `<div class="sh-h"><h1>Внешний вид</h1></div>
+    <div class="dots">${ACC.map((c, i) => `<button class="dot" data-a="acc" data-v="${i}" aria-label="Цвет ${i + 1}" style="background:${c[0]}">${(cfg.ac || 0) === i ? ico('chk', 22) : ''}</button>`).join('')}</div>
+    <div class="box g pad" style="margin-top:14px">${th('auto', 'Системная тема')}${th('light', 'Светлая тема')}${th('dark', 'Тёмная тема')}</div>`;
   $('sheet').classList.add('on');
 }
 
@@ -686,8 +722,8 @@ function onboard() {
     <div class="onb">
       <h1>Расписание</h1>
       <p>Кто вы?</p>
-      <button class="big g" data-a="role" data-v="g">🎓 Студент<small>Выбрать группу</small></button>
-      <button class="big g" data-a="role" data-v="t">👨‍🏫 Преподаватель<small>По пин-коду</small></button>
+      <button class="big g" data-a="role" data-v="g">Студент<small>Выбрать свою группу из списка</small></button>
+      <button class="big g" data-a="role" data-v="t">Преподаватель<small>Вход по пин-коду</small></button>
     </div>
   `;
 }
@@ -777,14 +813,14 @@ function checkUrlAuth() {
 }
 
 const A = {
-  tab: v => go(v), role: v => pickRole(v, true), close: () => closeS(),
+  tab: v => { if (v === 'h') homeD = null; go(v); }, role: v => pickRole(v, true), close: () => closeS(),
   day: v => { const m = mon(date); m.setDate(m.getDate() + +v); date = m; sched(); },
   today: () => { date = ds(NOW()); sched(); }, shift: v => shiftDay(+v),
   toggle_week: () => { manualWeek = (getWeek(date) === 'в') ? 'н' : 'в'; toast(manualWeek === 'в' ? 'Верхняя неделя' : 'Нижняя неделя'); go(); },
   set_ai_mode: v => { aiMode = v; ai(); },
-  cal: () => { calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
+  cal: () => { calCtx = 's'; calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
   cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth()+ +v, 1); calOpen(); },
-  cd: v => { date = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); sched(); },
+  cd: v => { const dd = new Date(calM.getFullYear(), calM.getMonth(), +v); closeS(); if (calCtx === 'h') { homeD = dd; home(); } else { date = dd; sched(); } },
   les: v => lesOpen(+v),
   savenote: async v => {
     const el = $('note');
@@ -830,6 +866,11 @@ Object.assign(A, {
   airedo: v => { if (!AILEC) return toast('Сначала отправь лекцию'); AICHAT.push({ me: 1, t: 'Переделать: ' + (AISTYLES.find(x => x[0] === v) || [0, v])[1] }); aiCompress(AILEC, v); },
   aicopy: () => { if (navigator.clipboard) navigator.clipboard.writeText(AILAST).then(() => toast('Скопировано', '✓'), () => toast('Не удалось скопировать')); }
 });
+Object.assign(A, {
+  hd: v => { const b = HB || ds(NOW()); homeD = new Date(b.getFullYear(), b.getMonth(), b.getDate() + +v); home(); },
+  calh: () => { calCtx = 'h'; const b = HB || ds(NOW()); calM = new Date(b.getFullYear(), b.getMonth(), 1); calOpen(); },
+  shn: v => { const el = $('note'), t = el ? el.value.trim() : ''; if (!t) return toast('Сначала напиши заметку'); const msg = 'Заметка: ' + String(v).split('|')[2] + '\n' + t; if (navigator.share) navigator.share({ text: msg }).catch(() => {}); else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast('Скопировано'), () => toast('Не удалось скопировать')); }
+});
 let _sg = false;
 function initSheetGestures() { if (_sg) return; _sg = true;
   ['pnl', 'apnl'].forEach(id => {
@@ -843,7 +884,44 @@ function initSheetGestures() { if (_sg) return; _sg = true;
   });
 }
 
-function adminOpen() { $('apnl').innerHTML = `<h1 style="font-size:22px">Админка</h1><div class="box g">Групп в базе: ${Object.keys(DATA).length}</div>`; $('adm').classList.add('on'); }
+let ADM_TOKEN = '', ADM_PENDING = null;
+const ERRLOG = []; window.addEventListener('error', e => ERRLOG.push(e.message));
+function annHtml() { return ANN ? `<div class="box g"><div class="mu" style="color:var(--ac);font-weight:600;margin-bottom:4px">Объявление</div><div>${esc(ANN)}</div></div>` : ''; }
+async function loadAnn() { try { const r = await fetch(`${API_URL}/api/announcement`); const d = await r.json(); ANN = (d && d.text) || ''; if (tab === 'h' && me) home(); } catch (e) {} }
+function admApi(path, body) { return fetch(`${API_URL}${path}${body ? '' : '?token=' + encodeURIComponent(ADM_TOKEN)}`, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, token: ADM_TOKEN }) } : {}).then(r => r.json()); }
+function adminOpen() {
+  let n = 0; const bad = [];
+  for (const k in DATA) { const Sd = DATA[k].schedule || {}; let c = 0; for (const w in Sd) for (const d in Sd[w]) for (const l of Sd[w][d]) { n++; c++; if (!l.room || !l.teacher || !BELLS[(l.time || '').slice(0, 5)]) bad.push(k + ', ' + d + ' ' + (l.time || '?') + ': ' + String(l.subject || '').slice(0, 28) + (!l.room ? ' (нет аудитории)' : !l.teacher ? ' (нет преподавателя)' : ' (время не из сетки)')); } if (!c) bad.push(k + ': пустое расписание'); }
+  const srv = ADM_TOKEN ? '' : '<div class="mu" style="margin-top:8px">Кнопки с сервером заработают, если открыть админку по ссылке «Веб-Админка» из бота.</div>';
+  $('apnl').innerHTML = `<div class="sh-h"><h1>Админка</h1></div>
+   <div class="box g"><b>Данные</b><div class="mu">Групп ${Object.keys(DATA).length}, преподавателей ${Object.keys(T).length}, пар ${n}. Источник: ${ld('data') ? 'загружено вручную' : 'встроено в страницу'}</div></div>
+   <div class="box g"><b>Новое расписание</b><div class="mu" style="margin:4px 0 8px">Файл schedule.json. Сначала проверим и покажем на этом устройстве, потом можно отправить всем.</div><input class="fld" type="file" id="adm_file" accept=".json,application/json"><button class="btn" data-adm="upload">Отправить на сервер</button><button class="btn gl" data-adm="reset">Вернуть встроенное расписание</button>${srv}</div>
+   <div class="box g"><b>Проверка расписания (${bad.length})</b><div class="log">${esc(bad.slice(0, 12).join('\n') || 'Ошибок не найдено')}</div></div>
+   <div class="box g"><b>Объявление на главной</b><div class="mu" style="margin:4px 0 8px">Видно всем на главной, до 500 символов.</div><textarea class="fld" id="adm_ann" rows="3" placeholder="Например: завтра пары по расписанию четверга">${esc(ANN)}</textarea><button class="btn" data-adm="pub">Опубликовать</button><button class="btn gl" data-adm="unpub">Убрать объявление</button></div>
+   <div class="box g"><b>Рассылка в бот</b><div class="mu" style="margin:4px 0 8px">Сообщение получат все, кто запускал бота.</div><textarea class="fld" id="adm_bc" rows="3" placeholder="Текст рассылки"></textarea><button class="btn" data-adm="bc">Отправить всем</button></div>
+   <div class="box g"><b>Статистика сервера</b><div class="log" id="adm_out">Нажми кнопку, чтобы загрузить</div><button class="btn gl" data-adm="stats">Обновить</button></div>
+   <div class="box g"><b>Своё время</b><div class="mu" style="margin:4px 0 8px">Проверить окна, текущую пару и «где сейчас».</div><input class="fld" type="datetime-local" id="adm_sim"><button class="btn gl" data-adm="sim">Применить</button><button class="btn gl" data-adm="simoff">Вернуть настоящее время</button></div>
+   <div class="box g"><b>Лог ошибок</b><div class="log">${esc(ERRLOG.slice(-8).join('\n') || 'Пусто')}</div></div>`;
+  $('adm').classList.add('on');
+}
+async function admAct(a) {
+  const need = () => { if (!ADM_TOKEN) { toast('Открой админку по ссылке из бота'); return true; } return false; };
+  if (a === 'reset') { try { localStorage.removeItem('data'); } catch (e) {} toast('Перезагрузи страницу'); }
+  else if (a === 'sim') { const v = $('adm_sim').value; if (v) { simT = v; date = ds(NOW()); $('adm').classList.remove('on'); go(); toast('Время: ' + v.replace('T', ' ')); } }
+  else if (a === 'simoff') { simT = null; date = ds(NOW()); $('adm').classList.remove('on'); go(); }
+  else if (a === 'pub' || a === 'unpub') { if (need()) return; const text = a === 'pub' ? $('adm_ann').value.trim().slice(0, 500) : ''; try { const d = await admApi('/api/admin/announcement', { text }); if (d.status === 'ok') { ANN = text; toast(text ? 'Опубликовано' : 'Объявление убрано'); } else toast(d.message || 'Ошибка'); } catch (e) { toast('Сервер недоступен'); } }
+  else if (a === 'bc') { if (need()) return; const text = $('adm_bc').value.trim(); if (!text) return toast('Напиши текст'); if (!confirm('Отправить сообщение всем пользователям бота?')) return; try { const d = await admApi('/api/admin/broadcast', { text }); toast(d.status === 'ok' ? 'Рассылка запущена, получателей: ' + d.total : (d.message || 'Ошибка')); } catch (e) { toast('Сервер недоступен'); } }
+  else if (a === 'stats') { if (need()) return; try { const d = await admApi('/api/admin/stats'); $('adm_out').textContent = d.status === 'ok' ? d.lines.join('\n') : (d.message || 'Ошибка'); } catch (e) { $('adm_out').textContent = 'Сервер недоступен'; } }
+  else if (a === 'upload') { if (need()) return; if (!ADM_PENDING) return toast('Сначала выбери файл'); if (!confirm('Заменить расписание у всех пользователей?')) return; try { const d = await admApi('/api/admin/upload_schedule', { data: ADM_PENDING }); toast(d.status === 'ok' ? 'Расписание обновлено, групп: ' + d.groups : (d.message || 'Ошибка')); } catch (e) { toast('Сервер недоступен'); } }
+}
+$('apnl').addEventListener('click', e => { const b = e.target.closest('[data-adm]'); if (b) admAct(b.dataset.adm); });
+$('apnl').addEventListener('change', e => {
+  if (e.target.id !== 'adm_file') return; const f = e.target.files[0]; if (!f) return; const r = new FileReader();
+  r.onload = () => { try { const j = JSON.parse(r.result); if (!j || typeof j !== 'object' || !Object.values(j).every(v => v && typeof v === 'object' && v.schedule)) throw new Error('у групп нет поля schedule'); DATA = j; ADM_PENDING = j; build(); toast(sv('data', j) ? 'Файл проверен и применён здесь' : 'Применено, но не сохранилось на устройстве'); adminOpen(); } catch (x) { ERRLOG.push('Загрузка: ' + x.message); toast('Файл не подошёл: ' + x.message); } };
+  r.readAsText(f);
+});
+if ($('ascrim')) $('ascrim').onclick = () => $('adm').classList.remove('on');
+function checkAdminUrl() { try { const p = new URLSearchParams(location.search); if (p.get('admin') === 'true' && p.get('token')) { ADM_TOKEN = p.get('token'); history.replaceState(null, '', location.pathname); setTimeout(adminOpen, 300); } } catch (e) {} }
 
 function init() {
   build(); look(); initSheetGestures();
@@ -868,6 +946,8 @@ fetch('./schedule.json')
     }
   })
   .catch(() => {});
+loadAnn();
+checkAdminUrl();
 </script>
 </body>
 </html>
