@@ -1,5 +1,6 @@
 import asyncio
 import hmac
+import secrets
 import time
 import datetime
 import io
@@ -43,7 +44,7 @@ TOKEN = os.getenv("BOT_TOKEN", "")
 if not TOKEN:
     raise SystemExit("Задай переменную окружения BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "0000")
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()  # если не задан, ниже создаётся случайный и сохраняется в файл
 PORT = int(os.getenv("PORT", 3000))
 SUPPORT_USERNAME = "@AvaUtility_support"
 
@@ -77,6 +78,9 @@ AI_CHAT_PROMPT = """Ты — «Совёнок AI», учебный помощн�
 
 # Грубая лексика отсекается до обращения к ИИ: так экономятся запросы и нет шанса «разговорить» модель
 BAD_RE = re.compile(r"(?<![а-яё])(?:ху[йеёяию]\w*|пизд\w*|[её]б[аеёиоуы]\w*|бляд\w*|блять|бля|сук[аиу]|муд[аи]\w*|мудил\w*|долбо[её]б\w*|говн\w*|залуп\w*|шлюх\w*|пидор\w*|пидр\w*|гандон\w*|ублюд\w*|чмо|лох|лошар\w*|дебил\w*|идиот\w*|тупиц\w*)(?![а-яё])", re.I)
+AI_TEACHER_ADDON = """
+
+Сейчас с тобой говорит преподаватель. Помогай готовить занятия: предлагай идеи, как интересно объяснить тему, составляй вопросы и мини-тесты для проверки знаний, краткие планы лекций и практик, критерии оценивания. Тон уважительный, обращайся на «вы». Остальные правила те же."""
 AI_HITS = {}
 AI_STATS = {"chat": 0, "compress": 0, "refused": 0, "blocked": 0, "limited": 0}
 BROADCAST = {"total": 0, "sent": 0, "failed": 0, "done": True}
@@ -100,6 +104,28 @@ if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR, exist_ok=True)
     except Exception:
         DATA_DIR = "."
+
+def _load_admin_token() -> str:
+    """Токен админки: из переменной ADMIN_TOKEN или случайный, сохранённый в admin_token.txt рядом с базой."""
+    env = os.getenv("ADMIN_TOKEN", "").strip()
+    if len(env) >= 8 and env not in ("KEY", "0000", "12345678"):
+        return env
+    path = os.path.join(DATA_DIR, "admin_token.txt")
+    try:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                t = f.read().strip()
+            if len(t) >= 16:
+                return t
+        t = secrets.token_urlsafe(24)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(t)
+        return t
+    except Exception:
+        return secrets.token_urlsafe(24)
+
+
+ADMIN_TOKEN = _load_admin_token()
 
 DB_FILE = os.path.join(DATA_DIR, "users.db")
 JSON_FILE = "schedule.json"
@@ -919,6 +945,7 @@ async def handle_api_ai_chat(request):
     try:
         data = await request.json()
         q = str(data.get("question", "")).strip()
+        teacher_mode = data.get("role") == "teacher"
         uid = str(data.get("user_id", "")) or str(request.remote or "anon")
         if not q:
             return cors_response({"status": "error", "message": "Пустой вопрос"})
@@ -936,7 +963,7 @@ async def handle_api_ai_chat(request):
                 c = str(m.get("content", ""))[:600]
                 if c and not (m["role"] == "user" and BAD_RE.search(c)):
                     history.append({"role": m["role"], "content": c})
-        text = await call_groq([{"role": "system", "content": AI_CHAT_PROMPT}] + history + [{"role": "user", "content": q}], 700)
+        text = await call_groq([{"role": "system", "content": AI_CHAT_PROMPT + (AI_TEACHER_ADDON if teacher_mode else "")}] + history + [{"role": "user", "content": q}], 700)
         if not text:
             return _ai_ok("Совёнок сейчас недоступен. Попробуй позже.")
         refused = text.upper().startswith("ОТКАЗ:")
@@ -951,7 +978,7 @@ async def handle_api_ai_chat(request):
 
 # --- Админ-функции. Работают только если задан ADMIN_TOKEN (не "KEY") ---
 def admin_ok(token) -> bool:
-    return bool(ADMIN_TOKEN) and ADMIN_TOKEN != "KEY" and hmac.compare_digest(str(token or ""), ADMIN_TOKEN)
+    return bool(ADMIN_TOKEN) and hmac.compare_digest(str(token or ""), ADMIN_TOKEN)
 
 def setting_get(key, default=""):
     with sqlite3.connect(DB_FILE) as conn:
@@ -1064,8 +1091,7 @@ def create_web_app():
     return app
 
 async def main():
-    if ADMIN_TOKEN in ("", "KEY"):
-        logging.warning("ADMIN_TOKEN не задан: серверные функции админки отключены. Задай переменную окружения ADMIN_TOKEN.")
+    logging.info("Админка: токен берётся из ADMIN_TOKEN или из файла admin_token.txt, ссылку даёт кнопка Веб-Админка в боте.")
     init_db()
     asyncio.create_task(background_scheduler())
     app = create_web_app()
