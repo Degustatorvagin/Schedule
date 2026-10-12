@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0E0E0F">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <meta name="apple-mobile-web-app-title" content="Расписание">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -214,32 +215,102 @@ h1{font-size:24px;font-weight:600;letter-spacing:0}h2{font-size:18px;font-weight
 .ls-r{display:flex;gap:16px;align-items:center;font-size:19px;padding:12px 2px}.ls-r svg{color:var(--mu);flex:none}
 .ls-r.top{align-items:flex-start}.ls-r textarea{flex:1;min-height:120px;margin:0}
 
-/* Блок стилей Совёнка AI и карточки блокировки */
-.ai-locked-box{position:relative;min-height:68vh;display:flex;align-items:center;justify-content:center;border-radius:28px;overflow:hidden;padding:26px 14px}
-.ai-flow-bg{position:absolute;inset:-30px;display:flex;flex-direction:column;gap:12px;opacity:0.16;pointer-events:none;transform:rotate(-7deg) scale(1.08);user-select:none}
-.f-line{display:flex;gap:10px;white-space:nowrap;animation:fLoop 28s linear infinite}
-.f-line:nth-child(even){animation-direction:reverse;animation-duration:34s}
-@keyframes fLoop{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.f-pill{padding:9px 18px;border-radius:99px;background:var(--tx);color:var(--bg);font-weight:700;font-size:14px}
-.ai-lock-card{position:relative;z-index:2;text-align:center;max-width:340px;padding:22px 16px}
-.ai-lock-badge{width:62px;height:62px;border-radius:50%;margin:0 auto 14px;background:var(--ac);color:#fff;display:grid;place-items:center;font-size:26px}
-.kfu-avatar-wrap{width:88px;height:88px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;overflow:hidden;padding:6px}
-.kfu-avatar-wrap img{width:86%;height:86%;object-fit:contain}
-.bub{padding:12px 16px;border-radius:20px;margin-bottom:10px;max-width:90%;font-size:14px;line-height:1.4}
-.bub.g{background:var(--sf)}
-.bub.me{margin-left:auto;background:var(--ac);color:#fff;font-weight:500}
-.qchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.qc{background:var(--sf);font-weight:500;padding:8px 13px;border-radius:14px;font-size:13px;cursor:pointer}
-.composer{display:flex;gap:8px;align-items:flex-end;margin-top:6px}
-.composer textarea{flex:1;min-height:50px;max-height:130px;resize:none;padding:14px 16px;border-radius:20px;background:var(--sf);border:0;color:var(--tx);outline:0}
+/* v2.1: плавность, стекло в меню, баннеры, неделя, календарь, лента на экране ИИ */
+:root{--glass:rgba(255,255,255,.62);--glass-b:rgba(255,255,255,.75);--ind:rgba(0,0,0,.07)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--glass:rgba(44,44,48,.5);--glass-b:rgba(255,255,255,.16);--ind:rgba(255,255,255,.14)}}
+:root[data-theme="dark"]{--glass:rgba(44,44,48,.5);--glass-b:rgba(255,255,255,.16);--ind:rgba(255,255,255,.14)}
+html{scroll-behavior:smooth}
+body{transition:background-color .3s ease,color .3s ease}
+button,.it,.cr,.card,.btn,.pill,.qc,.ar,.d,.cd,.dot,.story,.wk{transition:transform .2s cubic-bezier(.2,.8,.2,1),background-color .25s ease,color .25s ease,opacity .25s ease,box-shadow .25s ease}
+.btn:active,.pill:active,.qc:active,.ar:active,.d:active,.cd:active,.dot:active,.story:active,.wk:active,.card:active{transform:scale(.96)}
+.it:active,.cr:active{background:var(--ln)}
+#page{transition:opacity .13s ease,transform .13s ease}
+#page.leave{opacity:0;transform:translateY(8px)}
+.view-enter{animation:viewSlideIn .38s cubic-bezier(.16,1,.3,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.cr,.row,.box,.stories,.strip{animation:rise .42s cubic-bezier(.16,1,.3,1) both}
+.cr:nth-child(n+3),.row:nth-child(n+2){animation-delay:.04s}.cr:nth-child(n+4),.row:nth-child(n+3){animation-delay:.08s}
+.cr:nth-child(n+5),.row:nth-child(n+4){animation-delay:.12s}.cr:nth-child(n+6),.row:nth-child(n+5){animation-delay:.16s}
+.aichat>:last-child{animation:rise .35s cubic-bezier(.16,1,.3,1) both}
+/* шторки: плавное открытие и закрытие */
+.sheet{display:block;visibility:hidden;pointer-events:none;transition:visibility 0s linear .36s}
+.sheet.on{visibility:visible;pointer-events:auto;transition-delay:0s}
+.scrim{opacity:0;transition:opacity .32s ease}.sheet.on .scrim{opacity:1}
+.panel{animation:none;transform:translateY(105%);transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.sheet.on .panel{transform:translateY(0)}
+.sh-x{position:sticky;top:0;align-self:flex-end;flex:none;width:36px;height:36px;border-radius:50%;background:var(--sf);color:var(--mu);display:grid;place-items:center;margin:-32px -2px 8px 0;z-index:5}
+.sh-x svg{display:block}
+/* меню как стекло на iPhone */
+.tabbar{--i:0;background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(185%);backdrop-filter:blur(26px) saturate(185%);border:1px solid var(--glass-b);box-shadow:0 10px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.18)}
+.tabbar::before{content:"";position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px) / 5);border-radius:26px;background:var(--ind);transform:translateX(calc(var(--i) * 100%));transition:transform .42s cubic-bezier(.3,1.25,.4,1)}
+.tabbar button{position:relative;z-index:1}.tabbar .on{background:none;color:var(--ac)}
+/* неделя */
+.wk{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;border-radius:99px;text-align:left;flex:none}
+.wk-ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none}
+.wk b{display:block;font-size:13px;font-weight:700;line-height:1.15}.wk small{display:block;font-size:11px;opacity:.8;margin-top:1px}
+.wk.up{background:var(--ac);color:#fff}.wk.up .wk-ic{background:rgba(255,255,255,.24)}
+.wk.dn{background:var(--sf);color:var(--tx);box-shadow:inset 0 0 0 1.5px var(--ac)}.wk.dn .wk-ic{background:var(--ac);color:#fff}
+/* календарь и полоска дней */
+.cd{transition:background-color .2s,color .2s}
+.cd.off{background:rgba(255,107,107,.14);color:#FF6B6B}.cd.now{box-shadow:inset 0 0 0 2px var(--ac)}
+.cd.sel,.cd.off.sel{background:var(--ac);color:#fff;box-shadow:none}
+.cal-leg{display:flex;gap:18px;justify-content:center;margin-top:16px;font-size:13px;color:var(--mu)}
+.cal-leg span{display:flex;align-items:center;gap:6px}.lg{width:12px;height:12px;border-radius:50%;background:var(--ln);display:inline-block}.lg.off{background:rgba(255,107,107,.5)}
+.d.off b{color:var(--mu);opacity:.65}.d.sel.off b{opacity:1;color:#fff}
+/* баннеры-сторис */
+.stories{display:flex;gap:14px;overflow-x:auto;margin:0 -16px 14px;padding:8px 20px 10px;scrollbar-width:none}.stories::-webkit-scrollbar{display:none}
+.story{flex:none;width:128px;height:148px;border-radius:26px;padding:14px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;color:var(--fg,#fff);background:var(--bgc,var(--ac));box-shadow:0 0 0 2.5px var(--bg),0 0 0 4.5px var(--ac)}
+.story.seen{box-shadow:0 0 0 2.5px var(--bg),0 0 0 4.5px var(--ln)}
+.story b{font-size:15px;font-weight:700;line-height:1.2}
+.st-i{align-self:flex-end;width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:center}.st-i svg{display:block}
+.story-v{position:fixed;inset:0;z-index:9;background:var(--sbg,#1F5FEA);color:var(--sfg,#fff);display:flex;flex-direction:column;overflow:hidden;visibility:hidden;opacity:0;transform:scale(.16);border-radius:48px;transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .3s ease,border-radius .55s ease,visibility 0s linear .55s}
+.story-v.on{visibility:visible;opacity:1;transform:none;border-radius:0;transition-delay:0s}
+.sv-bars{display:flex;gap:5px;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 0;flex:none}
+.sv-bars span{flex:1;height:4px;border-radius:4px;background:color-mix(in srgb,var(--sfg) 28%,transparent);overflow:hidden}
+.sv-bars i{display:block;height:100%;width:0;background:var(--sfg)}.sv-bars .full i{width:100%}.sv-bars i.run{animation:svbar 7s linear forwards}
+@keyframes svbar{from{width:0}to{width:100%}}
+.sv-x{position:absolute;top:calc(26px + env(safe-area-inset-top,0px));right:14px;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--sfg) 16%,transparent);color:var(--sfg);display:grid;place-items:center;z-index:3}
+.sv-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 28px;gap:10px}
+.sv-em{margin-bottom:12px;animation:svpop .8s cubic-bezier(.16,1,.3,1) .15s both}.sv-em svg{display:block}
+@keyframes svpop{from{transform:scale(.4) rotate(-14deg);opacity:0}to{transform:none;opacity:1}}
+.sv-ks{font-size:14px;font-weight:600;opacity:.75}.sv-body h2{font-size:32px;margin:0;line-height:1.1;font-weight:700}.sv-body p{font-size:18px;line-height:1.4;opacity:.92}
+.sv-cta{position:relative;z-index:3;margin:0 20px calc(26px + env(safe-area-inset-bottom,0px));padding:17px;border-radius:26px;background:var(--sfg);color:var(--sbg);font-weight:700;font-size:17px}
+.sv-tap{position:absolute;inset:84px 0 110px;display:flex;z-index:1}.sv-tap button{flex:2}.sv-tap button:first-child{flex:1}
+/* экран ИИ без входа: размытый чат и ленты */
+.lockwrap{position:relative;overflow:hidden}
+.lock-bg{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;filter:blur(5px);opacity:.8;overflow:hidden;pointer-events:none;user-select:none;padding-top:4px}
+.lock-tapes{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.tape{position:absolute;left:-20%;width:140%;padding:11px 0;transform:rotate(var(--r));overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.tape.t1{top:30%;background:#1F5FEA;color:#fff}.tape.t2{top:47%;background:#fff;color:#1F5FEA}
+.tape-in{display:inline-flex;align-items:center;gap:18px;white-space:nowrap;animation:tape var(--d,30s) linear infinite;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.tape-in.rev{animation-direction:reverse}.tape-in b{opacity:.55}
+@keyframes tape{to{transform:translateX(-33.333%)}}
+.lock-cta{position:absolute;left:0;right:0;bottom:4px;display:flex;justify-content:center}
+.lock-card{width:100%;background:var(--sf);border-radius:26px;padding:18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.lock-card b{display:block;font-size:19px;font-weight:700;line-height:1.25}.lock-card small{display:block;color:var(--mu);margin-top:4px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* v2.2 */
+.cr-w{font-size:14px;color:var(--mu);margin-top:3px}
+.cmp-d small,.dn-c small{display:block;font-size:11px;font-weight:500;opacity:.7;letter-spacing:0;text-transform:none;margin-top:1px}
+.dn-c{text-align:center;flex:1}.dn-c b{display:block}
+.wkstat{padding:16px}.ws-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.ws-h b{font-size:17px;font-weight:600}
+.ws-bars{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;height:96px;align-items:end}
+.wb{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;width:100%}
+.wb i{display:block;width:100%;border-radius:8px;background:var(--ln);transform-origin:bottom;animation:grow .7s cubic-bezier(.16,1,.3,1) both}
+@keyframes grow{from{transform:scaleY(0)}}
+.wb.now i{background:var(--ac)}.wb em{font-style:normal;font-size:12px;color:var(--mu)}.wb span{font-size:12px;font-weight:600;min-height:14px}
+.ws-row{display:flex;gap:10px;margin-top:14px}.ws-row div{flex:1;background:var(--bg);border-radius:16px;padding:10px 12px}
+.ws-row b{display:block;font-size:20px;font-weight:600}.ws-row small{color:var(--mu);font-size:12px}.ws-note{margin-top:12px}
 </style>
 </head>
 <body>
 <div id="app"><div id="page"></div></div>
-<nav class="tabbar" id="tabs" hidden></nav>
+<nav class="tabbar g" id="tabs" hidden></nav>
 <button id="today" data-a="today" hidden>Сегодня</button>
 <div class="sheet" id="sheet"><div class="scrim" data-a="close"></div><div class="panel" id="pnl"></div></div>
 <div class="sheet" id="adm"><div class="scrim" id="ascrim"></div><div class="panel" id="apnl"></div></div>
+<div id="story" class="story-v"></div>
 <div id="toast"></div>
 
 <script>
@@ -321,6 +392,7 @@ let pDate = ds(NOW());
 let calM = ds(NOW());
 let manualWeek = null;
 let homeD = null, calCtx = 's', HB = null, ANN = '';
+let SLIDE = 0, HSL = 0, PSL = 0;
 const SUPPORT_URL = 'https://t.me/AvaUtility_support'; // куда ведёт «Задать вопрос». Поставь сюда свою ссылку
 let aiMode = 'ask';
 
@@ -392,7 +464,7 @@ function stLine(t, now) {
   const s = status(t, now);
   if (s.live) return `Сейчас: ${where(s.live.l)}`;
   if (s.next) return `Дальше: ${s.next.l.time.slice(0, 5)} · ${where(s.next.l)}`;
-  return s.L.length ? 'Все пары завершены' : 'Сегодня пар нет';
+  return t.k === 't' ? (s.L.length ? 'Занятия завершены' : 'Сегодня занятий нет') : (s.L.length ? 'Все пары завершены' : 'Сегодня пар нет');
 }
 
 const I = {
@@ -407,7 +479,7 @@ const I = {
 };
 
 const ico = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
-Object.assign(I, { clock: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', key: 'M15 3a6 6 0 11-4.2 10.3L9 15H7v2H5v2H2v-3l7.7-7.7A6 6 0 0115 3zM16 8h.01', edit: 'M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19zM14 7l3 3', chk: 'M5 12l5 5L20 7' });
+Object.assign(I, { clock: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z', key: 'M15 3a6 6 0 11-4.2 10.3L9 15H7v2H5v2H2v-3l7.7-7.7A6 6 0 0115 3zM16 8h.01', edit: 'M4 20l1-4L16 5a2.1 2.1 0 013 3L8 19zM14 7l3 3', chk: 'M5 12l5 5L20 7', x: 'M6 6l12 12M18 6L6 18' });
 const item = (ic, t, sub, a, v = '', r = '') => `<button class="it" data-a="${a}" data-v="${esc(v)}">${(a === 'who' || a === 'pick') ? ava(42) : `<span class="ic">${ico(ic)}</span>`}<span class="t"><b>${esc(t)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${r ? `<span class="mu" style="font-size:13px">${esc(r)}</span>` : '<span class="chev">›</span>'}</button>`;
 
 function tabs() {
@@ -427,10 +499,98 @@ function go(t) {
   p.classList.toggle('ai', tab === 'a'); if (tab === 'h') home(); else if (tab === 's') sched(); else if (tab === 'f') find(); else if (tab === 'a') ai(); else if (tab === 'c') prof();
 }
 
-const wkPill = d => `<button class="pill g" data-a="toggle_week" title="Переключить неделю"><i></i>${getWeek(d) === 'в' ? 'Верхняя неделя' : 'Нижняя неделя'}</button>`;
+const wkPill = d => {
+  const up = getWeek(d) === 'в', manual = manualWeek !== null && manualWeek !== wcode(d), m1 = +mon(d), m0 = +mon(NOW());
+  const cap = manual ? 'выбрана вручную' : m1 === m0 ? 'идёт сейчас' : m1 > m0 ? 'будет позже' : 'уже была';
+  const arrow = up ? 'M12 5l7 10H5z' : 'M12 19L5 9h14z';
+  return `<button class="wk ${up ? 'up' : 'dn'}" data-a="toggle_week" aria-label="Переключить неделю"><span class="wk-ic"><svg width="14" height="14" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="${arrow}"/></svg></span><span class="wk-t"><b>${up ? 'Верхняя' : 'Нижняя'} неделя</b><small>${cap}</small></span></button>`;
+};
 
 // Главная: минималистичный стиль с автоматическим переходом на завтра
 
+const isT = () => !!(me && me.target && me.target.k === 't');
+const plural = (n, f) => { const m = n % 100, k = n % 10; return (m > 10 && m < 15) ? f[2] : k === 1 ? f[0] : (k > 1 && k < 5) ? f[1] : f[2]; };
+// тексты отличаются для преподавателя и студента
+function emptyMsg(t, kind) {
+  const tc = t && t.k === 't';
+  const M = {
+    none: tc ? { t: 'Занятий нет', h: 'Свободный день', s: 'Время для проверки работ, консультаций и подготовки к лекциям' } : { t: 'Пар нет', h: 'Сегодня без пар', s: 'Можно отдохнуть или сделать домашку заранее' },
+    done: tc ? { t: 'Занятия на сегодня закончились', h: 'Рабочий день окончен', s: 'Можно проверить работы и подготовить завтрашние занятия' } : { t: 'Все пары на сегодня закончились', h: 'Свободен', s: 'Домашку лучше не откладывать на последний момент' },
+    free: tc ? { t: 'Сегодня занятий нет', h: 'Свободный день', s: 'Время для методичек, проверки работ и консультаций' } : { t: 'Сегодня пар нет', h: 'Сегодня без пар', s: 'Отдыхай или займись долгами по учёбе' },
+    sun: tc ? { t: 'Воскресенье', h: 'Выходной', s: 'Отдыхайте, занятия по расписанию на неделе' } : { t: 'Воскресенье', h: 'Выходной', s: 'Отдыхаем и набираемся сил перед неделей' }
+  };
+  return M[kind];
+}
+function winTip(gap) { if (gap >= 60) return isT() ? 'Есть время подготовиться к занятию' : 'Хватит времени пообедать и повторить конспект'; if (gap >= 25) return isT() ? 'Можно выпить чаю и проверить материалы' : 'Успеешь перекусить'; return ''; }
+function weekStatsHtml(t, now) {
+  const m = mon(now), tch = t.k === 't', names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], days = [], others = new Set();
+  let total = 0, busiest = 0, bmax = 0, win = 0, winDay = '';
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(m); d.setDate(m.getDate() + i);
+    const L = lessonsOf(t, getWeek(d), DN[i]);
+    days.push(L.length); total += L.length;
+    if (L.length > bmax) { bmax = L.length; busiest = i; }
+    L.forEach((l, k) => {
+      (tch ? String(l.group || '').split(', ') : [String(l.teacher || '')]).forEach(x => x && others.add(x));
+      if (k) { const g = span(l)[0] - span(L[k - 1])[1]; if (g > win) { win = g; winDay = names[i]; } }
+    });
+  }
+  if (!total) return '';
+  const free = names.filter((_, i) => !days[i]), e = new Date(m); e.setDate(m.getDate() + 6);
+  const today = (now.getDay() + 6) % 7, max = Math.max(...days, 1), lab = getWeek(now) === 'в' ? 'верхняя' : 'нижняя';
+  const bars = days.map((c, i) => `<button class="wb${i === today ? ' now' : ''}" data-a="wday" data-v="${i}"><span>${c || ''}</span><i style="height:${c ? 10 + Math.round(c / max * 48) : 4}px"></i><em>${names[i]}</em></button>`).join('');
+  const hrs = String(total * 1.5).replace('.', ',');
+  const note = tch
+    ? `Групп на неделе: ${others.size}. ${free.length ? 'Свободные дни: ' + free.join(', ') + '.' : 'Свободных дней нет.'}`
+    : ((free.length ? 'Дни без пар: ' + free.join(', ') + '.' : 'Пары каждый день.') + (win >= 60 ? ` Самое длинное окно ${dur(win)}, ${winDay}.` : ''));
+  return `<div class="box g wkstat"><div class="ws-h"><b>Эта неделя</b><span class="mu">${lab}, ${m.getDate()}-${e.getDate()} ${MO[e.getMonth()]}</span></div><div class="ws-bars">${bars}</div><div class="ws-row"><div><b>${total}</b><small>${plural(total, tch ? ['занятие', 'занятия', 'занятий'] : ['пара', 'пары', 'пар'])}</small></div><div><b>${hrs} ч</b><small>${tch ? 'у доски' : 'на парах'}</small></div><div><b>${names[busiest]}</b><small>самый плотный</small></div></div><div class="mu ws-note">${note}</div></div>`;
+}
+const STORY_C = [['#1F5FEA', '#fff'], ['#fff', '#1F5FEA'], ['#14284B', '#fff'], ['#0F78B5', '#fff'], ['#3A3A3C', '#fff']];
+let SV = { i: 0, tm: 0, list: [] };
+function storyList() {
+  const arr = storyListBase();
+  if (isT()) {
+    arr[1] = { ...arr[1], p: 'Подскажу идею, как объяснить тему, составлю вопросы для студентов и сожму материал в тезисы. Знаю расписание групп и коллег.' };
+    arr[2] = { ...arr[2], c: 'Где группа?', t: 'Где группа?', p: 'Узнай, в какой аудитории сейчас группа и что у неё дальше. Добавь в избранное, и она появится на главной.' };
+    arr[3] = { ...arr[3], c: 'Заметки к занятиям', t: 'Заметки к занятиям', p: 'Нажми на занятие и запиши, что провести и что проверить. Заметкой можно поделиться.' };
+  }
+  return arr;
+}
+function storyListBase() {
+  const now = NOW(), m = mon(now), e = new Date(m); e.setDate(m.getDate() + 6);
+  const code = getWeek(now), up = code === 'в', rng = `${m.getDate()} ${MO[m.getMonth()]} - ${e.getDate()} ${MO[e.getMonth()]}`;
+  return [
+    { id: 'week-' + code, c: `Сейчас ${up ? 'верхняя' : 'нижняя'} неделя`, t: `Сейчас ${up ? 'верхняя' : 'нижняя'} неделя`, s: 'Неделя ' + rng, p: `На верхней и нижней неделе расписание разное. После этой будет ${up ? 'нижняя' : 'верхняя'}. Если в вашей группе всё наоборот, переключи неделю значком в расписании.`, b: 'Открыть расписание', a: 'tab', v: 's' },
+    { id: 'ai', c: 'Совёнок AI', t: 'Совёнок AI', s: 'Помощник по учёбе', p: 'Объясню тему, разберу задачу и сожму лекцию в конспект. Ещё знаю расписание групп и преподавателей.', b: 'Спросить Совёнка', a: 'tab', v: 'a' },
+    { id: 'find', c: 'Где препод или друг?', t: 'Где препод?', s: 'Поиск по расписанию', p: 'Узнай, в какой аудитории сейчас преподаватель или друг и что у него дальше. Добавь в избранное, и он появится на главной.', b: 'Найти', a: 'tab', v: 'f' },
+    { id: 'notes', c: 'Заметки к парам', t: 'Заметки к парам', s: 'Чтобы ничего не забыть', p: 'Нажми на пару, напиши что взять и что сдать. Заметкой можно поделиться.', b: 'К расписанию', a: 'tab', v: 's' },
+    { id: 'look', c: 'Свой цвет', t: 'Свой цвет', s: 'Внешний вид', p: 'Выбери цвет акцента и тему оформления: тёмную, светлую или как в системе.', b: 'Выбрать', a: 'look', v: '' }
+  ];
+}
+function storiesHtml() {
+  const seen = ld('seen') || [];
+  return '<div class="stories">' + storyList().map((s, i) => { const [bg, fg] = STORY_C[i % STORY_C.length]; return `<button class="story${seen.includes(s.id) ? ' seen' : ''}" data-a="story" data-v="${i}" data-sid="${s.id}" style="--bgc:${bg};--fg:${fg}"><b>${esc(s.c)}</b><span class="st-i">${owl(30)}</span></button>`; }).join('') + '</div>';
+}
+function storyDraw() {
+  const s = SV.list[SV.i], [bg, fg] = STORY_C[SV.i % STORY_C.length], sv = $('story');
+  sv.style.setProperty('--sbg', bg); sv.style.setProperty('--sfg', fg);
+  sv.innerHTML = `<div class="sv-bars">${SV.list.map((_, k) => `<span class="${k < SV.i ? 'full' : ''}"><i class="${k === SV.i ? 'run' : ''}"></i></span>`).join('')}</div>
+    <button class="sv-x" data-a="storyx" aria-label="Закрыть">${ico('x', 22)}</button>
+    <div class="sv-tap"><button data-a="storyprev" aria-label="Назад"></button><button data-a="storynext" aria-label="Дальше"></button></div>
+    <div class="sv-body"><div class="sv-em">${owl(132)}</div><div class="sv-ks">${esc(s.s)}</div><h2>${esc(s.t)}</h2><p>${esc(s.p)}</p></div>
+    <button class="sv-cta" data-a="storygo">${esc(s.b)}</button>`;
+  clearTimeout(SV.tm); SV.tm = setTimeout(() => storyStep(1), 7000);
+  const seen = ld('seen') || []; if (!seen.includes(s.id)) { seen.push(s.id); sv_save('seen', seen); }
+  document.querySelectorAll('.story').forEach(b => { if (seen.includes(b.dataset.sid)) b.classList.add('seen'); });
+}
+const sv_save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+function storyOpen(i, rect) {
+  SV.list = storyList(); SV.i = +i; const sv = $('story');
+  if (rect) sv.style.transformOrigin = `${rect.left + rect.width / 2}px ${rect.top + rect.height / 2}px`;
+  storyDraw(); void sv.offsetWidth; sv.classList.add('on');
+}
+function storyStep(d) { SV.i += d; if (SV.i < 0) SV.i = 0; if (SV.i >= SV.list.length) return storyClose(); storyDraw(); }
+function storyClose() { clearTimeout(SV.tm); $('story').classList.remove('on'); }
 const PENCIL = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 0 1 3 3L8 19zM14 7l3 3"/></svg>';
 const shortType = t => { t = (t || '').toLowerCase(); return t.startsWith('лек') ? 'лек.' : t.startsWith('лаб') ? 'лаб.' : t.startsWith('пр') ? 'пр.' : (t || 'пара'); };
 function compactDay(t, d, title) {
@@ -438,12 +598,13 @@ function compactDay(t, d, title) {
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   CUR = L; LD = ds(d); HB = ds(d);
   const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][gi];
-  let h = `<div class="cmp g"><div class="cmp-h"><button class="ar" data-a="hd" data-v="-1" aria-label="Назад">‹</button><span class="cmp-d">${wd}, ${d.getDate()} ${MO[d.getMonth()]}</span><button class="ar" data-a="hd" data-v="1" aria-label="Вперёд">›</button><button class="cmp-c" data-a="calh" aria-label="Календарь">${ico('cal', 22)}</button></div>`;
-  if (!L.length) h += `<div class="empty" style="padding:28px 10px"><b>Пар нет</b>Отдыхаем</div>`;
+  let h = `<div class="cmp g${HSL ? ' slide' : ''}" style="--dx:${HSL * 28}px"><div class="cmp-h"><button class="ar" data-a="hd" data-v="-1" aria-label="Назад">‹</button><span class="cmp-d">${wd}, ${d.getDate()} ${MO[d.getMonth()]}<small>${w === 'в' ? 'верхняя' : 'нижняя'} неделя</small></span><button class="ar" data-a="hd" data-v="1" aria-label="Вперёд">›</button><button class="cmp-c" data-a="calh" aria-label="Календарь">${ico('cal', 22)}</button></div>`;
+  if (!L.length) { const em = emptyMsg(t, gi === 0 ? 'sun' : 'none'); h += `<div class="empty" style="padding:28px 10px"><b>${gi === 0 ? em.h : em.t}</b>${em.s}</div>`; }
   L.forEach((l, i) => {
     const [a, e] = span(l), live = today && nm >= a && nm < e, note = NOTES[nk(d, l)], no = (BELLS[l.time.slice(0, 5)] || [])[1] || i + 1;
-    h += `<button class="cr" data-a="les" data-v="${i}"><div class="cr-t"><span class="nb${live ? ' on' : ''}">${no}</span><span>${esc(shortType(l.type))}</span><span class="tm">${hm(a)} - ${hm(e)}</span></div><div class="cr-n"><span class="cn">${esc(l.subject)}</span><span class="pn${note ? ' on' : ''}">${PENCIL}</span></div><div class="cr-r">${l.room ? 'ауд.' + esc(l.room) : ''}${l.building ? (l.room ? ', ' : '') + esc(l.building) : ''}</div></button>`;
+    h += `<button class="cr" data-a="les" data-v="${i}"><div class="cr-t"><span class="nb${live ? ' on' : ''}">${no}</span><span>${esc(shortType(l.type))}</span><span class="tm">${hm(a)} - ${hm(e)}</span></div><div class="cr-n"><span class="cn">${esc(l.subject)}</span><span class="pn${note ? ' on' : ''}">${PENCIL}</span></div><div class="cr-w">${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</div><div class="cr-r">${l.room ? 'ауд.' + esc(l.room) : ''}${l.building ? (l.room ? ', ' : '') + esc(l.building) : ''}</div></button>`;
   });
+  HSL = 0;
   return h + '</div>';
 }
 function home() {
@@ -460,22 +621,26 @@ function home() {
       <div style="flex-shrink:0;">${wkPill(now)}</div>
     </div>`;
 
+  h += storiesHtml();
   h += annHtml();
   if (s.live) {
     const l = s.live.l, durM = s.live.e - s.live.s, el = s.nm - s.live.s, pct = Math.max(0, Math.min(100, Math.round(el / durM * 100)));
     h += `<div class="box hero"><div class="mu">Идёт прямо сейчас · до звонка ${s.live.e - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${where(l)} ${l.group ? '· ' + esc(l.group) : ''}</div><div class="bar"><i></i></div></div>`;
     setTimeout(() => { const b = document.querySelector('.hero .bar i'); if (b) b.style.width = pct + '%'; }, 20);
   } else if (s.next) {
-    const l = s.next.l;
-    h += `<div class="box hero"><div class="mu">Следующая пара через ${s.next.s - s.nm} мин</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}</div></div>`;
+    const l = s.next.l, gap = s.next.s - s.nm, tip = winTip(gap);
+    h += `<div class="box hero"><div class="mu">${isT() ? 'Следующее занятие' : 'Следующая пара'} через ${dur(gap)}</div><h3>${esc(l.subject)}</h3><div>${l.time.slice(0, 5)} · ${where(l)}${isT() && l.group ? ' · ' + esc(l.group) : ''}</div>${tip ? `<div style="margin-top:8px;opacity:.7;font-size:14px">${tip}</div>` : ''}</div>`;
   } else if (isFinished) {
-    h += `<div class="box g"><b>Все пары на сегодня закончились</b><div class="mu" style="margin-top:4px">Можно отдыхать, домашку сделаешь завтра</div></div>`;
+    const em = emptyMsg(me.target, 'done');
+    h += `<div class="box hero"><div class="mu">${em.t}</div><h3>${em.h}</h3><div>${em.s}</div></div>`;
   } else {
-    h += `<div class="box hero"><div class="mu">Сегодня пар нет</div><h3>Сегодня выходной</h3><div>Отдыхаем и набираемся сил</div></div>`;
+    const em = emptyMsg(me.target, now.getDay() === 0 ? 'sun' : 'free');
+    h += `<div class="box hero"><div class="mu">${em.t}</div><h3>${em.h}</h3><div>${em.s}</div></div>`;
   }
 
   const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
   h += compactDay(me.target, homeD || ((isFinished || isWeekend) ? tomorrow : now));
+  h += weekStatsHtml(me.target, now);
 
   if (me.fav && me.fav.length) {
     h += `<h2>Избранное</h2><div class="box g" style="padding:4px 16px">`;
@@ -492,10 +657,11 @@ function dayHtml(t, d, click) {
   const now = NOW(), w = getWeek(d), gi = d.getDay();
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   const today = same(d, now), nm = now.getHours() * 60 + now.getMinutes();
-  if (!L.length) return `<div class="empty"><b>В этот день пар нет</b>Занятий по расписанию не запланировано</div>`;
+  const tchEm = emptyMsg(t, gi === 0 ? 'sun' : 'none');
+  if (!L.length) return `<div class="empty"><b>${gi === 0 ? tchEm.h : tchEm.t}</b>${tchEm.s}</div>`;
 
   const f = span(L[L.length - 1]);
-  let h = `<div class="mu" style="margin:0 4px 12px">${L.length} пар · до ${hm(f[1])}</div>`;
+  let h = `<div class="mu" style="margin:0 4px 12px">${L.length} ${plural(L.length, t.k === 't' ? ['занятие', 'занятия', 'занятий'] : ['пара', 'пары', 'пар'])} · до ${hm(f[1])}</div>`;
 
   L.forEach((l, i) => {
     const [a, e] = span(l);
@@ -520,7 +686,7 @@ function sched() {
     </div>
     <div class="day-nav-bar">
       <button class="ar" data-a="shift" data-v="-1" aria-label="Предыдущий день">‹</button>
-      <b>${['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][date.getDay()]}, ${date.getDate()} ${MO[date.getMonth()]}</b>
+      <span class="dn-c"><b>${['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][date.getDay()]}, ${date.getDate()} ${MO[date.getMonth()]}</b><small>${getWeek(date) === 'в' ? 'верхняя' : 'нижняя'} неделя${manualWeek !== null && manualWeek !== wcode(date) ? ', вручную' : ''}</small></span>
       <button class="ar" data-a="shift" data-v="1" aria-label="Следующий день">›</button>
     </div>`;
 
@@ -529,16 +695,17 @@ function sched() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(m); d.setDate(m.getDate() + i);
     const has = i < 6 && lessonsOf(t, w, DN[i]).length;
-    s += `<button class="d${has ? ' has' : ''}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}" data-a="day" data-v="${i}"><span>${SH[i]}</span><b>${d.getDate()}</b><u></u></button>`;
+    s += `<button class="d${has ? ' has' : ' off'}${same(d, now) ? ' now' : ''}${same(d, date) ? ' sel' : ''}" data-a="day" data-v="${i}"><span>${SH[i]}</span><b>${d.getDate()}</b><u></u></button>`;
   }
   h += `<div class="strip g">${s}</div>`;
   CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]); LD = null;
-  h += `<div id="lst" class="slide">${dayHtml(t, date, true)}</div>`;
+  h += `<div id="lst" class="slide" style="--dx:${SLIDE * 28}px">${dayHtml(t, date, true)}</div>`;
   $('page').innerHTML = h;
-  $('today').hidden = same(date, now);
+  $('today').hidden = same(date, now); SLIDE = 0;
 }
 
 function shiftDay(n) {
+  SLIDE = n > 0 ? 1 : -1;
   date = new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
   sched();
 }
@@ -562,12 +729,13 @@ function drawWho() {
   let st;
   if (s.live) st = `<div class="mu">Сейчас на паре, до ${hm(s.live.e)}</div><h3>${where(s.live.l)}</h3><div class="mu">${esc(s.live.l.subject)}</div>`;
   else if (s.next) st = `<div class="mu">Дальше в ${hm(s.next.s)}, через ${dur(s.next.s - s.nm)}</div><h3>${where(s.next.l)}</h3><div class="mu">${esc(s.next.l.subject)}</div>`;
-  else st = `<div class="mu">Сейчас</div><h3>${s.L.length ? 'Пары на сегодня закончились' : 'Сегодня пар нет'}</h3>`;
+  else st = `<div class="mu">Сейчас</div><h3>${s.L.length ? emptyMsg(t, 'done').t : emptyMsg(t, 'free').t}</h3>`;
   const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][pDate.getDay()];
   $('pnl').innerHTML = `<div class="sh-h"><h1>${esc(t.n)}</h1><button class="ib g" data-a="fav" aria-label="Избранное" style="color:${fv ? 'var(--ac)' : 'var(--mu)'}">${ico('star', 22)}</button></div>
     <div class="box hero">${st}</div>
     <div class="day-nav-bar"><button class="ar" data-a="pd" data-v="-1" aria-label="Назад">‹</button><b>${wd}, ${pDate.getDate()} ${MO[pDate.getMonth()]}</b><button class="ar" data-a="pd" data-v="1" aria-label="Вперёд">›</button></div>
-    ${dayHtml(t, pDate, false)}`;
+    <div class="slide" style="--dx:${PSL * 28}px">${dayHtml(t, pDate, false)}</div>`;
+  PSL = 0;
 }
 
 function lesOpen(i) {
@@ -583,11 +751,17 @@ function lesOpen(i) {
 }
 
 function calOpen() {
-  const m = calM, first = (m.getDay()+6)%7, dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
-  let c = SH.map(x=>`<i class="ch">${x}</i>`).join('');
-  for(let i=0;i<first;i++) c+='<i></i>';
-  for(let d=1;d<=dim;d++) { const x = new Date(m.getFullYear(), m.getMonth(), d); c+=`<button class="cd${same(x, calCtx === 'h' ? (HB || date) : date)?' sel':''}" data-a="cd" data-v="${d}">${d}</button>`; }
-  $('pnl').innerHTML = `<div class="top"><h1>${MN[m.getMonth()]}</h1></div><div class="cal">${c}</div>`;
+  const m = calM, first = (m.getDay() + 6) % 7, dim = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate(), t = me.target, now = NOW(), selD = calCtx === 'h' ? (HB || date) : date;
+  let c = SH.map(x => `<i class="ch">${x}</i>`).join('');
+  for (let i = 0; i < first; i++) c += '<i></i>';
+  for (let d = 1; d <= dim; d++) {
+    const x = new Date(m.getFullYear(), m.getMonth(), d), gi = x.getDay();
+    const has = gi !== 0 && lessonsOf(t, getWeek(x), DN[gi - 1]).length > 0;
+    c += `<button class="cd${has ? '' : ' off'}${same(x, now) ? ' now' : ''}${same(x, selD) ? ' sel' : ''}" data-a="cd" data-v="${d}">${d}</button>`;
+  }
+  $('pnl').innerHTML = `<div class="sh-h"><button class="ar" data-a="cm" data-v="-1" aria-label="Прошлый месяц">‹</button><h1>${MN[m.getMonth()]} ${m.getFullYear()}</h1><button class="ar" data-a="cm" data-v="1" aria-label="Следующий месяц">›</button></div>
+    <div class="cal">${c}</div>
+    <div class="cal-leg"><span><i class="lg"></i>есть пары</span><span><i class="lg off"></i>пар нет, выходной</span></div>`;
   $('sheet').classList.add('on');
 }
 
@@ -603,14 +777,25 @@ function aiRender() { const c = $('ai_chat'); if (!c) return; c.innerHTML = aiBu
 function ai() {
   const isAuth = Boolean(me && me.tgUser && me.tgUser.id);
   if (!isAuth) {
-    $('page').innerHTML = `<div class="top"><h1>Совёнок AI</h1></div>
-      <div class="ai-lock-overlay g"><span class="ava" style="width:84px;height:84px">${owl(66)}</span>
-      <h3 style="font-size:20px;font-weight:800;">Войди через Telegram, и Совёнок заработает</h3>
-      <div class="mu">Сжимает лекции в конспект и отвечает по расписанию любой группы и преподавателя</div>
-      <button class="btn" data-a="auth" style="max-width:220px;margin-top:10px;">Войти</button></div>`;
+    let demo = null; try { demo = aiAnswer('что завтра'); } catch (e) {}
+    demo = demo || '7241452, завтра:\n1. 08:30-10:00 Математика, ауд. 301\n2. 10:20-11:50 Физика, ауд. 215\n3. 12:30-14:00 Информатика, ауд. 118';
+    const qs = ['Что завтра?', 'Где сейчас преподаватель?', 'Сожми лекцию в конспект', 'Объясни тему простыми словами', 'Что у друга в третью пару?', 'Помоги подготовиться к зачёту', 'Разбери задачу по шагам', 'Где пара сейчас?'];
+    const tape = (arr, cls, rot, dur, rev) => { const s = arr.map(q => `<span>${esc(q)}</span><b>/</b>`).join(''); return `<div class="tape ${cls}" style="--r:${rot}deg"><div class="tape-in${rev ? ' rev' : ''}" style="--d:${dur}s">${s}${s}${s}</div></div>`; };
+    $('page').innerHTML = `<div class="aiwrap lockwrap">
+      <div class="top" style="flex:none;align-items:center"><div style="display:flex;gap:12px;align-items:center"><span class="ava" style="width:52px;height:52px">${owl(42)}</span><div><h1>Совёнок AI</h1><div class="mu">Лекции, учёба и расписание</div></div></div></div>
+      <div class="lock-bg" aria-hidden="true">
+        <div class="bub me">Что завтра?</div>
+        <div class="msg"><span class="ava" style="width:32px;height:32px">${owl(25)}</span><div class="bub g">${esc(demo).replace(/\n/g, '<br>')}</div></div>
+        <div class="bub me">Сожми лекцию про момент инерции</div>
+        <div class="msg"><span class="ava" style="width:32px;height:32px">${owl(25)}</span><div class="bub g">- Момент инерции показывает, как тело сопротивляется вращению<br>- Зависит от массы и от расстояния до оси<br>- Для стержня и диска формулы разные</div></div>
+      </div>
+      <div class="lock-tapes" aria-hidden="true">${tape(qs.slice(0, 4), 't1', -9, 34, false)}${tape(qs.slice(4), 't2', 7, 40, true)}</div>
+      <div class="lock-cta"><div class="lock-card"><b>Войди в аккаунт, чтобы пользоваться ИИ</b><small>Вход через Telegram займёт минуту</small><button class="btn" data-a="auth">Войти в аккаунт</button></div></div>
+    </div>`;
     return;
   }
-  const chips = ['Что сегодня?', 'Что завтра?', 'Где пара сейчас?', `Где ${aiTeacher()}?`];
+  if (AICHAT.length === 1) AICHAT[0].t = aiIntro();
+  const chips = isT() ? ['Что сегодня?', 'Что завтра?', 'Где пара сейчас?', 'Идея для лекции'] : ['Что сегодня?', 'Что завтра?', 'Где пара сейчас?', `Где ${aiTeacher()}?`];
   $('page').innerHTML = `<div class="aiwrap">
     <div class="top" style="flex:none;align-items:center"><div style="display:flex;gap:12px;align-items:center"><span class="ava" style="width:52px;height:52px">${owl(42)}</span><div><h1>Совёнок AI</h1><div class="mu">Лекции и расписание в одном чате</div></div></div></div>
     <div class="aichat" id="ai_chat">${aiBubbles()}</div>
@@ -623,14 +808,15 @@ function ai() {
 }
 function aiAnswer(q) {
   const s = q.toLowerCase(), words = s.split(/[^а-яё0-9]+/).filter(Boolean), nz = x => x.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), nq = nz(q), now = NOW();
-  let t = me.target, groupNamed = false;
+  // вопросы по учёбе всегда уходят на сервер, а не в поиск по расписанию
+  if (words.some(w => ['такое', 'значит', 'означает', 'почему', 'зачем', 'объясни', 'расскажи', 'реши', 'докажи', 'напиши', 'переведи', 'определение', 'формула', 'идея', 'придумай', 'составь'].includes(w))) return null;
+  let t = me.target, groupNamed = false, teacherNamed = false;
   const g = Object.keys(DATA).find(k => k.length >= 4 && nq.includes(nz(k)));
   if (g) { t = { k: 'g', n: g }; groupNamed = true; }
   else {
-    const tn = Object.keys(T).find(n => { const sn = n.split(' ')[0].toLowerCase(); return sn.length > 4 && words.some(w => w.startsWith(sn.slice(0, Math.max(4, sn.length - 2)))); });
-    if (tn) t = { k: 't', n: tn };
+    const tn = Object.keys(T).find(n => { const sn = n.split(' ')[0].toLowerCase(); if (sn.length < 4) return false; const stem = sn.replace(/[аяь]$/, ''); return words.some(w => w.length >= 4 && w.startsWith(stem) && w.length <= stem.length + 3); });
+    if (tn) { t = { k: 't', n: tn }; teacherNamed = true; }
   }
-  const SCHED = ['расписание', 'расписания', 'пара', 'пары', 'пар', 'паре', 'пару', 'парах', 'где', 'кабинет', 'аудитория', 'аудитории', 'ауд', 'когда'];
   const WD = [['понедельник', 'понедельника'], ['вторник', 'вторника'], ['среда', 'среду'], ['четверг', 'четверга'], ['пятница', 'пятницу'], ['суббота', 'субботу']];
   let d = new Date(now), lab = 'сегодня', dayHit = false;
   if (words.includes('послезавтра')) { d.setDate(d.getDate() + 2); lab = 'послезавтра'; dayHit = true; }
@@ -640,17 +826,22 @@ function aiAnswer(q) {
     const wi = WD.findIndex(a => a.some(w => words.includes(w)));
     if (wi >= 0) { for (let i = 0; i < 7; i++) { const x = new Date(now); x.setDate(x.getDate() + i); if (x.getDay() === wi + 1) { d = x; break; } } lab = WD[wi][1]; dayHit = true; }
   }
-  const schedWord = words.some(w => SCHED.includes(w)), asks = words.some(w => ['что', 'какие', 'какая', 'есть'].includes(w));
-  if (!schedWord && !groupNamed && !(dayHit && asks)) return null;
-  if (words.some(w => ['где', 'кабинет', 'аудитория', 'аудитории', 'ауд', 'сейчас'].includes(w)) && lab === 'сегодня') {
-    const st = status(t, now);
-    if (st.live) return `${t.n} сейчас на паре «${st.live.l.subject}»\n${where(st.live.l).replace(/&amp;/g, '&')}, до ${hm(st.live.e)}`;
-    if (st.next) return `${t.n} сейчас без пары. Дальше в ${hm(st.next.s)}: «${st.next.l.subject}»\n${where(st.next.l).replace(/&amp;/g, '&')}`;
-    return `${t.n}: ${st.L.length ? 'пары на сегодня закончились' : 'сегодня пар нет'}`;
+  const has = list => words.some(w => list.includes(w));
+  const parW = has(['пара', 'пары', 'пар', 'паре', 'пару', 'парах', 'расписание', 'расписания', 'занятие', 'занятия', 'занятий']);
+  const whereW = has(['где', 'кабинет', 'аудитория', 'аудитории', 'ауд']);
+  const whoW = has(['препод', 'преподаватель', 'преподавателя', 'друг', 'друга', 'сейчас', 'группа', 'группы']);
+  const asks = has(['что', 'какие', 'какая', 'есть']);
+  if (!(parW || groupNamed || (whereW && (teacherNamed || whoW)) || (dayHit && (asks || teacherNamed)))) return null;
+  const tc = t.k === 't';
+  if ((whereW || words.includes('сейчас')) && lab === 'сегодня') {
+    const st = status(t, now), clean = x => x.replace(/&amp;/g, '&');
+    if (st.live) return tc ? `${t.n} сейчас ведёт «${st.live.l.subject}»\nгруппа ${st.live.l.group}, ${clean(where(st.live.l))}, до ${hm(st.live.e)}` : `${t.n} сейчас на паре «${st.live.l.subject}»\n${clean(where(st.live.l))}, до ${hm(st.live.e)}`;
+    if (st.next) return `${t.n} сейчас без ${tc ? 'занятия' : 'пары'}. Дальше в ${hm(st.next.s)}: «${st.next.l.subject}»\n${clean(where(st.next.l))}`;
+    return `${t.n}: ${st.L.length ? emptyMsg(t, 'done').t.toLowerCase() : emptyMsg(t, 'free').t.toLowerCase()}`;
   }
   const gi = d.getDay(), L = gi === 0 ? [] : lessonsOf(t, getWeek(d), DN[gi - 1]);
-  if (!L.length) return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}): пар нет`;
-  return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}):\n` + L.map((l, i) => `${i + 1}. ${hm(span(l)[0])}-${hm(span(l)[1])} ${l.subject}, ${l.room ? 'ауд. ' + l.room : 'без аудитории'}${l.building ? ' (' + l.building + ')' : ''}`).join('\n');
+  if (!L.length) return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}): ${tc ? 'занятий нет' : 'пар нет'}`;
+  return `${t.n}, ${lab} (${d.getDate()} ${MO[d.getMonth()]}):\n` + L.map((l, i) => `${i + 1}. ${hm(span(l)[0])}-${hm(span(l)[1])} ${l.subject}, ${l.room ? 'ауд. ' + l.room : 'без аудитории'}${l.building ? ' (' + l.building + ')' : ''}${tc && l.group ? ', ' + l.group : ''}`).join('\n');
 }
 async function aiCompress(text, style) {
   aiMode = style; AILEC = text;
@@ -664,12 +855,15 @@ async function aiCompress(text, style) {
   } catch (e) { AICHAT[idx] = { me: 0, t: 'Сервер недоступен, попробуй позже' }; }
   aiRender();
 }
+const aiIntro = () => isT()
+  ? 'Здравствуйте! Я Совёнок. Помогу придумать, как объяснить тему, составлю вопросы для проверки знаний и сожму материал в тезисы. Ещё знаю расписание групп и коллег: спросите, что завтра или где сейчас группа.'
+  : 'Привет! Я Совёнок. Помогаю с учёбой: объясню тему, разберу задачу, сожму лекцию в конспект. Ещё знаю расписание: спроси, что завтра или где сейчас преподаватель.';
 async function aiAsk(q) {
   const hist = AICHAT.filter(m => m.t && m.t !== 'Совёнок думает…').slice(-7, -1).map(m => ({ role: m.me ? 'user' : 'assistant', content: String(m.t).slice(0, 600) }));
   AICHAT.push({ me: 0, t: 'Совёнок думает…' }); aiRender();
   const idx = AICHAT.length - 1;
   try {
-    const r = await fetch(`${API_URL}/api/ai_chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: hist, user_id: me && me.tgUser ? me.tgUser.id : 0 }) });
+    const r = await fetch(`${API_URL}/api/ai_chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: hist, role: isT() ? 'teacher' : 'student', user_id: me && me.tgUser ? me.tgUser.id : 0 }) });
     const d = await r.json();
     AICHAT[idx] = { me: 0, t: d.result || d.message || 'Не получилось ответить, попробуй ещё раз' };
   } catch (e) { AICHAT[idx] = { me: 0, t: 'Сервер недоступен, попробуй позже' }; }
@@ -714,7 +908,7 @@ function prof() {
       ${item('pal', 'Внешний вид', 'Тема и цвет акцента', 'look')}
     </div>
     <button class="plain" data-a="reset">Сбросить данные на устройстве</button>
-    <button class="mu verb" data-a="ver">НЧИ КФУ, версия 2.0</button>`;
+    <button class="mu verb" data-a="ver">НЧИ КФУ, версия 2.2</button>`;
 }
 
 function lookOpen() {
@@ -833,9 +1027,9 @@ function checkUrlAuth() {
 
 const A = {
   tab: v => { if (v === 'h') homeD = null; go(v); }, role: v => pickRole(v, true), close: () => closeS(),
-  day: v => { const m = mon(date); m.setDate(m.getDate() + +v); date = m; sched(); },
+  day: v => { const m = mon(date); m.setDate(m.getDate() + +v); SLIDE = m > date ? 1 : -1; date = m; sched(); },
   today: () => { date = ds(NOW()); sched(); }, shift: v => shiftDay(+v),
-  toggle_week: () => { manualWeek = (getWeek(date) === 'в') ? 'н' : 'в'; toast(manualWeek === 'в' ? 'Верхняя неделя' : 'Нижняя неделя'); go(); },
+  toggle_week: () => { const next = getWeek(date) === 'в' ? 'н' : 'в'; manualWeek = next === wcode(date) ? null : next; toast(manualWeek === null ? 'Неделя по календарю' : (next === 'в' ? 'Верхняя неделя вручную' : 'Нижняя неделя вручную')); go(); },
   set_ai_mode: v => { aiMode = v; ai(); },
   cal: () => { calCtx = 's'; calM = new Date(date.getFullYear(), date.getMonth(), 1); calOpen(); },
   cm: v => { calM = new Date(calM.getFullYear(), calM.getMonth()+ +v, 1); calOpen(); },
@@ -863,7 +1057,7 @@ const A = {
     me.fav = me.fav.some(x=>key(x)===k)?me.fav.filter(x=>key(x)!==k):[...me.fav,PT];
     sv('me', me); drawWho(); if(tab==='f') flist(); if(tab==='h') home();
   },
-  pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate()+ +v); drawWho(); },
+  pd: v => { pDate = new Date(pDate.getFullYear(), pDate.getMonth(), pDate.getDate()+ +v); PSL = +v > 0 ? 1 : -1; drawWho(); },
   seg: v => { seg = v; find(); }, chg: () => pickRole(me.role, false), favs: () => { seg='f'; go('f'); },
   edit: editOpen, save: () => { const el = $('nick'); me.nick = el ? el.value.trim() : ''; me.org = 'НЧИ КФУ'; sv('me',me); closeS(); prof(); },
   look: lookOpen,
@@ -886,7 +1080,7 @@ Object.assign(A, {
   aicopy: () => { if (navigator.clipboard) navigator.clipboard.writeText(AILAST).then(() => toast('Скопировано', '✓'), () => toast('Не удалось скопировать')); }
 });
 Object.assign(A, {
-  hd: v => { const b = HB || ds(NOW()); homeD = new Date(b.getFullYear(), b.getMonth(), b.getDate() + +v); home(); },
+  hd: v => { const b = HB || ds(NOW()); homeD = new Date(b.getFullYear(), b.getMonth(), b.getDate() + +v); HSL = +v > 0 ? 1 : -1; home(); },
   calh: () => { calCtx = 'h'; const b = HB || ds(NOW()); calM = new Date(b.getFullYear(), b.getMonth(), 1); calOpen(); },
   shn: v => { const el = $('note'), t = el ? el.value.trim() : ''; if (!t) return toast('Сначала напиши заметку'); const msg = 'Заметка: ' + String(v).split('|')[2] + '\n' + t; if (navigator.share) navigator.share({ text: msg }).catch(() => {}); else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => toast('Скопировано'), () => toast('Не удалось скопировать')); }
 });
@@ -896,9 +1090,9 @@ function initSheetGestures() { if (_sg) return; _sg = true;
     const p = $(id); if (!p) return;
     let sY = 0, cY = 0, drag = false;
     p.addEventListener('touchstart', e => { if (p.scrollTop <= 0) { sY = e.touches[0].clientY; cY = sY; drag = true; } else drag = false; }, { passive: true });
-    p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transform = `translateY(${d}px)`; } }, { passive: true });
+    p.addEventListener('touchmove', e => { if (!drag) return; const d = e.touches[0].clientY - sY; if (d > 0) { cY = e.touches[0].clientY; p.style.transition = 'none'; p.style.transform = `translateY(${d}px)`; } }, { passive: true });
     p.addEventListener('touchend', () => {
-      if (!drag) return; drag = false; if (cY - sY > 75) closeS(); p.style.transform = '';
+      if (!drag) return; drag = false; p.style.transition = ''; if (cY - sY > 75) closeS(); p.style.transform = '';
     });
   });
 }
@@ -967,6 +1161,43 @@ fetch('./schedule.json')
   .catch(() => {});
 loadAnn();
 checkAdminUrl();
+Object.assign(A, {
+  wday: v => { const m = mon(NOW()); m.setDate(m.getDate() + +v); date = m; go('s'); },
+  story: v => { const el = document.querySelector('.story[data-v="' + v + '"]'); storyOpen(v, el && el.getBoundingClientRect ? el.getBoundingClientRect() : null); },
+  storyx: () => storyClose(), storynext: () => storyStep(1), storyprev: () => storyStep(-1),
+  storygo: () => { const s = SV.list[SV.i]; storyClose(); setTimeout(() => { if (s.a === 'tab') go(s.v); else if (s.a === 'look') lookOpen(); }, 200); },
+  closeadm: () => $('adm').classList.remove('on')
+});
+// кнопка «Закрыть» в каждой шторке (в Telegram свайп вниз сворачивает приложение)
+(function () {
+  const X = `<svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+  const add = (el, act) => { if (typeof MutationObserver === 'undefined' || !el) return; new MutationObserver(() => { if (!el.querySelector(':scope > .sh-x')) el.insertAdjacentHTML('afterbegin', `<button class="sh-x" data-a="${act}" aria-label="Закрыть">${X}</button>`); }).observe(el, { childList: true }); };
+  add($('pnl'), 'close'); add($('apnl'), 'closeadm');
+})();
+// плавные переходы между вкладками и бегущая плашка в меню
+(function () {
+  const goNow = go, tabsNow = tabs, ORDER = ['h', 's', 'f', 'a', 'c']; let gid = 0;
+  tabs = function () { tabsNow(); $('tabs').style.setProperty('--i', Math.max(0, ORDER.indexOf(tab))); };
+  go = function (t) {
+    const p = $('page'), reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!t || t === tab || !me || reduce) return goNow(t);
+    const id = ++gid; tab = t; tabs(); p.classList.remove('view-enter'); p.classList.add('leave');
+    setTimeout(() => { if (id !== gid) return; p.classList.remove('leave'); goNow(t); }, 130);
+  };
+  tabs();
+})();
+// Telegram: не сворачивать приложение свайпом вниз, кнопка «Назад» закрывает шторки
+(function () {
+  try {
+    const W = window.Telegram && window.Telegram.WebApp; if (!W) return;
+    W.ready(); W.expand();
+    if (W.disableVerticalSwipes) W.disableVerticalSwipes();
+    const open = () => ['sheet', 'adm', 'story'].some(id => $(id).classList.contains('on'));
+    const sync = () => { if (W.BackButton) (open() ? W.BackButton.show() : W.BackButton.hide()); };
+    if (W.BackButton) W.BackButton.onClick(() => { if ($('story').classList.contains('on')) storyClose(); else if ($('adm').classList.contains('on')) $('adm').classList.remove('on'); else closeS(); sync(); });
+    if (typeof MutationObserver !== 'undefined') ['sheet', 'adm', 'story'].forEach(id => new MutationObserver(sync).observe($(id), { attributes: true, attributeFilter: ['class'] }));
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>
