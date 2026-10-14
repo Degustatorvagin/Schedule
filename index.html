@@ -1198,6 +1198,332 @@ Object.assign(A, {
     if (typeof MutationObserver !== 'undefined') ['sheet', 'adm', 'story'].forEach(id => new MutationObserver(sync).observe($(id), { attributes: true, attributeFilter: ['class'] }));
   } catch (e) {}
 })();
+// --- 1. ТЕМАТИЧЕСКИЕ ИЛЛЮСТРАЦИИ И ПОДПИСИ ДЛЯ БАННЕРОВ НА ГЛАВНОЙ ---
+const STORY_ART = {
+  week: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><rect x="8" y="12" width="48" height="44" rx="12" fill="currentColor" fill-opacity="0.18"/><rect x="8" y="12" width="48" height="14" rx="6" fill="currentColor" fill-opacity="0.32"/><circle cx="20" cy="12" r="3.5" fill="currentColor"/><circle cx="44" cy="12" r="3.5" fill="currentColor"/><path d="M22 38l10-10 10 10H22z" fill="currentColor"/></svg>`,
+  ai: (s = 54) => owl(s),
+  find: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><circle cx="32" cy="32" r="24" fill="currentColor" fill-opacity="0.16"/><circle cx="32" cy="32" r="15" fill="currentColor" fill-opacity="0.24"/><path d="M32 14c-7.7 0-14 6.3-14 14 0 10.5 14 22 14 22s14-11.5 14-22c0-7.7-6.3-14-14-14zm0 19a5 5 0 110-10 5 5 0 010 10z" fill="currentColor"/></svg>`,
+  notes: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><rect x="12" y="8" width="40" height="48" rx="10" fill="currentColor" fill-opacity="0.18"/><rect x="20" y="20" width="24" height="4" rx="2" fill="currentColor"/><rect x="20" y="30" width="18" height="4" rx="2" fill="currentColor"/><path d="M38 42l5 5 11-11" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  look: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><circle cx="32" cy="32" r="24" fill="currentColor" fill-opacity="0.18"/><circle cx="24" cy="24" r="5" fill="#4A90FF"/><circle cx="40" cy="24" r="5" fill="#FF6E6E"/><circle cx="22" cy="38" r="5" fill="#3FADA8"/><circle cx="40" cy="38" r="6" fill="currentColor"/></svg>`
+};
+
+function storyIconFor(id, size) {
+  if (String(id).startsWith('week')) return STORY_ART.week(size);
+  return (STORY_ART[id] || STORY_ART.ai)(size);
+}
+
+storiesHtml = function() {
+  const seen = ld('seen') || [];
+  return '<div class="stories">' + storyList().map((s, i) => {
+    const [bg, fg] = STORY_C[i % STORY_C.length];
+    const subText = s.id.startsWith('week') ? s.s.replace('Неделя ', '') : s.s;
+    return `<button class="story${seen.includes(s.id) ? ' seen' : ''}" data-a="story" data-v="${i}" data-sid="${s.id}" style="--bgc:${bg};--fg:${fg};position:relative;overflow:hidden">
+      <div style="z-index:1">
+        <b style="display:block;font-size:14px;line-height:1.2">${esc(s.c)}</b>
+        <small style="display:block;font-size:11px;opacity:0.8;margin-top:4px;line-height:1.2">${esc(subText)}</small>
+      </div>
+      <div style="position:absolute;right:-6px;bottom:8px;opacity:0.22;pointer-events:none">${storyIconFor(s.id, 74)}</div>
+      <span class="st-i" style="z-index:1">${owl(30)}</span>
+    </button>`;
+  }).join('') + '</div>';
+};
+
+storyDraw = function() {
+  const s = SV.list[SV.i], [bg, fg] = STORY_C[SV.i % STORY_C.length], sv = $('story');
+  sv.style.setProperty('--sbg', bg); sv.style.setProperty('--sfg', fg);
+  sv.innerHTML = `<div class="sv-bars">${SV.list.map((_, k) => `<span class="${k < SV.i ? 'full' : ''}"><i class="${k === SV.i ? 'run' : ''}"></i></span>`).join('')}</div>
+    <button class="sv-x" data-a="storyx" aria-label="Закрыть">${ico('x', 22)}</button>
+    <div class="sv-tap"><button data-a="storyprev" aria-label="Назад"></button><button data-a="storynext" aria-label="Дальше"></button></div>
+    <div class="sv-body"><div class="sv-em">${storyIconFor(s.id, 124)}</div><div class="sv-ks">${esc(s.s)}</div><h2>${esc(s.t)}</h2><p>${esc(s.p)}</p></div>
+    <button class="sv-cta" data-a="storygo">${esc(s.b)}</button>`;
+  clearTimeout(SV.tm); SV.tm = setTimeout(() => storyStep(1), 7000);
+  const seen = ld('seen') || []; if (!seen.includes(s.id)) { seen.push(s.id); sv_save('seen', seen); }
+  document.querySelectorAll('.story').forEach(b => { if (seen.includes(b.dataset.sid)) b.classList.add('seen'); });
+};
+
+// --- 2. АВТОМАТИЧЕСКИЙ ТРЕКИНГ СЕССИИ И АКТИВНОСТИ ---
+function detectPlatform() {
+  if (TG && TG.platform && TG.platform !== 'unknown') return TG.platform;
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+  if (/android/.test(ua)) return 'android';
+  if (/win|mac|linux/.test(ua)) return 'tdesktop';
+  return 'web';
+}
+
+function trackSession(eventType = 'open_app', detail = '') {
+  try {
+    const u = (me && me.tgUser) || tgU || {};
+    const payload = {
+      user_id: u.id || 0,
+      username: u.username || '',
+      first_name: u.first_name || (me && me.nick) || '',
+      group_name: (me && me.target && me.target.n) || '',
+      role: (me && me.target && me.target.k) || 'g',
+      platform: detectPlatform(),
+      event_type: eventType,
+      detail: detail
+    };
+    fetch(`${API_URL}/api/track_session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+const _origWhoOpen = whoOpen;
+whoOpen = function(k) {
+  _origWhoOpen(k);
+  if (PT) trackSession(PT.k === 't' ? 'view_teacher' : 'view_group', PT.n);
+};
+
+// Отправляем событие входа при загрузке страницы
+setTimeout(() => trackSession('open_app'), 600);
+if (tab === 'h' && me) home();
+
+// --- 3. МОДЕРНИЗИРОВАННАЯ АДМИНКА (4 ВКЛАДКИ + СОХРАНЕНИЕ ВСЕХ ФУНКЦИЙ) ---
+let admTab = 'overview';
+let admOverviewData = null;
+let admUsersCache = [];
+let admUserSearch = '';
+let admUserSort = 'active';
+
+// Разрешаем вход по 5 тапам на версию с паролем 0000
+A.ver = () => {
+  if (++taps >= 5) {
+    taps = 0;
+    const p = prompt('PIN:');
+    if (p === ADMIN_PIN) {
+      if (!ADM_TOKEN) ADM_TOKEN = ADMIN_PIN;
+      adminOpen();
+    }
+  }
+};
+
+function platBadge(p) {
+  const s = String(p || '').toLowerCase();
+  if (s.includes('ios') || s.includes('macos')) return '🍎 iOS';
+  if (s.includes('android')) return '🤖 Android';
+  if (s.includes('tdesktop') || s.includes('desktop')) return '💻 Desktop';
+  if (s.includes('bot')) return '✈️ Бот';
+  return '🌐 Web';
+}
+
+function fmtAgo(ts) {
+  if (!ts) return 'недавно';
+  const d = new Date(String(ts).replace(' ', 'T') + (String(ts).includes('Z') ? '' : 'Z'));
+  if (isNaN(d)) return String(ts).slice(0, 16);
+  const diffM = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  if (diffM < 2) return 'только что';
+  if (diffM < 60) return `${diffM} мин назад`;
+  const diffH = Math.floor(diffM / 60);
+  if (diffH < 24) return `${diffH} ч назад`;
+  return `${d.getDate()} ${MO[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+adminOpen = function() {
+  if (!ADM_TOKEN) ADM_TOKEN = ADMIN_PIN;
+  let n = 0; const bad = [];
+  for (const k in DATA) {
+    const Sd = DATA[k].schedule || {}; let c = 0;
+    for (const w in Sd) for (const d in Sd[w]) for (const l of Sd[w][d]) {
+      n++; c++;
+      if (!l.room || !l.teacher || !BELLS[(l.time || '').slice(0, 5)]) {
+        bad.push(k + ', ' + d + ' ' + (l.time || '?') + ': ' + String(l.subject || '').slice(0, 28) + (!l.room ? ' (нет аудитории)' : !l.teacher ? ' (нет преподавателя)' : ' (время не из сетки)'));
+      }
+    }
+    if (!c) bad.push(k + ': пустое расписание');
+  }
+
+  const nav = `<div class="seg g" style="margin-bottom:14px">
+    <button class="${admTab==='overview'?'on':''}" data-adm="tab_overview">Сводка</button>
+    <button class="${admTab==='users'?'on':''}" data-adm="tab_users">Пользователи</button>
+    <button class="${admTab==='ai'?'on':''}" data-adm="tab_ai">Совёнок AI</button>
+    <button class="${admTab==='ctrl'?'on':''}" data-adm="tab_ctrl">Управление</button>
+  </div>`;
+
+  let body = '';
+  if (admTab === 'overview') {
+    const ov = admOverviewData;
+    body = `
+      <div class="box g" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="mu">Живой онлайн (за 15 мин)</div>
+          <b style="font-size:24px">${ov ? ov.online_15m : '…'}</b>
+        </div>
+        <span class="pill" style="background:rgba(16,185,129,0.15);color:#10B981"><i style="background:#10B981"></i>Активно</span>
+      </div>
+      <div class="ws-row" style="margin:0 0 12px">
+        <div class="box g" style="margin:0"><b>${ov ? ov.total_users : '…'}</b><small>Всего в базе</small></div>
+        <div class="box g" style="margin:0"><b>+${ov ? ov.new_today : '…'}</b><small>Новых сегодня</small></div>
+        <div class="box g" style="margin:0"><b>${ov ? ov.dau : '…'} / ${ov ? ov.wau : '…'}</b><small>DAU (24ч) / WAU</small></div>
+      </div>
+      <div class="box g">
+        <b>Популярность расписания</b>
+        <div class="mu" style="margin-top:6px">Топ-5 групп: ${ov && ov.top_groups && ov.top_groups.length ? ov.top_groups.map(x => `<b>${esc(x.name)}</b> (${x.count})`).join(', ') : 'загрузка…'}</div>
+        <div class="mu" style="margin-top:6px">Топ-3 преподавателей: ${ov && ov.top_teachers && ov.top_teachers.length ? ov.top_teachers.map(x => `<b>${esc(x.name)}</b> (${x.count})`).join(', ') : 'пока нет просмотров'}</div>
+      </div>
+      <div class="box g">
+        <b>Уведомления и заметки</b>
+        <div class="mu" style="margin-top:6px">Утро (07:30): <b>${ov ? ov.pushes.morning : '…'}</b> · За 15 мин до пары: <b>${ov ? ov.pushes.remind : '…'}</b> · Вечер (17:00): <b>${ov ? ov.pushes.evening : '…'}</b></div>
+        <div class="mu" style="margin-top:4px">Сохранено заметок на сервере: <b>${ov ? ov.notes_count : '…'}</b></div>
+      </div>
+      <div class="box g">
+        <b>Статистика сервера</b>
+        <div class="log" id="adm_out" style="white-space:pre-wrap;font-size:13px;color:var(--mu);margin:6px 0">${ov ? `Пользователей: ${ov.total_users} (+${ov.new_today} сегодня)\nОнлайн 15 мин: ${ov.online_15m} | DAU: ${ov.dau} \vert{} WAU:${ov.wau}` : 'Нажми кнопку, чтобы обновить'}</div>
+        <button class="btn gl" data-adm="stats">Обновить сводку</button>
+      </div>`;
+  } else if (admTab === 'users') {
+    body = `
+      <div class="box g">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b>Студенческая CRM (${admUsersCache.length})</b>
+          <a class="pill g" href="${API_URL}/api/admin/export_csv?token=${encodeURIComponent(ADM_TOKEN)}" target="_blank" style="text-decoration:none;color:var(--ac)">📥 CSV / Excel</a>
+        </div>
+        <input class="fld" id="adm_uq" value="${esc(admUserSearch)}" placeholder="Поиск по имени, @username, ID или группе...">
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="pill g" data-adm="usort_active" style="${admUserSort==='active'?'color:var(--ac)':''}">По активности</button>
+          <button class="pill g" data-adm="usort_launches" style="${admUserSort==='launches'?'color:var(--ac)':''}">По числу входов</button>
+        </div>
+      </div>
+      <div class="box g" style="padding:4px 14px" id="adm_ulist">
+        ${admUsersCache.length ? admUsersCache.map(u => `
+          <div class="it" style="flex-direction:column;align-items:stretch;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <div>
+                <b>${esc(u.first_name \vert{}\vert{} 'Без имени')} ${u.username ? `<a href="https://t.me/${esc(u.username)}" target="_blank" style="color:var(--ac);text-decoration:none">@${esc(u.username)}</a>` : `<small style="display:inline">ID: ${u.user_id}</small>`}</b>
+                <small>${u.role === 'teacher' ? 'Преподаватель' : 'Группа: ' + esc(u.group_name)} · ${platBadge(u.platform)}</small>
+              </div>
+              <span class="pill g" style="font-size:12px;padding:4px 10px">${u.total_launches} входов</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mu)">
+              <span>Был(а): ${fmtAgo(u.last_active_at)}</span>
+              <div style="display:flex;gap:8px">
+                <button class="pill g" style="padding:4px 10px;font-size:12px" data-adm="ugrp" data-uid="${u.user_id}" data-grp="${esc(u.group_name)}">Группа</button>
+                <button class="pill g" style="padding:4px 10px;font-size:12px;color:${u.is_blocked ? '#10B981' : '#FF6B6B'}" data-adm="ublock" data-uid="${u.user_id}">${u.is_blocked ? 'Разблок' : 'Блок'}</button>
+              </div>
+            </div>
+          </div>`).join('') : '<div class="empty"><b>Список загружается или пуст</b></div>'}
+      </div>`;
+  } else if (admTab === 'ai') {
+    const st = (admOverviewData && admOverviewData.ai_stats) || {};
+    const logs = (admOverviewData && admOverviewData.ai_logs) || [];
+    body = `
+      <div class="ws-row" style="margin:0 0 12px">
+        <div class="box g" style="margin:0"><b>${st.chat ?? 0}</b><small>Ответов в чате</small></div>
+        <div class="box g" style="margin:0"><b>${st.compress ?? 0}</b><small>Конспектов</small></div>
+        <div class="box g" style="margin:0"><b>${(st.blocked ?? 0) + (st.refused ?? 0)}</b><small>Отказов / фильтра</small></div>
+      </div>
+      <div class="box g">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <b>Энергосбережение Groq</b>
+            <div class="mu">Лимит: ${st.hourly_limit || 25} запросов в час на человека</div>
+          </div>
+          <button class="pill ${st.eco_mode ? 'up' : 'g'}" style="${st.eco_mode ? 'background:var(--ac);color:#fff' : ''}" data-adm="ai_eco">${st.eco_mode ? 'Включено (8/ч)' : 'Обычный (25/ч)'}</button>
+        </div>
+      </div>
+      <div class="box g">
+        <b>Лог фильтра безопасности (${logs.length})</b>
+        <div class="mu" style="margin:4px 0 8px">Перехваченные запросы с нецензурной лексикой, спамом или не по учёбе:</div>
+        <div class="log" style="font-size:12px;white-space:pre-wrap;color:var(--mu)">${logs.length ? logs.map(l => `[${String(l.time).slice(11,16)}] ID${esc(l.uid)} (${esc(l.status)}):${esc(l.q)}`).join('\n') : 'Нарушений пока не зафиксировано'}</div>
+      </div>`;
+  } else {
+    body = `
+      <div class="box g"><b>Данные</b><div class="mu">Групп ${Object.keys(DATA).length}, преподавателей ${Object.keys(T).length}, пар ${n}. Источник: ${ld('data') ? 'загружено вручную' : 'встроено в страницу'}</div></div>
+      <div class="box g"><b>Новое расписание</b><div class="mu" style="margin:4px 0 8px">Файл schedule.json. Сначала проверим и покажем на этом устройстве, потом можно отправить всем.</div><input class="fld" type="file" id="adm_file" accept=".json,application/json"><button class="btn" data-adm="upload">Отправить на сервер</button><button class="btn gl" data-adm="reset">Вернуть встроенное расписание</button></div>
+      <div class="box g"><b>Проверка расписания (${bad.length})</b><div class="log" style="white-space:pre-wrap;font-size:12px;color:var(--mu)">${esc(bad.slice(0, 12).join('\n') || 'Ошибок не найдено')}</div></div>
+      <div class="box g"><b>Объявление на главной (Banner Alert)</b><div class="mu" style="margin:4px 0 8px">Видно всем на главной, до 500 символов.</div><textarea class="fld" id="adm_ann" rows="3" placeholder="Например: Внимание, 3 корпус закрыт, пары перенесены в УЛК-1">${esc(ANN)}</textarea><button class="btn" data-adm="pub">Опубликовать</button><button class="btn gl" data-adm="unpub">Убрать объявление</button></div>
+      <div class="box g"><b>Умная рассылка в бот</b><div class="mu" style="margin:4px 0 8px">Отправить всем пользователям или конкретной группе:</div><input class="fld" id="adm_bc_grp" placeholder="Группа (оставь пустым, чтобы отправить ВСЕМ)"><textarea class="fld" id="adm_bc" rows="3" placeholder="Текст рассылки"></textarea><button class="btn" data-adm="bc">Отправить рассылку</button></div>
+      <div class="box g"><b>Своё время</b><div class="mu" style="margin:4px 0 8px">Проверить окна, текущую пару и «где сейчас».</div><input class="fld" type="datetime-local" id="adm_sim"><button class="btn gl" data-adm="sim">Применить</button><button class="btn gl" data-adm="simoff">Вернуть настоящее время</button></div>
+      <div class="box g"><b>Лог ошибок</b><div class="log" style="white-space:pre-wrap;font-size:12px;color:var(--mu)">${esc(ERRLOG.slice(-8).join('\n') || 'Пусто')}</div></div>`;
+  }
+
+  $('apnl').innerHTML = `<div class="sh-h"><h1>Админка</h1></div>${nav}${body}`;
+  $('adm').classList.add('on');
+
+  const uq = $('adm_uq');
+  if (uq) {
+    uq.oninput = e => { admUserSearch = e.target.value; clearTimeout(uq._t); uq._t = setTimeout(fetchAdmUsers, 250); };
+  }
+  if (!admOverviewData && (admTab === 'overview' || admTab === 'ai')) fetchAdmOverview();
+  if (admTab === 'users' && !admUsersCache.length) fetchAdmUsers();
+};
+
+async function fetchAdmOverview() {
+  try {
+    const d = await admApi('/api/admin/overview');
+    if (d && d.status === 'ok') { admOverviewData = d; if ($('adm').classList.contains('on')) adminOpen(); }
+  } catch (e) {}
+}
+
+async function fetchAdmUsers() {
+  try {
+    const d = await admApi(`/api/admin/users_list?q=${encodeURIComponent(admUserSearch)}&sort=${admUserSort}`);
+    if (d && d.status === 'ok') { admUsersCache = d.users || []; if ($('adm').classList.contains('on') && admTab === 'users') adminOpen(); }
+  } catch (e) {}
+}
+
+const _origAdmAct = admAct;
+admAct = async function(a, btn) {
+  if (!ADM_TOKEN) ADM_TOKEN = ADMIN_PIN;
+  if (a.startsWith('tab_')) {
+    admTab = a.replace('tab_', '');
+    if (admTab === 'overview' || admTab === 'ai') fetchAdmOverview();
+    if (admTab === 'users') fetchAdmUsers();
+    return adminOpen();
+  }
+  if (a === 'usort_active' || a === 'usort_launches') {
+    admUserSort = a === 'usort_launches' ? 'launches' : 'active';
+    return fetchAdmUsers();
+  }
+  if (a === 'ublock' && btn) {
+    const uid = +btn.dataset.uid;
+    const d = await admApi('/api/admin/user_action', { action: 'toggle_block', user_id: uid });
+    if (d.status === 'ok') { toast(d.is_blocked ? 'Пользователь заблокирован' : 'Разблокирован'); fetchAdmUsers(); }
+    return;
+  }
+  if (a === 'ugrp' && btn) {
+    const uid = +btn.dataset.uid, cur = btn.dataset.grp || '';
+    const g = prompt('Новая группа для пользователя:', cur);
+    if (g && g.trim()) {
+      const d = await admApi('/api/admin/user_action', { action: 'set_group', user_id: uid, group_name: g.trim() });
+      if (d.status === 'ok') { toast('Группа изменена на ' + d.group_name); fetchAdmUsers(); }
+    }
+    return;
+  }
+  if (a === 'ai_eco') {
+    const cur = admOverviewData && admOverviewData.ai_stats && admOverviewData.ai_stats.eco_mode;
+    const d = await admApi('/api/admin/ai_limit', { eco_mode: !cur });
+    if (d.status === 'ok') { toast(d.eco_mode ? 'Энергосбережение включено' : 'Обычный лимит включён'); fetchAdmOverview(); }
+    return;
+  }
+  if (a === 'bc') {
+    const text = $('adm_bc').value.trim();
+    const grp = ($('adm_bc_grp') ?$('adm_bc_grp').value.trim() : '');
+    if (!text) return toast('Напиши текст');
+    if (!confirm(grp ? `Отправить рассылку группе ${grp}?` : 'Отправить сообщение ВСЕМ пользователям бота?')) return;
+    try {
+      const d = await admApi('/api/admin/broadcast', { text, group: grp || 'all' });
+      toast(d.status === 'ok' ? 'Рассылка запущена, получателей: ' + d.total : (d.message || 'Ошибка'));
+    } catch (e) { toast('Сервер недоступен'); }
+    return;
+  }
+  if (a === 'stats') {
+    await fetchAdmOverview();
+    return _origAdmAct(a);
+  }
+  return _origAdmAct(a);
+};
+
+$('apnl').addEventListener('click', e => {
+  const b = e.target.closest('[data-adm]');
+  if (b && ['ublock', 'ugrp'].includes(b.dataset.adm)) {
+    e.stopPropagation();
+    admAct(b.dataset.adm, b);
+  }
+}, true);
 </script>
 </body>
 </html>
