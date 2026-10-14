@@ -45,7 +45,7 @@ TOKEN = os.getenv("BOT_TOKEN", "")
 if not TOKEN:
     raise SystemExit("Задай переменную окружения BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
-ADMIN_PIN = os.getenv("ADMIN_PIN", "0000").strip()
+ADMIN_PIN = "0000"
 PORT = int(os.getenv("PORT", 3000))
 SUPPORT_USERNAME = "@AvaUtility_support"
 
@@ -84,12 +84,11 @@ AI_TEACHER_ADDON = """
 
 AI_HITS = {}
 AI_STATS = {"chat": 0, "compress": 0, "refused": 0, "blocked": 0, "limited": 0}
-AI_CONFIG = {"eco_mode": False, "chat_limit": 25, "compress_limit": 12}
-SECURITY_LOG = []  # последние срабатывания фильтра безопасности
+AI_CONFIG = {"hourly_limit": 25, "eco_mode": False}
 BROADCAST = {"total": 0, "sent": 0, "failed": 0, "done": True}
 
-def ai_rate_ok(key, limit=25, window=3600):
-    eff_limit = max(3, limit // 2) if AI_CONFIG["eco_mode"] else limit
+def ai_rate_ok(key, limit=None, window=3600):
+    eff_limit = limit if limit is not None else (8 if AI_CONFIG["eco_mode"] else AI_CONFIG["hourly_limit"])
     now = time.time()
     hits = [t for t in AI_HITS.get(key, []) if now - t < window]
     if len(hits) >= eff_limit:
@@ -98,12 +97,6 @@ def ai_rate_ok(key, limit=25, window=3600):
     hits.append(now)
     AI_HITS[key] = hits
     return True
-
-def log_security_event(uid, kind, sample):
-    now_str = datetime.datetime.now(MSK_TZ).strftime("%d.%m %H:%M")
-    SECURITY_LOG.insert(0, {"time": now_str, "uid": str(uid), "kind": kind, "sample": str(sample)[:120]})
-    if len(SECURITY_LOG) > 30:
-        SECURITY_LOG.pop()
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
@@ -134,6 +127,7 @@ def _load_admin_token() -> str:
         return secrets.token_urlsafe(24)
 
 ADMIN_TOKEN = _load_admin_token()
+
 DB_FILE = os.path.join(DATA_DIR, "users.db")
 JSON_FILE = "schedule.json"
 
@@ -219,18 +213,37 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
+                    first_name TEXT DEFAULT '',
                     group_name TEXT DEFAULT '7241452',
+                    role TEXT DEFAULT 'student',
+                    platform TEXT DEFAULT 'bot',
+                    total_launches INTEGER DEFAULT 1,
+                    last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_blocked INTEGER DEFAULT 0,
                     notify_morning INTEGER DEFAULT 1,
                     notify_remind INTEGER DEFAULT 1,
                     notify_hw INTEGER DEFAULT 1,
                     view_type TEXT DEFAULT 'text',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    first_name TEXT DEFAULT '',
-                    role TEXT DEFAULT 'student',
-                    total_launches INTEGER DEFAULT 1,
-                    last_active_at TIMESTAMP,
-                    platform TEXT DEFAULT 'bot',
-                    is_blocked INTEGER DEFAULT 0
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS session_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    event_type TEXT,
+                    detail TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS ai_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT,
+                    action TEXT,
+                    query_preview TEXT,
+                    status TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             c.execute("""
@@ -254,80 +267,66 @@ def init_db():
                     UNIQUE(user_id, note_key)
                 )
             """)
-            c.execute("""
-                CREATE TABLE IF NOT EXISTS session_events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    event_type TEXT,
-                    meta TEXT DEFAULT '',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
             c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
             conn.commit()
 
-            # Миграция существующей таблицы users (сохраняем всех старых пользователей!)
+            # Миграция колонок таблицы users без потери существующих данных
             c.execute("PRAGMA table_info(users)")
             u_cols = [col[1] for col in c.fetchall()]
             migrations = [
                 ("first_name", "TEXT DEFAULT ''"),
                 ("role", "TEXT DEFAULT 'student'"),
+                ("platform", "TEXT DEFAULT 'bot'"),
                 ("total_launches", "INTEGER DEFAULT 1"),
                 ("last_active_at", "TIMESTAMP"),
-                ("platform", "TEXT DEFAULT 'bot'"),
                 ("is_blocked", "INTEGER DEFAULT 0")
             ]
             for col_name, col_def in migrations:
                 if col_name not in u_cols:
                     try:
                         c.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
+                        if col_name == "last_active_at":
+                            c.execute("UPDATE users SET last_active_at = created_at WHERE last_active_at IS NULL")
                         conn.commit()
                     except Exception:
                         pass
-            c.execute("UPDATE users SET last_active_at = created_at WHERE last_active_at IS NULL")
-            conn.commit()
 
             c.execute("PRAGMA table_info(auth_sessions)")
-            cols = [col[1] for col in c.fetchall()]
-            for col_name, col_def in [("group_name", "TEXT DEFAULT '7241452'"), ("first_name", "TEXT DEFAULT ''"), ("status", "TEXT DEFAULT 'pending'")]:
-                if col_name not in cols:
+            a_cols = [col[1] for col in c.fetchall()]
+            for col_name, col_def in [
+                ("group_name", "TEXT DEFAULT '7241452'"),
+                ("first_name", "TEXT DEFAULT ''"),
+                ("status", "TEXT DEFAULT 'pending'")
+            ]:
+                if col_name not in a_cols:
                     try:
                         c.execute(f"ALTER TABLE auth_sessions ADD COLUMN {col_name} {col_def}")
                         conn.commit()
                     except Exception:
                         pass
+
     except Exception as e:
         logging.error(f"БД ошибка: {e}")
 
-def record_event(user_id: int, event_type: str, meta: str = ""):
+def log_event(user_id: int, event_type: str, detail: str = ""):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             conn.execute(
-                "INSERT INTO session_events (user_id, event_type, meta, created_at) VALUES (?, ?, ?, datetime('now'))",
-                (int(user_id or 0), str(event_type)[:40], str(meta)[:120])
+                "INSERT INTO session_events (user_id, event_type, detail) VALUES (?, ?, ?)",
+                (int(user_id or 0), str(event_type)[:40], str(detail)[:120])
             )
             conn.commit()
     except Exception:
         pass
 
-def touch_bot_user(tg_user, event_type="bot_cmd"):
-    if not tg_user:
-        return
+def log_ai_event(user_id: str, action: str, query_preview: str, status: str):
     try:
         with sqlite3.connect(DB_FILE) as conn:
-            c = conn.cursor()
-            c.execute("SELECT user_id FROM users WHERE user_id = ?", (tg_user.id,))
-            if c.fetchone():
-                c.execute("""
-                    UPDATE users
-                    SET username = COALESCE(NULLIF(?, ''), username),
-                        first_name = COALESCE(NULLIF(?, ''), first_name),
-                        total_launches = COALESCE(total_launches, 1) + 1,
-                        last_active_at = datetime('now')
-                    WHERE user_id = ?
-                """, (tg_user.username or "", tg_user.first_name or "", tg_user.id))
-                conn.commit()
-        record_event(tg_user.id, event_type, "telegram_bot")
+            conn.execute(
+                "INSERT INTO ai_logs (user_id, action, query_preview, status) VALUES (?, ?, ?, ?)",
+                (str(user_id)[:40], str(action)[:20], str(query_preview)[:160], str(status)[:20])
+            )
+            conn.commit()
     except Exception:
         pass
 
@@ -337,42 +336,64 @@ def get_user(user_id: int):
             c = conn.cursor()
             c.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
             return c.fetchone()
-    except Exception: return None
+    except Exception:
+        return None
+
+def is_user_blocked(user_id: int) -> bool:
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            row = conn.execute("SELECT is_blocked FROM users WHERE user_id = ?", (int(user_id),)).fetchone()
+            return bool(row and row[0])
+    except Exception:
+        return False
 
 def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP, first_name: str = "", platform: str = "bot"):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
             c.execute("""
-                INSERT OR REPLACE INTO users (
-                    user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type,
-                    created_at, first_name, role, total_launches, last_active_at, platform, is_blocked
-                )
-                VALUES (
-                    ?, ?, ?,
-                    COALESCE((SELECT notify_morning FROM users WHERE user_id = ?), 1),
-                    COALESCE((SELECT notify_remind FROM users WHERE user_id = ?), 1),
-                    COALESCE((SELECT notify_hw FROM users WHERE user_id = ?), 1),
-                    COALESCE((SELECT view_type FROM users WHERE user_id = ?), 'text'),
-                    COALESCE((SELECT created_at FROM users WHERE user_id = ?), datetime('now')),
-                    COALESCE(NULLIF(?, ''), (SELECT first_name FROM users WHERE user_id = ?), ''),
-                    COALESCE((SELECT role FROM users WHERE user_id = ?), 'student'),
-                    COALESCE((SELECT total_launches FROM users WHERE user_id = ?), 0) + 1,
-                    datetime('now'),
-                    COALESCE(NULLIF(?, ''), (SELECT platform FROM users WHERE user_id = ?), 'bot'),
-                    COALESCE((SELECT is_blocked FROM users WHERE user_id = ?), 0)
-                )
-            """, (user_id, username, group_name, user_id, user_id, user_id, user_id, user_id, first_name, user_id, user_id, user_id, platform, user_id, user_id))
+                INSERT INTO users (user_id, username, first_name, group_name, platform, total_launches, last_active_at, notify_morning, notify_remind, notify_hw, view_type)
+                VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, 1, 1, 1, 'text')
+                ON CONFLICT(user_id) DO UPDATE SET
+                    username = CASE WHEN excluded.username != '' THEN excluded.username ELSE users.username END,
+                    first_name = CASE WHEN excluded.first_name != '' THEN excluded.first_name ELSE users.first_name END,
+                    group_name = excluded.group_name,
+                    total_launches = COALESCE(users.total_launches, 0) + 1,
+                    last_active_at = CURRENT_TIMESTAMP
+            """, (user_id, username or "", first_name or "", group_name, platform))
             conn.commit()
-    except Exception as e: logging.error(e)
+    except Exception as e:
+        logging.error(e)
+
+def touch_user_bot(msg: Message):
+    if not msg.from_user:
+        return
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.execute("""
+                UPDATE users SET
+                    username = CASE WHEN ? != '' THEN ? ELSE username END,
+                    first_name = CASE WHEN ? != '' THEN ? ELSE first_name END,
+                    total_launches = COALESCE(total_launches, 0) + 1,
+                    last_active_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            """, (
+                msg.from_user.username or "", msg.from_user.username or "",
+                msg.from_user.first_name or "", msg.from_user.first_name or "",
+                msg.from_user.id
+            ))
+            conn.commit()
+    except Exception:
+        pass
 
 def update_user_field(user_id: int, field: str, value):
     try:
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
-            c.execute(f"UPDATE users SET {field} = ?, last_active_at = datetime('now') WHERE user_id = ?", (value, user_id))
+            c.execute(f"UPDATE users SET {field} = ?, last_active_at = CURRENT_TIMESTAMP WHERE user_id = ?", (value, user_id))
             conn.commit()
-    except Exception as e: logging.error(e)
+    except Exception as e:
+        logging.error(e)
 
 def get_subscribers(field: str = "notify_morning"):
     try:
@@ -380,7 +401,8 @@ def get_subscribers(field: str = "notify_morning"):
             c = conn.cursor()
             c.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1 AND COALESCE(is_blocked, 0) = 0")
             return c.fetchall()
-    except Exception: return []
+    except Exception:
+        return []
 
 def get_stats():
     try:
@@ -389,14 +411,16 @@ def get_stats():
             c.execute("SELECT count(*), sum(notify_morning) FROM users")
             row = c.fetchone()
             return (row[0] or 0), (row[1] or 0)
-    except Exception: return 0, 0
+    except Exception:
+        return 0, 0
 
 def load_schedule() -> dict:
     if os.path.exists(JSON_FILE):
         try:
             with open(JSON_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception: pass
+        except Exception:
+            pass
     return {}
 
 SCHEDULE_DB = load_schedule()
@@ -601,7 +625,6 @@ def settings_keyboard(user_row, is_admin: bool = False) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, grp: str, is_callback: bool = False):
-    touch_bot_user(target.from_user, "view_schedule")
     day_name = DAYS_MAP[date_obj.weekday()] if date_obj.weekday() < 6 else 'Понедельник'
     sched = get_group_schedule(grp)
     lessons = sched.get(wn_code, {}).get(day_name, [])
@@ -647,7 +670,7 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, g
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
-    touch_bot_user(msg.from_user, "bot_start")
+    touch_user_bot(msg)
     parts = msg.text.split(maxsplit=1)
     args = parts[1].strip() if len(parts) > 1 else ""
 
@@ -659,7 +682,6 @@ async def cmd_start(msg: Message, state: FSMContext):
         auth_code = args.replace("auth_", "").strip()
         user = get_user(msg.from_user.id)
         grp = user[2] if user else DEFAULT_GROUP
-        register_user(msg.from_user.id, msg.from_user.username or "", grp, msg.from_user.first_name or "", "bot")
         with sqlite3.connect(DB_FILE) as conn:
             c = conn.cursor()
             c.execute("""
@@ -690,10 +712,10 @@ async def cmd_start(msg: Message, state: FSMContext):
 @dp.message(Command("login"))
 async def cmd_profile(msg: Message, state: FSMContext):
     await state.clear()
+    touch_user_bot(msg)
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
-    register_user(msg.from_user.id, msg.from_user.username or "", grp, msg.from_user.first_name or "", "bot")
-
+    
     import random, string
     auth_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     
@@ -746,6 +768,7 @@ async def cb_change_group(call: CallbackQuery, state: FSMContext):
 @dp.message(F.text == "📅 Сегодня")
 @dp.message(Command("today"))
 async def cmd_today(msg: Message):
+    touch_user_bot(msg)
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     today = datetime.datetime.now(MSK_TZ).date()
@@ -755,6 +778,7 @@ async def cmd_today(msg: Message):
 @dp.message(F.text == "📅 Завтра")
 @dp.message(Command("tomorrow"))
 async def cmd_tomorrow(msg: Message):
+    touch_user_bot(msg)
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     tomorrow = datetime.datetime.now(MSK_TZ).date() + datetime.timedelta(days=1)
@@ -793,7 +817,7 @@ async def cb_nav_schedule(call: CallbackQuery):
 @dp.message(F.text == "⏱ Сейчас")
 @dp.message(Command("now"))
 async def cmd_now(msg: Message):
-    touch_bot_user(msg.from_user, "check_now")
+    touch_user_bot(msg)
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     now_msk = datetime.datetime.now(MSK_TZ)
@@ -807,7 +831,7 @@ async def cmd_now(msg: Message):
 @dp.message(F.text == "🗓 Неделя")
 @dp.message(Command("week"))
 async def cmd_week(msg: Message):
-    touch_bot_user(msg.from_user, "view_week")
+    touch_user_bot(msg)
     user = get_user(msg.from_user.id)
     grp = user[2] if user else DEFAULT_GROUP
     wn_code, wn_name = get_week_info()
@@ -823,7 +847,7 @@ async def cmd_week(msg: Message):
 async def cmd_settings(msg: Message):
     user = get_user(msg.from_user.id)
     if not user:
-        register_user(msg.from_user.id, msg.from_user.username or "", DEFAULT_GROUP, msg.from_user.first_name or "", "bot")
+        register_user(msg.from_user.id, msg.from_user.username or "", DEFAULT_GROUP, msg.from_user.first_name or "")
         user = get_user(msg.from_user.id)
     await msg.answer("⚙️ <b>Настройки уведомлений и вида расписания:</b>", reply_markup=settings_keyboard(user, is_admin=(msg.from_user.id == ADMIN_ID)))
 
@@ -945,55 +969,17 @@ async def background_scheduler():
         await asyncio.sleep(25)
 
 # --- AIOHTTP ВЕБ-СЕРВЕР И API ---
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token"
+}
+
 def cors_response(data: dict):
-    return web.json_response(data, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"})
+    return web.json_response(data, headers=CORS_HEADERS)
 
 async def handle_options(request):
-    return web.Response(headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type"})
-
-async def handle_api_track_session(request):
-    """Фиксирует каждый вход и действие пользователя в Web App."""
-    try:
-        data = await request.json()
-        uid = int(data.get("user_id") or 0)
-        username = str(data.get("username") or "").strip()
-        first_name = str(data.get("first_name") or "").strip()
-        group_name = str(data.get("group_name") or DEFAULT_GROUP).strip()
-        role = "teacher" if data.get("role") in ("t", "teacher") else "student"
-        platform = str(data.get("platform") or "web").strip().lower()[:20]
-        event_type = str(data.get("event_type") or "open_app").strip()[:40]
-        meta = str(data.get("meta") or group_name).strip()[:120]
-
-        is_blocked = 0
-        if uid > 0:
-            with sqlite3.connect(DB_FILE) as conn:
-                c = conn.cursor()
-                row = c.execute("SELECT total_launches, is_blocked FROM users WHERE user_id = ?", (uid,)).fetchone()
-                if row:
-                    is_blocked = row[1] or 0
-                    inc = 1 if event_type == "open_app" else 0
-                    c.execute("""
-                        UPDATE users
-                        SET username = COALESCE(NULLIF(?, ''), username),
-                            first_name = COALESCE(NULLIF(?, ''), first_name),
-                            group_name = COALESCE(NULLIF(?, ''), group_name),
-                            role = ?,
-                            platform = COALESCE(NULLIF(?, ''), platform),
-                            total_launches = COALESCE(total_launches, 1) + ?,
-                            last_active_at = datetime('now')
-                        WHERE user_id = ?
-                    """, (username, first_name, group_name, role, platform, inc, uid))
-                else:
-                    c.execute("""
-                        INSERT INTO users (user_id, username, group_name, first_name, role, platform, total_launches, last_active_at)
-                        VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'))
-                    """, (uid, username, group_name, first_name, role, platform))
-                conn.commit()
-        record_event(uid, event_type, meta)
-        return cors_response({"status": "ok", "is_blocked": bool(is_blocked), "announcement": setting_get("announcement")})
-    except Exception as e:
-        logging.error(f"track_session error: {e}")
-        return cors_response({"status": "error"})
+    return web.Response(headers=CORS_HEADERS)
 
 async def handle_api_auth_poll(request):
     code = request.query.get('code', '').strip().upper()
@@ -1005,6 +991,40 @@ async def handle_api_auth_poll(request):
     if row and row[4] == 'confirmed':
         return cors_response({"status": "confirmed", "user_id": row[0], "username": row[1], "first_name": row[2], "target": row[3]})
     return cors_response({"status": "pending"})
+
+async def handle_api_track_session(request):
+    try:
+        data = await request.json()
+        uid = int(data.get("user_id") or 0)
+        username = str(data.get("username") or "").strip()
+        first_name = str(data.get("first_name") or "").strip()
+        group_name = str(data.get("group_name") or DEFAULT_GROUP).strip()
+        role = "teacher" if data.get("role") == "t" or data.get("role") == "teacher" else "student"
+        platform = str(data.get("platform") or "web").strip()[:32]
+        event_type = str(data.get("event_type") or "open_app").strip()[:40]
+        detail = str(data.get("detail") or group_name).strip()[:120]
+
+        with sqlite3.connect(DB_FILE) as conn:
+            c = conn.cursor()
+            if uid > 0:
+                c.execute("""
+                    INSERT INTO users (user_id, username, first_name, group_name, role, platform, total_launches, last_active_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        username = CASE WHEN excluded.username != '' THEN excluded.username ELSE users.username END,
+                        first_name = CASE WHEN excluded.first_name != '' THEN excluded.first_name ELSE users.first_name END,
+                        group_name = CASE WHEN excluded.group_name != '' THEN excluded.group_name ELSE users.group_name END,
+                        role = excluded.role,
+                        platform = excluded.platform,
+                        total_launches = COALESCE(users.total_launches, 0) + (CASE WHEN ? = 'open_app' THEN 1 ELSE 0 END),
+                        last_active_at = CURRENT_TIMESTAMP
+                """, (uid, username, first_name, group_name, role, platform, event_type))
+            c.execute("INSERT INTO session_events (user_id, event_type, detail) VALUES (?, ?, ?)", (uid, event_type, detail))
+            conn.commit()
+        return cors_response({"status": "ok"})
+    except Exception as e:
+        logging.error(f"track_session error: {e}")
+        return cors_response({"status": "error"})
 
 async def call_groq(messages, max_tokens=700):
     key = os.getenv("GROQ_API_KEY", "").strip()
@@ -1028,34 +1048,25 @@ async def call_groq(messages, max_tokens=700):
 def _ai_ok(text, refused=False):
     return cors_response({"status": "ok", "result": text, "refused": refused})
 
-def is_user_blocked(uid) -> bool:
-    try:
-        u = int(uid)
-        if u <= 0: return False
-        with sqlite3.connect(DB_FILE) as conn:
-            r = conn.execute("SELECT is_blocked FROM users WHERE user_id = ?", (u,)).fetchone()
-            return bool(r and r[0])
-    except Exception:
-        return False
-
 async def handle_api_ai_compress(request):
     try:
         data = await request.json()
         raw_text = str(data.get("text", "")).strip()[:12000]
         custom_task = data.get("task", "summary")
-        uid = str(data.get("user_id", "")) or str(request.remote or "anon")
-        if is_user_blocked(uid):
-            return _ai_ok("Доступ к функциям ограничен администратором.", True)
+        uid_num = int(data.get("user_id") or 0)
+        uid = str(uid_num or request.remote or "anon")
+        if uid_num and is_user_blocked(uid_num):
+            return _ai_ok("Доступ к Совёнку AI ограничен администратором.", True)
         if not raw_text:
             return cors_response({"status": "error", "message": "Пустой текст"})
         if len(raw_text) < 200 and BAD_RE.search(raw_text):
             AI_STATS["blocked"] += 1
-            log_security_event(uid, "Мат в конспекте", raw_text)
+            log_ai_event(uid, "compress", raw_text[:100], "blocked_bad_words")
             return _ai_ok("Пришли текст лекции или учебный материал.", True)
-        if not ai_rate_ok("lec:" + uid, limit=AI_CONFIG["compress_limit"]):
+        if not ai_rate_ok("lec:" + uid, limit=6 if AI_CONFIG["eco_mode"] else 12):
             AI_STATS["limited"] += 1
+            log_ai_event(uid, "compress", raw_text[:80], "rate_limited")
             return _ai_ok("Слишком много лекций подряд. Подожди немного и пришли снова.", True)
-        record_event(uid if uid.isdigit() else 0, "compress_lecture", custom_task)
         instruction = AI_SYSTEM_PROMPT
         if custom_task == 'cards':
             instruction += "\nСделай шпаргалку в формате Вопрос — Ответ."
@@ -1065,9 +1076,10 @@ async def handle_api_ai_compress(request):
         if ai_res:
             if ai_res.upper().startswith("ОТКАЗ:"):
                 AI_STATS["refused"] += 1
-                log_security_event(uid, "Отказ ИИ (конспект)", raw_text)
+                log_ai_event(uid, "compress", raw_text[:100], "refused_by_ai")
                 return _ai_ok(ai_res[6:].strip() or "Пришли текст лекции или учебный материал.", True)
             AI_STATS["compress"] += 1
+            log_event(uid_num, "compress_lecture", custom_task)
             return _ai_ok(ai_res)
         sentences = [s.strip() for s in re.split(r'[.!?]\s+', raw_text) if len(s.strip()) > 5]
         return _ai_ok("Главные тезисы:\n\n" + "\n".join([f"- {s}." for s in sentences[:5]]))
@@ -1080,21 +1092,22 @@ async def handle_api_ai_chat(request):
         data = await request.json()
         q = str(data.get("question", "")).strip()
         teacher_mode = data.get("role") == "teacher"
-        uid = str(data.get("user_id", "")) or str(request.remote or "anon")
-        if is_user_blocked(uid):
-            return _ai_ok("Доступ к функциям ограничен администратором.", True)
+        uid_num = int(data.get("user_id") or 0)
+        uid = str(uid_num or request.remote or "anon")
+        if uid_num and is_user_blocked(uid_num):
+            return _ai_ok("Доступ к Совёнку AI ограничен администратором.", True)
         if not q:
             return cors_response({"status": "error", "message": "Пустой вопрос"})
         if len(q) > 700:
             return _ai_ok("Вопрос слишком длинный. Сократи его до пары предложений или пришли текст лекции для конспекта.", True)
         if BAD_RE.search(q):
             AI_STATS["blocked"] += 1
-            log_security_event(uid, "Фильтр лексики", q)
+            log_ai_event(uid, "chat", q, "blocked_bad_words")
             return _ai_ok("Давай без грубостей. Я помогаю с учёбой: спроси про тему, задачу или конспект.", True)
-        if not ai_rate_ok("chat:" + uid, limit=AI_CONFIG["chat_limit"]):
+        if not ai_rate_ok("chat:" + uid):
             AI_STATS["limited"] += 1
+            log_ai_event(uid, "chat", q, "rate_limited")
             return _ai_ok("Слишком много вопросов подряд. Подожди немного и спроси снова.", True)
-        record_event(uid if uid.isdigit() else 0, "ask_ai", q[:60])
         history = []
         for m in (data.get("history") or [])[-6:]:
             if isinstance(m, dict) and m.get("role") in ("user", "assistant"):
@@ -1108,19 +1121,29 @@ async def handle_api_ai_chat(request):
         if refused:
             text = text[6:].strip() or "Я помогаю только с учёбой."
             AI_STATS["refused"] += 1
-            log_security_event(uid, "Неучебный запрос", q)
-        AI_STATS["chat"] += 1
+            log_ai_event(uid, "chat", q, "refused_by_ai")
+        else:
+            AI_STATS["chat"] += 1
+            log_event(uid_num, "ask_ai", q[:60])
         return _ai_ok(text, refused)
     except Exception:
         logging.exception("ai_chat")
         return cors_response({"status": "error", "message": "Ошибка сервера"})
 
-# --- Админ-функции: принимают и секретный токен из бота, и пин-код 0000 ---
+# --- АДМИН-ФУНКЦИИ (Поддержка ADMIN_TOKEN и PIN 0000) ---
+def _extract_token(request, data=None) -> str:
+    if isinstance(data, dict) and data.get("token"):
+        return str(data.get("token")).strip()
+    hdr = request.headers.get("X-Admin-Token", "").strip()
+    if hdr:
+        return hdr
+    return request.query.get("token", "").strip()
+
 def admin_ok(token) -> bool:
     t = str(token or "").strip()
     if not t:
         return False
-    if ADMIN_PIN and hmac.compare_digest(t, ADMIN_PIN):
+    if hmac.compare_digest(t, ADMIN_PIN):
         return True
     return bool(ADMIN_TOKEN) and hmac.compare_digest(t, ADMIN_TOKEN)
 
@@ -1141,87 +1164,57 @@ async def handle_api_announcement(request):
 
 async def handle_api_admin_announcement(request):
     data = await request.json()
-    if not admin_ok(data.get("token")):
+    if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     setting_set("announcement", str(data.get("text", "")).strip()[:500])
     return cors_response({"status": "ok"})
 
 async def handle_api_admin_overview(request):
-    """Расширенная аналитика для дашборда (Пульс, ИИ, Графики)."""
-    if not admin_ok(request.query.get("token")):
+    if not admin_ok(_extract_token(request)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     with sqlite3.connect(DB_FILE) as conn:
-        total = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        new_today = conn.execute("SELECT COUNT(*) FROM users WHERE date(created_at) = date('now')").fetchone()[0]
-        dau = conn.execute("SELECT COUNT(*) FROM users WHERE last_active_at >= datetime('now', '-24 hours')").fetchone()[0]
-        wau = conn.execute("SELECT COUNT(*) FROM users WHERE last_active_at >= datetime('now', '-7 days')").fetchone()[0]
-        online_15m = conn.execute("SELECT COUNT(*) FROM users WHERE last_active_at >= datetime('now', '-15 minutes')").fetchone()[0]
-        total_launches = conn.execute("SELECT COALESCE(SUM(total_launches), 0) FROM users").fetchone()[0]
-
-        push_m = conn.execute("SELECT COUNT(*) FROM users WHERE notify_morning = 1").fetchone()[0]
-        push_r = conn.execute("SELECT COUNT(*) FROM users WHERE notify_remind = 1").fetchone()[0]
-        push_e = conn.execute("SELECT COUNT(*) FROM users WHERE notify_hw = 1").fetchone()[0]
-
-        top_groups = conn.execute("SELECT group_name, COUNT(*) c FROM users GROUP BY group_name ORDER BY c DESC LIMIT 6").fetchall()
-        top_viewed = conn.execute("""
-            SELECT meta, COUNT(*) c FROM session_events
-            WHERE event_type IN ('open_app', 'view_schedule') AND meta != ''
-            GROUP BY meta ORDER BY c DESC LIMIT 5
-        """).fetchall()
-        platforms = conn.execute("SELECT COALESCE(NULLIF(platform, ''), 'bot') p, COUNT(*) c FROM users GROUP BY p ORDER BY c DESC").fetchall()
-        notes_count = conn.execute("SELECT COUNT(*) FROM user_notes").fetchone()[0]
-
-        # Почасовая активность за последние 7 дней (МСК +3)
-        hourly_rows = conn.execute("""
-            SELECT CAST(strftime('%H', datetime(created_at, '+3 hours')) AS INTEGER) h, COUNT(*) c
-            FROM session_events
-            WHERE created_at >= datetime('now', '-7 days')
-            GROUP BY h
-        """).fetchall()
-        hourly = [0] * 24
-        for h, c_val in hourly_rows:
-            if h is not None and 0 <= int(h) < 24:
-                hourly[int(h)] = c_val
+        total = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] or 0
+        new_today = conn.execute("SELECT COUNT(*) FROM users WHERE date(created_at) = date('now')").fetchone()[0] or 0
+        dau = conn.execute("SELECT COUNT(*) FROM users WHERE datetime(COALESCE(last_active_at, created_at)) >= datetime('now', '-24 hours')").fetchone()[0] or 0
+        wau = conn.execute("SELECT COUNT(*) FROM users WHERE datetime(COALESCE(last_active_at, created_at)) >= datetime('now', '-7 days')").fetchone()[0] or 0
+        online_15m = conn.execute("SELECT COUNT(*) FROM users WHERE datetime(COALESCE(last_active_at, created_at)) >= datetime('now', '-15 minutes')").fetchone()[0] or 0
+        top_groups = conn.execute("SELECT group_name, COUNT(*) c FROM users WHERE group_name != '' GROUP BY group_name ORDER BY c DESC LIMIT 5").fetchall()
+        top_teachers = conn.execute("SELECT detail, COUNT(*) c FROM session_events WHERE event_type = 'view_teacher' AND detail != '' GROUP BY detail ORDER BY c DESC LIMIT 3").fetchall()
+        push_morning = conn.execute("SELECT COUNT(*) FROM users WHERE notify_morning = 1").fetchone()[0] or 0
+        push_remind = conn.execute("SELECT COUNT(*) FROM users WHERE notify_remind = 1").fetchone()[0] or 0
+        push_evening = conn.execute("SELECT COUNT(*) FROM users WHERE notify_hw = 1").fetchone()[0] or 0
+        notes_cnt = conn.execute("SELECT COUNT(*) FROM user_notes").fetchone()[0] or 0
+        ai_logs = conn.execute("SELECT user_id, action, query_preview, status, created_at FROM ai_logs ORDER BY id DESC LIMIT 12").fetchall()
 
     return cors_response({
         "status": "ok",
-        "kpi": {
-            "total": total,
-            "new_today": new_today,
-            "dau": dau,
-            "wau": wau,
-            "online_15m": online_15m,
-            "total_launches": total_launches,
-            "notes": notes_count
-        },
-        "pushes": {"morning": push_m, "remind": push_r, "evening": push_e},
+        "total_users": total,
+        "new_today": new_today,
+        "dau": dau,
+        "wau": wau,
+        "online_15m": online_15m,
         "top_groups": [{"name": g, "count": c} for g, c in top_groups],
-        "top_viewed": [{"name": m, "count": c} for m, c in top_viewed],
-        "platforms": [{"name": p, "count": c} for p, c in platforms],
-        "hourly": hourly,
-        "ai": {**AI_STATS, **AI_CONFIG, "security_log": SECURITY_LOG[:15]},
-        "broadcast": BROADCAST
+        "top_teachers": [{"name": t, "count": c} for t, c in top_teachers],
+        "pushes": {"morning": push_morning, "remind": push_remind, "evening": push_evening},
+        "notes_count": notes_cnt,
+        "ai_stats": {**AI_STATS, "eco_mode": AI_CONFIG["eco_mode"], "hourly_limit": 8 if AI_CONFIG["eco_mode"] else AI_CONFIG["hourly_limit"]},
+        "ai_logs": [{"uid": r[0], "action": r[1], "q": r[2], "status": r[3], "time": r[4]} for r in ai_logs],
+        "broadcast": BROADCAST,
+        "announcement": setting_get("announcement")
     })
 
 async def handle_api_admin_users_list(request):
-    """Список пользователей для Студенческой CRM с поиском и сортировкой."""
-    if not admin_ok(request.query.get("token")):
+    if not admin_ok(_extract_token(request)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     q = request.query.get("q", "").strip().lower()
     sort_by = request.query.get("sort", "active")
-    order_sql = "COALESCE(last_active_at, created_at) DESC"
-    if sort_by == "launches":
-        order_sql = "COALESCE(total_launches, 1) DESC, last_active_at DESC"
-    elif sort_by == "new":
-        order_sql = "created_at DESC"
+    order_sql = " COALESCE(total_launches, 1) DESC " if sort_by == "launches" else " datetime(COALESCE(last_active_at, created_at)) DESC "
 
     with sqlite3.connect(DB_FILE) as conn:
         rows = conn.execute(f"""
             SELECT user_id, COALESCE(username, ''), COALESCE(first_name, ''), COALESCE(group_name, ''),
                    COALESCE(role, 'student'), COALESCE(platform, 'bot'), COALESCE(total_launches, 1),
-                   COALESCE(datetime(last_active_at, '+3 hours'), datetime(created_at, '+3 hours'), ''),
-                   COALESCE(datetime(created_at, '+3 hours'), ''),
-                   COALESCE(is_blocked, 0), COALESCE(notify_morning, 1), COALESCE(notify_remind, 1)
+                   COALESCE(last_active_at, created_at), COALESCE(is_blocked, 0)
             FROM users
             ORDER BY {order_sql}
             LIMIT 250
@@ -1229,9 +1222,9 @@ async def handle_api_admin_users_list(request):
 
     users = []
     for r in rows:
-        uid, uname, fname, grp, role, plat, launches, last_act, created, blocked, nm, nr = r
+        uid, uname, fname, grp, role, plat, launches, last_act, blocked = r
         if q:
-            hay = f"{uid} {uname} {fname} {grp} {plat}".lower()
+            hay = f"{uid} {uname} {fname} {grp}".lower()
             if q not in hay:
                 continue
         users.append({
@@ -1242,96 +1235,81 @@ async def handle_api_admin_users_list(request):
             "role": role,
             "platform": plat,
             "total_launches": launches,
-            "last_active_at": last_act[:16] if last_act else "—",
-            "created_at": created[:10] if created else "—",
-            "is_blocked": bool(blocked),
-            "pushes": bool(nm or nr)
+            "last_active_at": last_act,
+            "is_blocked": bool(blocked)
         })
-    return cors_response({"status": "ok", "users": users, "count": len(users)})
+    return cors_response({"status": "ok", "users": users[:100], "total_matched": len(users)})
 
 async def handle_api_admin_user_action(request):
-    """Быстрые действия с пользователем из CRM: смена группы, блокировка, личное сообщение."""
     data = await request.json()
-    if not admin_ok(data.get("token")):
+    if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     uid = int(data.get("user_id") or 0)
-    action = data.get("action")
+    act = data.get("action")
     if not uid:
         return cors_response({"status": "error", "message": "Не указан ID"})
 
-    if action == "set_group":
-        new_grp = str(data.get("group_name") or "").strip()
-        if not new_grp:
-            return cors_response({"status": "error", "message": "Укажи группу"})
-        update_user_field(uid, "group_name", new_grp)
-        return cors_response({"status": "ok", "message": f"Группа изменена на {new_grp}"})
-    elif action == "toggle_block":
-        with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_FILE) as conn:
+        if act == "toggle_block":
             cur = conn.execute("SELECT COALESCE(is_blocked, 0) FROM users WHERE user_id = ?", (uid,)).fetchone()
-            new_val = 0 if (cur and cur[0]) else 1
-            conn.execute("UPDATE users SET is_blocked = ? WHERE user_id = ?", (new_val, uid))
+            new_v = 0 if (cur and cur[0]) else 1
+            conn.execute("UPDATE users SET is_blocked = ? WHERE user_id = ?", (new_v, uid))
             conn.commit()
-        return cors_response({"status": "ok", "is_blocked": bool(new_val), "message": "Заблокирован" if new_val else "Разблокирован"})
-    elif action == "send_dm":
-        text = str(data.get("text") or "").strip()
-        if not text:
-            return cors_response({"status": "error", "message": "Пустое сообщение"})
-        try:
-            await bot.send_message(uid, f"💬 <b>Сообщение от администратора НЧИ КФУ:</b>\n\n{text}")
-            return cors_response({"status": "ok", "message": "Сообщение доставлено"})
-        except Exception as e:
-            return cors_response({"status": "error", "message": f"Не доставлено: {e}"})
+            return cors_response({"status": "ok", "is_blocked": bool(new_v)})
+        elif act == "set_group":
+            new_grp = str(data.get("group_name") or "").strip()
+            if not new_grp:
+                return cors_response({"status": "error", "message": "Пустая группа"})
+            conn.execute("UPDATE users SET group_name = ? WHERE user_id = ?", (new_grp, uid))
+            conn.commit()
+            return cors_response({"status": "ok", "group_name": new_grp})
+
     return cors_response({"status": "error", "message": "Неизвестное действие"})
 
-async def handle_api_admin_ai_config(request):
-    """Управление лимитами и энергосбережением Совёнка AI."""
+async def handle_api_admin_ai_limit(request):
     data = await request.json()
-    if not admin_ok(data.get("token")):
+    if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
-    if "eco_mode" in data:
-        AI_CONFIG["eco_mode"] = bool(data["eco_mode"])
-    if "chat_limit" in data:
-        AI_CONFIG["chat_limit"] = max(3, min(100, int(data["chat_limit"])))
-    return cors_response({"status": "ok", "ai": {**AI_STATS, **AI_CONFIG}})
+    AI_CONFIG["eco_mode"] = bool(data.get("eco_mode"))
+    return cors_response({
+        "status": "ok",
+        "eco_mode": AI_CONFIG["eco_mode"],
+        "hourly_limit": 8 if AI_CONFIG["eco_mode"] else AI_CONFIG["hourly_limit"]
+    })
 
 async def handle_api_admin_export_csv(request):
-    """Скачивание базы пользователей в CSV (совместимо с русским Excel)."""
-    if not admin_ok(request.query.get("token")):
-        return web.Response(text="Нет доступа", status=403)
-    output = io.StringIO()
-    output.write('\ufeff')  # BOM для корректного открытия кириллицы в Excel
-    writer = csv.writer(output, delimiter=';')
-    writer.writerow(["Telegram ID", "Username", "Имя", "Группа", "Роль", "Платформа", "Входов", "Последняя активность (МСК)", "Дата регистрации", "Утренний пуш", "Напоминания 15м", "Блок"])
+    if not admin_ok(_extract_token(request)):
+        return web.Response(text="Нет доступа", status=403, headers=CORS_HEADERS)
     with sqlite3.connect(DB_FILE) as conn:
         rows = conn.execute("""
-            SELECT user_id, COALESCE(username, ''), COALESCE(first_name, ''), COALESCE(group_name, ''),
-                   COALESCE(role, 'student'), COALESCE(platform, 'bot'), COALESCE(total_launches, 1),
-                   COALESCE(datetime(last_active_at, '+3 hours'), ''), COALESCE(datetime(created_at, '+3 hours'), ''),
-                   COALESCE(notify_morning, 1), COALESCE(notify_remind, 1), COALESCE(is_blocked, 0)
-            FROM users ORDER BY COALESCE(total_launches, 1) DESC
+            SELECT user_id, username, first_name, group_name, role, platform, total_launches, last_active_at, created_at, is_blocked
+            FROM users ORDER BY datetime(COALESCE(last_active_at, created_at)) DESC
         """).fetchall()
-        for r in rows:
-            writer.writerow(r)
+
+    out = io.StringIO()
+    out.write('\ufeff')  # BOM для корректного открытия кириллицы в Excel
+    writer = csv.writer(out, delimiter=';')
+    writer.writerow(["Telegram ID", "Username", "Имя", "Группа", "Роль", "Платформа", "Входов", "Последняя активность", "Дата регистрации", "Блокировка"])
+    for r in rows:
+        writer.writerow(r)
+
     return web.Response(
-        text=output.getvalue(),
-        headers={
-            "Content-Type": "text/csv; charset=utf-8",
-            "Content-Disposition": 'attachment; filename="nchkfu_users.csv"',
-            "Access-Control-Allow-Origin": "*"
-        }
+        text=out.getvalue(),
+        content_type="text/csv",
+        charset="utf-8",
+        headers={**CORS_HEADERS, "Content-Disposition": 'attachment; filename="users_nchkfu.csv"'}
     )
 
 async def handle_api_admin_stats(request):
-    if not admin_ok(request.query.get("token")):
+    if not admin_ok(_extract_token(request)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     with sqlite3.connect(DB_FILE) as conn:
         total = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         today = conn.execute("SELECT COUNT(*) FROM users WHERE date(created_at) = date('now')").fetchone()[0]
-        dau = conn.execute("SELECT COUNT(*) FROM users WHERE last_active_at >= datetime('now', '-24 hours')").fetchone()[0]
         top = conn.execute("SELECT group_name, COUNT(*) c FROM users GROUP BY group_name ORDER BY c DESC LIMIT 5").fetchall()
         notes = conn.execute("SELECT COUNT(*) FROM user_notes").fetchone()[0]
     lines = [
-        f"Пользователей бота: {total} (новых сегодня: {today}, активных за 24ч: {dau})",
+        f"Пользователей бота: {total} (новых сегодня: {today})",
         "Топ групп: " + (", ".join(f"{g} ({c})" for g, c in top) or "нет данных"),
         f"Заметок на сервере: {notes}",
         f"ИИ с запуска сервера: чат {AI_STATS['chat']}, конспекты {AI_STATS['compress']}, отказы {AI_STATS['refused']}, грубость {AI_STATS['blocked']}, лимит {AI_STATS['limited']}",
@@ -1351,26 +1329,26 @@ async def _broadcast(ids, text):
 
 async def handle_api_admin_broadcast(request):
     data = await request.json()
-    if not admin_ok(data.get("token")):
+    if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     text = str(data.get("text", "")).strip()[:3500]
-    target_group = str(data.get("target_group", "")).strip()
+    target_grp = str(data.get("group", "")).strip()
     if not text:
         return cors_response({"status": "error", "message": "Пустой текст"})
     if not BROADCAST["done"]:
         return cors_response({"status": "error", "message": "Предыдущая рассылка ещё идёт"})
     with sqlite3.connect(DB_FILE) as conn:
-        if target_group:
-            ids = [r[0] for r in conn.execute("SELECT user_id FROM users WHERE group_name = ?", (target_group,)).fetchall()]
+        if target_grp and target_grp != "all":
+            ids = [r[0] for r in conn.execute("SELECT user_id FROM users WHERE group_name = ? AND COALESCE(is_blocked, 0) = 0", (target_grp,)).fetchall()]
         else:
-            ids = [r[0] for r in conn.execute("SELECT user_id FROM users").fetchall()]
+            ids = [r[0] for r in conn.execute("SELECT user_id FROM users WHERE COALESCE(is_blocked, 0) = 0").fetchall()]
     BROADCAST.update({"total": len(ids), "sent": 0, "failed": 0, "done": False})
     asyncio.create_task(_broadcast(ids, text))
     return cors_response({"status": "ok", "total": len(ids)})
 
 async def handle_api_admin_upload(request):
     data = await request.json()
-    if not admin_ok(data.get("token")):
+    if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     new = data.get("data")
     if not isinstance(new, dict) or not new or not all(isinstance(v, dict) and isinstance(v.get("schedule"), dict) for v in new.values()):
@@ -1399,24 +1377,25 @@ async def handle_api_save_note(request):
             if n_text: c.execute("INSERT OR REPLACE INTO user_notes (user_id, note_key, note_text) VALUES (?, ?, ?)", (uid, n_key, n_text))
             else: c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
             conn.commit()
-        record_event(uid, "save_note", n_key[:60])
+        log_event(uid, "save_note", n_key[:40])
         return cors_response({"status": "ok"})
     except Exception: return cors_response({"status": "error"})
 
 def create_web_app():
-    app = web.Application(client_max_size=12 * 1024 * 1024)
-    app.router.add_post('/api/track_session', handle_api_track_session)
+    app = web.Application(client_max_size=15 * 1024 * 1024)
     app.router.add_get('/api/auth_poll', handle_api_auth_poll)
+    app.router.add_post('/api/track_session', handle_api_track_session)
     app.router.add_post('/api/ai_compress', handle_api_ai_compress)
     app.router.add_post('/api/ai_chat', handle_api_ai_chat)
     app.router.add_get('/api/announcement', handle_api_announcement)
     app.router.add_post('/api/admin/announcement', handle_api_admin_announcement)
-    app.router.add_get('/api/admin/stats', handle_api_admin_stats)
+    app.router.add_post('/api/admin/set_banner', handle_api_admin_announcement)
     app.router.add_get('/api/admin/overview', handle_api_admin_overview)
     app.router.add_get('/api/admin/users_list', handle_api_admin_users_list)
     app.router.add_post('/api/admin/user_action', handle_api_admin_user_action)
-    app.router.add_post('/api/admin/ai_config', handle_api_admin_ai_config)
+    app.router.add_post('/api/admin/ai_limit', handle_api_admin_ai_limit)
     app.router.add_get('/api/admin/export_csv', handle_api_admin_export_csv)
+    app.router.add_get('/api/admin/stats', handle_api_admin_stats)
     app.router.add_post('/api/admin/broadcast', handle_api_admin_broadcast)
     app.router.add_post('/api/admin/upload_schedule', handle_api_admin_upload)
     app.router.add_post('/api/save_note', handle_api_save_note)
@@ -1424,7 +1403,7 @@ def create_web_app():
     return app
 
 async def main():
-    logging.info("Админка: работает по токену из кнопки Веб-Админка и по пин-коду 0000.")
+    logging.info("Админка: поддерживается вход по PIN 0000 и по токену из кнопки Веб-Админка.")
     init_db()
     asyncio.create_task(background_scheduler())
     app = create_web_app()
