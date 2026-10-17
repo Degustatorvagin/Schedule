@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import hmac
+import html
 import secrets
 import time
 import datetime
@@ -41,12 +42,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 # --- КОНФИГУРАЦИЯ ---
 WEB_APP_URL = "https://degustatorvagin.github.io/Schedule/"
-TOKEN = os.getenv("BOT_TOKEN", "")
+TOKEN = os.getenv("BOT_TOKEN", "").strip()
 if not TOKEN:
     raise SystemExit("Задай переменную окружения BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "8537137900"))
+
+def _get_int_env(keys, default: int) -> int:
+    for k in keys:
+        v = os.getenv(k, "").strip()
+        if v.lstrip("-").isdigit():
+            return int(v)
+    return default
+
+ADMIN_ID = _get_int_env(("ADMIN_ID",), 8537137900)
 ADMIN_PIN = "0000"
-PORT = int(os.getenv("PORT", 3000))
+PORT = _get_int_env(("PORT", "SERVER_PORT", "APP_PORT", "WEB_PORT"), 3000)
 SUPPORT_USERNAME = "@petproject_support"
 SUPPORT_URL = "https://t.me/petproject_support"
 CHANNEL_URL = "https://t.me/sovenok_kfu"
@@ -94,10 +103,13 @@ def ai_rate_ok(key, limit=None, window=3600):
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-DATA_DIR = os.getenv("DATA_DIR", ".")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
 if not os.path.exists(DATA_DIR):
-    try: os.makedirs(DATA_DIR, exist_ok=True)
-    except Exception: DATA_DIR = "."
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        DATA_DIR = BASE_DIR
 
 def _load_admin_token() -> str:
     env = os.getenv("ADMIN_TOKEN", "").strip()
@@ -108,7 +120,8 @@ def _load_admin_token() -> str:
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
                 t = f.read().strip()
-            if len(t) >= 16: return t
+            if len(t) >= 16:
+                return t
         t = secrets.token_urlsafe(24)
         with open(path, "w", encoding="utf-8") as f:
             f.write(t)
@@ -118,7 +131,7 @@ def _load_admin_token() -> str:
 
 ADMIN_TOKEN = _load_admin_token()
 DB_FILE = os.path.join(DATA_DIR, "users.db")
-JSON_FILE = "schedule.json"
+JSON_FILE = os.path.join(BASE_DIR, "schedule.json") if os.path.exists(os.path.join(BASE_DIR, "schedule.json")) else "schedule.json"
 DEFAULT_GROUP = "7241452"
 ANCHOR_MONDAY = datetime.date(2026, 8, 31)
 MSK_TZ = datetime.timezone(datetime.timedelta(hours=3))
@@ -135,6 +148,9 @@ BELLS_TABLE = {
 
 class Form(StatesGroup):
     waiting_for_group = State()
+
+def db_connect():
+    return sqlite3.connect(DB_FILE, timeout=15)
 
 def normalize_type(typ: str) -> str:
     t = str(typ).lower().strip()
@@ -174,6 +190,7 @@ def get_cyrillic_font(size=13):
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         os.path.join(DATA_DIR, "font.ttf"),
+        os.path.join(BASE_DIR, "font.ttf"),
         "font.ttf"
     ]
     for p in candidate_paths:
@@ -184,8 +201,12 @@ def get_cyrillic_font(size=13):
 
 def init_db():
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
+            try:
+                c.execute("PRAGMA journal_mode=WAL")
+            except Exception:
+                pass
             c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
@@ -244,7 +265,20 @@ def init_db():
                     UNIQUE(user_id, note_key)
                 )
             """)
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS feedbacks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    username TEXT,
+                    first_name TEXT,
+                    group_name TEXT,
+                    rating INTEGER,
+                    comment TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+            c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('feedback_enabled', '1')")
             conn.commit()
 
             c.execute("PRAGMA table_info(users)")
@@ -279,21 +313,21 @@ def init_db():
 
 def log_event(user_id: int, event_type: str, detail: str = ""):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             conn.execute("INSERT INTO session_events (user_id, event_type, detail) VALUES (?, ?, ?)", (int(user_id or 0), str(event_type)[:40], str(detail)[:120]))
             conn.commit()
     except Exception: pass
 
 def log_ai_event(user_id: str, action: str, query_preview: str, status: str):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             conn.execute("INSERT INTO ai_logs (user_id, action, query_preview, status) VALUES (?, ?, ?, ?)", (str(user_id)[:40], str(action)[:20], str(query_preview)[:160], str(status)[:20]))
             conn.commit()
     except Exception: pass
 
 def get_user(user_id: int):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute("SELECT user_id, username, group_name, notify_morning, notify_remind, notify_hw, view_type FROM users WHERE user_id = ?", (user_id,))
             return c.fetchone()
@@ -301,14 +335,14 @@ def get_user(user_id: int):
 
 def is_user_blocked(user_id: int) -> bool:
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             row = conn.execute("SELECT is_blocked FROM users WHERE user_id = ?", (int(user_id),)).fetchone()
             return bool(row and row[0])
     except Exception: return False
 
 def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP, first_name: str = "", platform: str = "bot"):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute("""
                 INSERT INTO users (user_id, username, first_name, group_name, platform, total_launches, last_active_at, notify_morning, notify_remind, notify_hw, view_type)
@@ -326,7 +360,7 @@ def register_user(user_id: int, username: str, group_name: str = DEFAULT_GROUP, 
 def touch_user_bot(msg: Message):
     if not msg.from_user: return
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             conn.execute("""
                 UPDATE users SET
                     username = CASE WHEN ? != '' THEN ? ELSE username END,
@@ -340,7 +374,7 @@ def touch_user_bot(msg: Message):
 
 def update_user_field(user_id: int, field: str, value):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute(f"UPDATE users SET {field} = ?, last_active_at = CURRENT_TIMESTAMP WHERE user_id = ?", (value, user_id))
             conn.commit()
@@ -348,7 +382,7 @@ def update_user_field(user_id: int, field: str, value):
 
 def get_subscribers(field: str = "notify_morning"):
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute(f"SELECT user_id, group_name FROM users WHERE {field} = 1 AND COALESCE(is_blocked, 0) = 0")
             return c.fetchall()
@@ -356,7 +390,7 @@ def get_subscribers(field: str = "notify_morning"):
 
 def get_stats():
     try:
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute("SELECT count(*), sum(notify_morning) FROM users")
             row = c.fetchone()
@@ -364,11 +398,15 @@ def get_stats():
     except Exception: return 0, 0
 
 def load_schedule() -> dict:
-    if os.path.exists(JSON_FILE):
-        try:
-            with open(JSON_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception: pass
+    for path in (JSON_FILE, os.path.join(DATA_DIR, "schedule.json"), os.path.join(BASE_DIR, "schedule.json")):
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and data:
+                    return data
+            except Exception as e:
+                logging.error(f"Ошибка чтения {path}: {e}")
     return {}
 
 SCHEDULE_DB = load_schedule()
@@ -524,15 +562,16 @@ def get_now_status(lessons: list, check_dt: datetime.datetime, group_name: str =
 
 # --- КЛАВИАТУРЫ БОТА ---
 def main_keyboard(user_group: str = DEFAULT_GROUP, is_admin: bool = False) -> ReplyKeyboardMarkup:
-    web_url = f"{WEB_APP_URL}?group={user_group}"
-    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url), style="success")]
+    web_url = f"{WEB_APP_URL}?group={urllib.parse.quote(str(user_group))}"
+    top_button = [KeyboardButton(text="⚡ Открыть расписание онлайн", web_app=WebAppInfo(url=web_url))]
     rows = [
         top_button,
         [KeyboardButton(text="📅 Сегодня"), KeyboardButton(text="📅 Завтра")],
         [KeyboardButton(text="🗓 Неделя"), KeyboardButton(text="⏱ Сейчас")],
         [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="🔍 Сменить группу")]
     ]
-    if is_admin: rows.append([KeyboardButton(text="🌐 Веб-Админка")])
+    if is_admin:
+        rows.append([KeyboardButton(text="🌐 Веб-Админка")])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 def schedule_inline_keyboard(date_str: str, wn_code: str) -> InlineKeyboardMarkup:
@@ -585,8 +624,10 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, g
             if target.message.photo:
                 await target.message.delete()
                 await target.message.answer(text, reply_markup=reply_kb)
-            else: await target.message.edit_text(text, reply_markup=reply_kb)
-        else: await target.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
         return
 
     png_buf = None
@@ -600,24 +641,26 @@ async def send_or_edit_schedule(target, date_obj: datetime.date, wn_code: str, g
                 await target.message.edit_media(InputMediaPhoto(media=file_input, caption=caption_header), reply_markup=reply_kb)
             else:
                 await target.message.delete()
-                await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+                await target.message.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb)
         else:
-            await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb, show_caption_above_media=True)
+            await target.answer_photo(photo=file_input, caption=caption_header, reply_markup=reply_kb)
     else:
         text = format_day_text(day_name, wn_code, lessons, grp, date_obj.strftime('%d.%m.%Y'))
         if is_callback:
             if target.message.photo:
                 await target.message.delete()
                 await target.message.answer(text, reply_markup=reply_kb)
-            else: await target.message.edit_text(text, reply_markup=reply_kb)
-        else: await target.answer(text, reply_markup=reply_kb)
+            else:
+                await target.message.edit_text(text, reply_markup=reply_kb)
+        else:
+            await target.answer(text, reply_markup=reply_kb)
 
 # --- ХЕНДЛЕРЫ БОТА ---
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     await state.clear()
     touch_user_bot(msg)
-    parts = msg.text.split(maxsplit=1)
+    parts = (msg.text or "").split(maxsplit=1)
     args = parts[1].strip() if len(parts) > 1 else ""
 
     if args in ("login", "profile"):
@@ -628,18 +671,18 @@ async def cmd_start(msg: Message, state: FSMContext):
         auth_code = args.replace("auth_", "").strip()
         user = get_user(msg.from_user.id)
         grp = user[2] if user else DEFAULT_GROUP
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             c.execute("""
                 INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, group_name, status)
                 VALUES (?, ?, ?, ?, ?, 'confirmed')
             """, (auth_code, msg.from_user.id, msg.from_user.username or "", msg.from_user.first_name or "", grp))
             conn.commit()
-        await msg.answer(f"✅ <b>Вход подтверждён, {msg.from_user.first_name}!</b>\n\nВернитесь в приложение — Совёнок AI разблокирован, а профиль синхронизирован.")
+        await msg.answer(f"✅ <b>Вход подтверждён, {html.escape(msg.from_user.first_name or 'Студент')}!</b>\n\nВернитесь в приложение — Совёнок AI разблокирован, а профиль синхронизирован.")
         return
 
     if args == "support":
-        await msg.answer(f"💬 Техподдержка: {SUPPORT_USERNAME}\nКанал: {CHANNEL_URL}")
+        await msg.answer(f"💬 Техподдержка: {SUPPORT_USERNAME}\n📢 Канал проекта: {CHANNEL_URL}")
         return
 
     user = get_user(msg.from_user.id)
@@ -651,7 +694,8 @@ async def cmd_start(msg: Message, state: FSMContext):
 
     _, wn_name = get_week_info()
     text = f"👋 С возвращением! Группа: <code>{user[2]}</code>\n⚡ Сейчас идёт: <b>{wn_name}</b>\n\nИспользуй кнопки внизу экрана:"
-    if is_adm: text += "\n\n👑 <i>Доступна кнопка «🌐 Веб-Админка».</i>"
+    if is_adm:
+        text += "\n\n👑 <i>Доступна кнопка «🌐 Веб-Админка».</i>"
     await msg.answer(text, reply_markup=main_keyboard(user[2], is_admin=is_adm))
 
 @dp.message(Command("profile"))
@@ -665,7 +709,7 @@ async def cmd_profile(msg: Message, state: FSMContext):
     import random, string
     auth_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         c = conn.cursor()
         c.execute("""
             INSERT OR REPLACE INTO auth_sessions (auth_code, user_id, username, first_name, group_name, status)
@@ -686,11 +730,11 @@ async def cmd_profile(msg: Message, state: FSMContext):
 
 @dp.message(Form.waiting_for_group)
 async def process_custom_group(msg: Message, state: FSMContext):
-    raw_query = msg.text.strip()
+    raw_query = (msg.text or "").strip()
     matched = find_group(raw_query)
 
     if not matched:
-        await msg.answer("❌ <b>Группа не найдена в базе НЧИ КФУ!</b>\n\nПожалуйста, проверьте номер и напишите снова (например: <code>7241452</code>):")
+        await msg.answer("❌ <b>Группа не найдена в базе НЧИ КФУ!</b>\n\nПожалуйста, проверьте номер и напишите снова (например: <code>7241452</code> или <code>18.03-551</code>):")
         return
 
     register_user(msg.from_user.id, msg.from_user.username or "", matched, msg.from_user.first_name or "", "bot")
@@ -753,7 +797,8 @@ async def cb_nav_schedule(call: CallbackQuery):
         if call.message.photo:
             await call.message.delete()
             await call.message.answer("\n\n".join(res), reply_markup=reply_kb)
-        else: await call.message.edit_text("\n\n".join(res), reply_markup=reply_kb)
+        else:
+            await call.message.edit_text("\n\n".join(res), reply_markup=reply_kb)
     else:
         target_d = datetime.date.fromisoformat(parts[1])
         wn_code = parts[2] if len(parts) > 2 else get_week_info(target_d)[0]
@@ -847,6 +892,7 @@ async def cb_admin_test_push(call: CallbackQuery):
     await call.answer("Отправлено!")
 
 @dp.message(F.text == "🌐 Веб-Админка")
+@dp.message(Command("admin"))
 async def cmd_web_admin(msg: Message):
     if msg.from_user.id != ADMIN_ID: return
     url = f"{WEB_APP_URL}?admin=true&token={ADMIN_TOKEN}"
@@ -918,19 +964,45 @@ async def background_scheduler():
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token"
+    "Access-Control-Allow-Headers": "Content-Type, X-Admin-Token, Authorization, Accept, Origin"
 }
+
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == "OPTIONS":
+        return web.Response(status=200, headers=CORS_HEADERS)
+    try:
+        response = await handler(request)
+        for k, v in CORS_HEADERS.items():
+            response.headers[k] = v
+        return response
+    except web.HTTPException as ex:
+        for k, v in CORS_HEADERS.items():
+            ex.headers[k] = v
+        raise
+    except Exception as e:
+        logging.exception(f"Unhandled API error on {request.path}: {e}")
+        return web.json_response({"status": "error", "message": "Внутренняя ошибка сервера"}, status=200, headers=CORS_HEADERS)
 
 def cors_response(data: dict):
     return web.json_response(data, headers=CORS_HEADERS)
 
 async def handle_options(request):
-    return web.Response(headers=CORS_HEADERS)
+    return web.Response(status=200, headers=CORS_HEADERS)
+
+async def handle_health(request):
+    return cors_response({"status": "ok", "service": "NCHKFU_Schedule_Bot"})
+
+async def safe_json(request) -> dict:
+    try:
+        return await request.json()
+    except Exception:
+        return {}
 
 async def handle_api_auth_poll(request):
     code = request.query.get('code', '').strip().upper()
     if not code: return cors_response({"status": "error"})
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         c = conn.cursor()
         c.execute("SELECT user_id, username, first_name, group_name, status FROM auth_sessions WHERE auth_code = ? AND created_at >= datetime('now', '-15 minutes')", (code,))
         row = c.fetchone()
@@ -940,17 +1012,17 @@ async def handle_api_auth_poll(request):
 
 async def handle_api_track_session(request):
     try:
-        data = await request.json()
+        data = await safe_json(request)
         uid = int(data.get("user_id") or 0)
         username = str(data.get("username") or "").strip()
         first_name = str(data.get("first_name") or "").strip()
         group_name = str(data.get("group_name") or DEFAULT_GROUP).strip()
-        role = "teacher" if data.get("role") == "t" or data.get("role") == "teacher" else "student"
+        role = "teacher" if data.get("role") in ("t", "teacher") else "student"
         platform = str(data.get("platform") or "web").strip()[:32]
         event_type = str(data.get("event_type") or "open_app").strip()[:40]
         detail = str(data.get("detail") or group_name).strip()[:120]
 
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             if uid > 0:
                 c.execute("""
@@ -974,28 +1046,36 @@ async def handle_api_track_session(request):
 
 async def call_groq(messages, max_tokens=700):
     key = os.getenv("GROQ_API_KEY", "").strip()
-    if not key: return None
-    payload = {"model": "openai/gpt-oss-120b", "messages": messages, "temperature": 0.3, "max_tokens": max_tokens}
-    try:
-        async with ClientSession() as session:
-            async with session.post("https://api.groq.com/openai/v1/chat/completions",
-                                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                                    json=payload, timeout=ClientTimeout(total=25)) as resp:
-                if resp.status != 200:
-                    logging.error(f"Groq API status: {resp.status}")
-                    return None
-                res = await resp.json()
-                return res['choices'][0]['message']['content'].replace('**', '').replace('##', '').strip()
-    except Exception as e:
-        logging.error(f"Groq error: {e}")
+    if not key:
         return None
+    models = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    async with ClientSession() as session:
+        for model_name in models:
+            payload = {"model": model_name, "messages": messages, "temperature": 0.3, "max_tokens": max_tokens}
+            try:
+                async with session.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json=payload,
+                    timeout=ClientTimeout(total=22)
+                ) as resp:
+                    if resp.status != 200:
+                        logging.warning(f"Groq API status {resp.status} for {model_name}")
+                        continue
+                    res = await resp.json()
+                    content = res['choices'][0]['message']['content']
+                    if content:
+                        return content.replace('**', '').replace('##', '').strip()
+            except Exception as e:
+                logging.warning(f"Groq error ({model_name}): {e}")
+    return None
 
 def _ai_ok(text, refused=False):
     return cors_response({"status": "ok", "result": text, "refused": refused})
 
 async def handle_api_ai_compress(request):
     try:
-        data = await request.json()
+        data = await safe_json(request)
         raw_text = str(data.get("text", "")).strip()[:12000]
         custom_task = data.get("task", "summary")
         uid_num = int(data.get("user_id") or 0)
@@ -1032,7 +1112,7 @@ async def handle_api_ai_compress(request):
 
 async def handle_api_ai_chat(request):
     try:
-        data = await request.json()
+        data = await safe_json(request)
         q = str(data.get("question", "")).strip()
         teacher_mode = data.get("role") == "teacher"
         uid_num = int(data.get("user_id") or 0)
@@ -1088,22 +1168,25 @@ def admin_ok(token) -> bool:
     return bool(ADMIN_TOKEN) and hmac.compare_digest(t, ADMIN_TOKEN)
 
 def setting_get(key, default=""):
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
-        r = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-        return r[0] if r else default
+    try:
+        with db_connect() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+            r = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+            return r[0] if r is not None else default
+    except Exception:
+        return default
 
 def setting_set(key, value):
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
-        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
         conn.commit()
 
 async def handle_api_announcement(request):
     return cors_response({"status": "ok", "text": setting_get("announcement")})
 
 async def handle_api_admin_announcement(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     setting_set("announcement", str(data.get("text", "")).strip()[:500])
@@ -1112,7 +1195,7 @@ async def handle_api_admin_announcement(request):
 async def handle_api_admin_overview(request):
     if not admin_ok(_extract_token(request)):
         return cors_response({"status": "error", "message": "Нет доступа"})
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         total = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] or 0
         new_today = conn.execute("SELECT COUNT(*) FROM users WHERE date(created_at) = date('now')").fetchone()[0] or 0
         dau = conn.execute("SELECT COUNT(*) FROM users WHERE datetime(COALESCE(last_active_at, created_at)) >= datetime('now', '-24 hours')").fetchone()[0] or 0
@@ -1141,7 +1224,7 @@ async def handle_api_admin_overview(request):
         "ai_logs": [{"uid": r[0], "action": r[1], "q": r[2], "status": r[3], "time": r[4]} for r in ai_logs],
         "broadcast": BROADCAST,
         "announcement": setting_get("announcement"),
-        "feedback_enabled": setting_get("feedback_enabled", "0") == "1"
+        "feedback_enabled": setting_get("feedback_enabled", "1") == "1"
     })
 
 async def handle_api_admin_users_list(request):
@@ -1151,7 +1234,7 @@ async def handle_api_admin_users_list(request):
     sort_by = request.query.get("sort", "active")
     order_sql = " COALESCE(total_launches, 1) DESC " if sort_by == "launches" else " datetime(COALESCE(last_active_at, created_at)) DESC "
 
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         rows = conn.execute(f"""
             SELECT user_id, COALESCE(username, ''), COALESCE(first_name, ''), COALESCE(group_name, ''),
                    COALESCE(role, 'student'), COALESCE(platform, 'bot'), COALESCE(total_launches, 1),
@@ -1174,7 +1257,7 @@ async def handle_api_admin_users_list(request):
     return cors_response({"status": "ok", "users": users[:100], "total_matched": len(users)})
 
 async def handle_api_admin_user_action(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     uid = int(data.get("user_id") or 0)
@@ -1182,7 +1265,7 @@ async def handle_api_admin_user_action(request):
     if not uid:
         return cors_response({"status": "error", "message": "Не указан ID"})
 
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         if act == "toggle_block":
             cur = conn.execute("SELECT COALESCE(is_blocked, 0) FROM users WHERE user_id = ?", (uid,)).fetchone()
             new_v = 0 if (cur and cur[0]) else 1
@@ -1199,7 +1282,7 @@ async def handle_api_admin_user_action(request):
     return cors_response({"status": "error", "message": "Неизвестное действие"})
 
 async def handle_api_admin_ai_limit(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     AI_CONFIG["eco_mode"] = bool(data.get("eco_mode"))
@@ -1212,7 +1295,7 @@ async def handle_api_admin_ai_limit(request):
 async def handle_api_admin_export_csv(request):
     if not admin_ok(_extract_token(request)):
         return web.Response(text="Нет доступа", status=403, headers=CORS_HEADERS)
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         rows = conn.execute("""
             SELECT user_id, username, first_name, group_name, role, platform, total_launches, last_active_at, created_at, is_blocked
             FROM users ORDER BY datetime(COALESCE(last_active_at, created_at)) DESC
@@ -1234,15 +1317,16 @@ async def handle_api_admin_export_csv(request):
 async def handle_api_admin_stats(request):
     if not admin_ok(_extract_token(request)):
         return cors_response({"status": "error", "message": "Нет доступа"})
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         total = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         today = conn.execute("SELECT COUNT(*) FROM users WHERE date(created_at) = date('now')").fetchone()[0]
         top = conn.execute("SELECT group_name, COUNT(*) c FROM users GROUP BY group_name ORDER BY c DESC LIMIT 5").fetchall()
         notes = conn.execute("SELECT COUNT(*) FROM user_notes").fetchone()[0]
+        fb_cnt = conn.execute("SELECT COUNT(*) FROM feedbacks").fetchone()[0]
     lines = [
         f"Пользователей бота: {total} (новых сегодня: {today})",
         "Топ групп: " + (", ".join(f"{g} ({c})" for g, c in top) or "нет данных"),
-        f"Заметок на сервере: {notes}",
+        f"Заметок на сервере: {notes} | Отзывов: {fb_cnt}",
         f"ИИ с запуска сервера: чат {AI_STATS['chat']}, конспекты {AI_STATS['compress']}, отказы {AI_STATS['refused']}, грубость {AI_STATS['blocked']}, лимит {AI_STATS['limited']}",
         f"Рассылка: {BROADCAST['sent']} из {BROADCAST['total']}, ошибок {BROADCAST['failed']}" + ("" if BROADCAST['done'] else " (идёт)")
     ]
@@ -1259,7 +1343,7 @@ async def _broadcast(ids, text):
     BROADCAST["done"] = True
 
 async def handle_api_admin_broadcast(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     text = str(data.get("text", "")).strip()[:3500]
@@ -1268,7 +1352,7 @@ async def handle_api_admin_broadcast(request):
         return cors_response({"status": "error", "message": "Пустой текст"})
     if not BROADCAST["done"]:
         return cors_response({"status": "error", "message": "Предыдущая рассылка ещё идёт"})
-    with sqlite3.connect(DB_FILE) as conn:
+    with db_connect() as conn:
         if target_grp and target_grp != "all":
             ids = [r[0] for r in conn.execute("SELECT user_id FROM users WHERE group_name = ? AND COALESCE(is_blocked, 0) = 0", (target_grp,)).fetchall()]
         else:
@@ -1278,7 +1362,7 @@ async def handle_api_admin_broadcast(request):
     return cors_response({"status": "ok", "total": len(ids)})
 
 async def handle_api_admin_upload(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
     new = data.get("data")
@@ -1299,35 +1383,36 @@ async def handle_api_admin_upload(request):
 
 async def handle_api_save_note(request):
     try:
-        data = await request.json()
+        data = await safe_json(request)
         uid, n_key, n_text = int(data.get("user_id", 0)), data.get("note_key", ""), data.get("note_text", "").strip()
         if not uid or not n_key: return cors_response({"status": "error"})
-        with sqlite3.connect(DB_FILE) as conn:
+        with db_connect() as conn:
             c = conn.cursor()
             if n_text: c.execute("INSERT OR REPLACE INTO user_notes (user_id, note_key, note_text) VALUES (?, ?, ?)", (uid, n_key, n_text))
             else: c.execute("DELETE FROM user_notes WHERE user_id = ? AND note_key = ?", (uid, n_key))
             conn.commit()
         log_event(uid, "save_note", n_key[:40])
         return cors_response({"status": "ok"})
-    except Exception: return cors_response({"status": "error"})
+    except Exception:
+        return cors_response({"status": "error"})
 
 # --- СОЦ. ОПРОС И ОТЗЫВЫ СТУДЕНТОВ ---
 async def handle_api_feedback_status(request):
-    enabled = setting_get("feedback_enabled", "0") == "1"
+    enabled = setting_get("feedback_enabled", "1") == "1"
     return cors_response({"status": "ok", "enabled": enabled})
 
 async def handle_api_admin_toggle_feedback(request):
-    data = await request.json()
+    data = await safe_json(request)
     if not admin_ok(_extract_token(request, data)):
         return cors_response({"status": "error", "message": "Нет доступа"})
-    cur = setting_get("feedback_enabled", "0") == "1"
+    cur = setting_get("feedback_enabled", "1") == "1"
     new_val = "0" if cur else "1"
     setting_set("feedback_enabled", new_val)
     return cors_response({"status": "ok", "enabled": new_val == "1"})
 
 async def handle_api_feedback(request):
     try:
-        data = await request.json()
+        data = await safe_json(request)
         rating = max(1, min(5, int(data.get("rating") or 5)))
         text = str(data.get("text") or "").strip()[:1000]
         uid = int(data.get("user_id") or 0)
@@ -1335,22 +1420,36 @@ async def handle_api_feedback(request):
         first_name = str(data.get("first_name") or "Студент").strip()[:60]
         group_name = str(data.get("group_name") or "Не указана").strip()[:40]
 
+        with db_connect() as conn:
+            conn.execute(
+                "INSERT INTO feedbacks (user_id, username, first_name, group_name, rating, comment) VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, username, first_name, group_name, rating, text)
+            )
+            conn.commit()
+
         stars = "⭐️" * rating
-        user_link = f"@{username}" if username else "без юзернейма"
+        safe_name = html.escape(first_name)
+        safe_user = f"@{html.escape(username)}" if username else "без юзернейма"
+        safe_grp = html.escape(group_name)
+        safe_text = html.escape(text)
         uid_str = f" | ID: <code>{uid}</code>" if uid else ""
 
         msg_lines = [
             "💌 <b>Новый отзыв о расписании!</b>",
             f"Оценка: {stars} (<b>{rating}/5</b>)",
-            f"От: <b>{first_name}</b> ({user_link}{uid_str})",
-            f"Группа: <code>{group_name}</code>",
+            f"От: <b>{safe_name}</b> ({safe_user}{uid_str})",
+            f"Группа: <code>{safe_grp}</code>",
         ]
-        if text:
-            msg_lines.append(f"\n💬 <b>Комментарий:</b>\n{text}")
+        if safe_text:
+            msg_lines.append(f"\n💬 <b>Комментарий:</b>\n{safe_text}")
         else:
             msg_lines.append("\n<i>Без текстового комментария</i>")
 
-        await bot.send_message(ADMIN_ID, "\n".join(msg_lines))
+        try:
+            await bot.send_message(ADMIN_ID, "\n".join(msg_lines))
+        except Exception as tg_err:
+            logging.warning(f"Не удалось доставить отзыв в ЛС ADMIN_ID ({ADMIN_ID}): {tg_err}")
+
         log_event(uid, "send_feedback", f"{rating} stars: {text[:60]}")
         return cors_response({"status": "ok"})
     except Exception as e:
@@ -1358,7 +1457,9 @@ async def handle_api_feedback(request):
         return cors_response({"status": "error", "message": "Не удалось отправить отзыв"})
 
 def create_web_app():
-    app = web.Application(client_max_size=15 * 1024 * 1024)
+    app = web.Application(client_max_size=15 * 1024 * 1024, middlewares=[cors_middleware])
+    app.router.add_get('/', handle_health)
+    app.router.add_get('/api/health', handle_health)
     app.router.add_get('/api/auth_poll', handle_api_auth_poll)
     app.router.add_post('/api/track_session', handle_api_track_session)
     app.router.add_post('/api/ai_compress', handle_api_ai_compress)
@@ -1382,7 +1483,7 @@ def create_web_app():
     return app
 
 async def main():
-    logging.info("Админка: поддерживается вход по PIN 0000 и по токену из кнопки Веб-Админка.")
+    logging.info("Запуск бота и веб-сервера...")
     init_db()
     asyncio.create_task(background_scheduler())
     app = create_web_app()
@@ -1393,17 +1494,21 @@ async def main():
         await site.start()
         logging.info(f"Веб-сервер запущен на порту {PORT}")
     except Exception as e:
-        logging.warning(e)
+        logging.error(f"Ошибка запуска веб-сервера на порту {PORT}: {e}")
 
-    await bot.set_my_commands([
-        BotCommand(command="start", description="Начать"),
-        BotCommand(command="login", description="Код для входа на сайте"),
-        BotCommand(command="profile", description="Профиль и вход на сайте"),
-        BotCommand(command="today", description="Расписание на сегодня"),
-        BotCommand(command="tomorrow", description="Расписание на завтра"),
-        BotCommand(command="settings", description="Настройки"),
-    ])
-    await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await bot.set_my_commands([
+            BotCommand(command="start", description="Начать"),
+            BotCommand(command="login", description="Код для входа на сайте"),
+            BotCommand(command="profile", description="Профиль и вход на сайте"),
+            BotCommand(command="today", description="Расписание на сегодня"),
+            BotCommand(command="tomorrow", description="Расписание на завтра"),
+            BotCommand(command="settings", description="Настройки"),
+        ])
+        await bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        logging.warning(f"Предупреждение при инициализации Telegram API: {e}")
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
