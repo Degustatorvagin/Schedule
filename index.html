@@ -376,6 +376,8 @@ const dispName = () => (me && me.nick) || (me && me.target && me.target.k === 't
 const ADMIN_PIN = '0000';
 const TEACHER_PIN = '1804';
 const API_URL = 'https://bot-1791299850-3323-degustatorvagin.bothost.tech';
+const SUPPORT_URL = 'https://t.me/petproject_support';
+const CHANNEL_URL = 'https://t.me/sovenok_kfu';
 
 const MO = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const MN = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -425,8 +427,12 @@ let calM = ds(NOW());
 let manualWeek = null;
 let homeD = null, calCtx = 's', HB = null, ANN = '';
 let SLIDE = 0, HSL = 0, PSL = 0;
-const SUPPORT_URL = 'https://t.me/AvaUtility_support';
 let aiMode = 'ask';
+
+// Переменные соц. опроса
+let FB_ENABLED = ld('fb_enabled_local') !== null ? Boolean(ld('fb_enabled_local')) : true;
+let FB_RATING = 5;
+let FB_SHOWN_ONCE = false;
 
 const key = t => t.k + ':' + t.n;
 const toast = (m, ic = '') => {
@@ -513,7 +519,13 @@ const I = {
   help: 'M12 22a10 10 0 100-20 10 10 0 000 20zm0-6v.01M9.5 9a2.5 2.5 0 014.6 1.3c0 1.7-2.1 2-2.1 3.2'
 };
 
-const ico = (k, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
+const BI = {
+  tg: 'M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09',
+  pal: 'M12.433 10.07C14.133 10.585 16 11.15 16 8a8 8 0 1 0-8 8c1.996 0 1.826-1.504 1.649-3.08-.124-1.101-.252-2.237.351-2.92.465-.527 1.42-.237 2.433.07M8 5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m4.5 3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M5 6.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m.5 6.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3'
+};
+const ico = (k, s = 22) => BI[k]
+  ? `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 16 16" style="fill:currentColor;stroke:none"><path d="${BI[k]}"/></svg>`
+  : `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="${I[k] || I.h}"/></svg>`;
 const item = (ic, t, sub, a, v = '', r = '') => `<button class="it" data-a="${a}" data-v="${esc(v)}">${(a === 'who' || a === 'pick') ? ava(42) : `<span class="ic">${ico(ic)}</span>`}<span class="t"><b>${esc(t)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${r ? `<span class="mu" style="font-size:13px">${esc(r)}</span>` : '<span class="chev">›</span>'}</button>`;
 
 function tabs() {
@@ -590,14 +602,16 @@ const STORY_C = [['#1F5FEA', '#fff'], ['#fff', '#1F5FEA'], ['#14284B', '#fff'], 
 let SV = { i: 0, tm: 0, list: [] };
 
 const STORY_ART = {
+  tg: (s = 54) => ico('tg', s),
   week: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><rect x="8" y="12" width="48" height="44" rx="12" fill="currentColor" fill-opacity="0.18"/><rect x="8" y="12" width="48" height="14" rx="6" fill="currentColor" fill-opacity="0.32"/><circle cx="20" cy="12" r="3.5" fill="currentColor"/><circle cx="44" cy="12" r="3.5" fill="currentColor"/><path d="M22 38l10-10 10 10H22z" fill="currentColor"/></svg>`,
   ai: (s = 54) => owl(s),
   find: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><circle cx="32" cy="32" r="24" fill="currentColor" fill-opacity="0.16"/><circle cx="32" cy="32" r="15" fill="currentColor" fill-opacity="0.24"/><path d="M32 14c-7.7 0-14 6.3-14 14 0 10.5 14 22 14 22s14-11.5 14-22c0-7.7-6.3-14-14-14zm0 19a5 5 0 110-10 5 5 0 010 10z" fill="currentColor"/></svg>`,
   notes: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><rect x="12" y="8" width="40" height="48" rx="10" fill="currentColor" fill-opacity="0.18"/><rect x="20" y="20" width="24" height="4" rx="2" fill="currentColor"/><rect x="20" y="30" width="18" height="4" rx="2" fill="currentColor"/><path d="M38 42l5 5 11-11" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  look: (s = 54) => `<svg width="${s}" height="${s}" viewBox="0 0 64 64" style="fill:none;stroke:none"><circle cx="32" cy="32" r="24" fill="currentColor" fill-opacity="0.18"/><circle cx="24" cy="24" r="5" fill="#4A90FF"/><circle cx="40" cy="24" r="5" fill="#FF6E6E"/><circle cx="22" cy="38" r="5" fill="#3FADA8"/><circle cx="40" cy="38" r="6" fill="currentColor"/></svg>`
+  look: (s = 54) => ico('pal', s)
 };
 
 function storyIconFor(id, size) {
+  if (String(id).startsWith('tg')) return STORY_ART.tg(size);
   if (String(id).startsWith('week')) return STORY_ART.week(size);
   return (STORY_ART[id] || STORY_ART.ai)(size);
 }
@@ -606,6 +620,7 @@ function storyListBase() {
   const now = NOW(), m = mon(now), e = new Date(m); e.setDate(m.getDate() + 6);
   const code = getWeek(now), up = code === 'в', rng = `${m.getDate()} ${MO[m.getMonth()]} - ${e.getDate()} ${MO[e.getMonth()]}`;
   return [
+    { id: 'tg-chan', c: 'Телеграм-канал', t: 'Телеграм-канал', s: 'Новости и обновления', p: 'Подписывайся на официальный канал проекта: там выходят новости обновлений, инсайды и полезные фишки для учёбы в НЧИ КФУ.', b: 'Перейти в ТГК', a: 'tg_chan', v: '' },
     { id: 'week-' + code, c: `Сейчас ${up ? 'верхняя' : 'нижняя'} неделя`, t: `Сейчас ${up ? 'верхняя' : 'нижняя'} неделя`, s: 'Неделя ' + rng, p: `На верхней и нижней неделе расписание разное. После этой будет ${up ? 'нижняя' : 'верхняя'}. Если в вашей группе всё наоборот, переключи неделю значком в расписании.`, b: 'Открыть расписание', a: 'tab', v: 's' },
     { id: 'ai', c: 'Совёнок AI', t: 'Совёнок AI', s: 'Конспекты и учёба', p: 'Объясню тему, разберу задачу и сожму лекцию в конспект. Ещё знаю расписание групп и преподавателей.', b: 'Спросить Совёнка', a: 'tab', v: 'a' },
     { id: 'find', c: 'Где препод или друг?', t: 'Где препод?', s: 'Поиск кабинета', p: 'Узнай, в какой аудитории сейчас преподаватель или друг и что у него дальше. Добавь в избранное, и он появится на главной.', b: 'Найти', a: 'tab', v: 'f' },
@@ -617,9 +632,9 @@ function storyListBase() {
 function storyList() {
   const arr = storyListBase();
   if (isT()) {
-    arr[1] = { ...arr[1], p: 'Подскажу идею, как объяснить тему, составлю вопросы для студентов и сожму материал в тезисы. Знаю расписание групп и коллег.' };
-    arr[2] = { ...arr[2], c: 'Где группа?', t: 'Где группа?', p: 'Узнай, в какой аудитории сейчас группа и что у неё дальше. Добавь в избранное, и она появится на главной.' };
-    arr[3] = { ...arr[3], c: 'Заметки к занятиям', t: 'Заметки к занятиям', p: 'Нажми на занятие и запиши, что провести и что проверить. Заметкой можно поделиться.' };
+    arr[2] = { ...arr[2], p: 'Подскажу идею, как объяснить тему, составлю вопросы для студентов и сожму материал в тезисы. Знаю расписание групп и коллег.' };
+    arr[3] = { ...arr[3], c: 'Где группа?', t: 'Где группа?', p: 'Узнай, в какой аудитории сейчас группа и что у неё дальше. Добавь в избранное, и она появится на главной.' };
+    arr[4] = { ...arr[4], c: 'Заметки к занятиям', t: 'Заметки к занятиям', p: 'Нажми на занятие и запиши, что провести и что проверить. Заметкой можно поделиться.' };
   }
   return arr;
 }
@@ -666,17 +681,97 @@ function storyClose() { clearTimeout(SV.tm); $('story').classList.remove('on'); 
 const PENCIL = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5a2.1 2.1 0 0 1 3 3L8 19zM14 7l3 3"/></svg>';
 const shortType = t => { t = (t || '').toLowerCase(); return t.startsWith('лек') ? 'лек.' : t.startsWith('лаб') ? 'лаб.' : t.startsWith('пр') ? 'пр.' : (t || 'пара'); };
 
+// --- ШЕРИНГ РАСПИСАНИЯ НА ДЕНЬ (БЕЗ ВЕРХНЕЙ ССЫЛКИ И БЕЗ ПУСТЫХ СТРОК) ---
+function shareScheduleDay(targetDate) {
+  if (!me || !me.target) return;
+  const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
+  const t = me.target;
+  const d = targetDate || date || ds(NOW());
+  const gi = d.getDay();
+  const w = getWeek(d);
+  const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][gi];
+  const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
+  const whoLabel = t.k === 't' ? `Преподаватель ${clean(t.n)}` : `Группа ${clean(t.n)}`;
+  const wkLabel = w === 'в' ? 'верхняя неделя' : 'нижняя неделя';
+
+  const lines = [`📅 ${wd}, ${d.getDate()} ${MO[d.getMonth()]} (${wkLabel})`, `👥 ${whoLabel}`, ''];
+  if (!L.length) {
+    lines.push('🎉 Пар нет! Свободный день.');
+  } else {
+    L.forEach((l, i) => {
+      const [a, e] = span(l);
+      const no = (BELLS[l.time.slice(0, 5)] || [])[1] || (i + 1);
+      const tp = l.type ? ` (${clean(shortType(l.type))})` : '';
+      const loc = [l.room ? `ауд. ${clean(l.room)}` : '', clean(l.building)].filter(Boolean).join(', ');
+      const extra = t.k === 't' ? (l.group ? ` · гр. ${clean(l.group)}` : '') : (l.teacher ? ` · ${clean(l.teacher)}` : '');
+      lines.push(`${no}. ${hm(a)}–${hm(e)} · ${clean(l.subject)}${tp}${loc ? ' — ' + loc : ''}${extra}`);
+    });
+  }
+  lines.push('', `🦉 Расписание НЧИ КФУ: @${BOT}`);
+  const fullText = lines.join('\n');
+  const shareUrl = `https://t.me/share/url?url=&text=${encodeURIComponent(fullText)}`;
+
+  if (TG && typeof TG.openTelegramLink === 'function' && TG.initData) {
+    try { TG.openTelegramLink(shareUrl); return; } catch (e) {}
+  }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(fullText).then(
+      () => toast('Расписание скопировано!', '✓'),
+      () => {}
+    );
+  }
+  window.open(shareUrl, '_blank');
+}
+
+// --- ВСПЛЫВАЮЩЕЕ ОКНО СОЦ. ОПРОСА (ШТОРКА ПРИ ВХОДЕ) ---
+async function loadFeedbackStatus() {
+  try {
+    const r = await fetch(`${API_URL}/api/feedback_status`);
+    const d = await r.json();
+    if (d && d.status === 'ok') {
+      FB_ENABLED = Boolean(d.enabled);
+      sv('fb_enabled_local', FB_ENABLED);
+    }
+  } catch (e) {}
+  maybeShowFeedbackPopup();
+}
+
+function maybeShowFeedbackPopup() {
+  if (!me || !me.target || !FB_ENABLED || ld('feedback_sent') || FB_SHOWN_ONCE) return;
+  if ($('sheet').classList.contains('on') || $('adm').classList.contains('on')) return;
+  FB_SHOWN_ONCE = true;
+  setTimeout(() => {
+    if ($('sheet').classList.contains('on') || $('adm').classList.contains('on')) return;
+    openFeedbackSheet();
+  }, 600);
+}
+
+function openFeedbackSheet() {
+  const stars = [1, 2, 3, 4, 5].map(n =>
+    `<button type="button" data-a="fbrate" data-v="${n}" style="font-size:32px;padding:4px 8px;transform:${n <= FB_RATING ? 'scale(1.1)' : 'scale(0.95)'};opacity:${n <= FB_RATING ? '1' : '0.3'}">⭐️</button>`
+  ).join('');
+  $('pnl').innerHTML = `
+    <div class="sh-h"><h1>Как вам расписание?</h1></div>
+    <div class="mu" style="margin-bottom:12px">Оцените приложение и напишите, что стоит добавить или улучшить:</div>
+    <div style="display:flex;justify-content:center;gap:4px;margin:6px 0 14px" id="fb_stars">${stars}</div>
+    <textarea class="fld" id="fb_text" rows="3" placeholder="Ваши идеи, замечания или пожелания..."></textarea>
+    <button class="btn" data-a="fbsend">Отправить отзыв</button>
+    <button class="btn gl" data-a="close">Позже</button>`;
+  $('sheet').classList.add('on');
+}
+
 function compactDay(t, d) {
   const now = NOW(), w = getWeek(d), gi = d.getDay(), nm = now.getHours() * 60 + now.getMinutes(), today = same(d, now);
   const L = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]);
   CUR = L; LD = ds(d); HB = ds(d);
   const wd = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'][gi];
-  let h = `<div class="cmp g${HSL ? ' slide' : ''}" style="--dx:${HSL * 28}px"><div class="cmp-h"><button class="ar" data-a="hd" data-v="-1" aria-label="Назад">‹</button><span class="cmp-d">${wd}, ${d.getDate()} ${MO[d.getMonth()]}<small>${w === 'в' ? 'верхняя' : 'нижняя'} неделя</small></span><button class="ar" data-a="hd" data-v="1" aria-label="Вперёд">›</button><button class="cmp-c" data-a="calh" aria-label="Календарь">${ico('cal', 22)}</button></div>`;
+  let h = `<div class="cmp g${HSL ? ' slide' : ''}" style="--dx:${HSL * 28}px"><div class="cmp-h"><button class="ar" data-a="hd" data-v="-1" aria-label="Назад">‹</button><span class="cmp-d">${wd}, ${d.getDate()} ${MO[d.getMonth()]}<small>${w === 'в' ? 'верхняя' : 'нижняя'} неделя</small></span><button class="ar" data-a="hd" data-v="1" aria-label="Вперёд">›</button><button class="cmp-c" data-a="shday_h" aria-label="Поделиться днём" title="Поделиться расписанием">${ico('share', 20)}</button><button class="cmp-c" data-a="calh" aria-label="Календарь">${ico('cal', 22)}</button></div>`;
   if (!L.length) { const em = emptyMsg(t, gi === 0 ? 'sun' : 'none'); h += `<div class="empty" style="padding:28px 10px"><b>${gi === 0 ? em.h : em.t}</b>${em.s}</div>`; }
   L.forEach((l, i) => {
     const [a, e] = span(l), live = today && nm >= a && nm < e, note = NOTES[nk(d, l)], no = (BELLS[l.time.slice(0, 5)] || [])[1] || i + 1;
     h += `<button class="cr" data-a="les" data-v="${i}"><div class="cr-t"><span class="nb${live ? ' on' : ''}">${no}</span><span>${esc(shortType(l.type))}</span><span class="tm">${hm(a)} - ${hm(e)}</span></div><div class="cr-n"><span class="cn">${esc(l.subject)}</span><span class="pn${note ? ' on' : ''}">${PENCIL}</span></div><div class="cr-w">${esc(t.k === 't' ? (l.group || '') : (l.teacher || ''))}</div><div class="cr-r">${l.room ? 'ауд.' + esc(l.room) : ''}${l.building ? (l.room ? ', ' : '') + esc(l.building) : ''}</div></button>`;
   });
+  h += `<button class="it" data-a="shday_h" style="justify-content:center;color:var(--ac);font-weight:700;padding:13px;border-top:1px solid var(--ln)">${ico('share', 18)}<span style="margin-left:6px">Поделиться днём</span></button>`;
   HSL = 0;
   return h + '</div>';
 }
@@ -756,7 +851,11 @@ function sched() {
   let h = `
     <div class="top">
       <div class="who"><h1>${esc(t.n)}</h1><small>${esc(sp)}</small></div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;"><button class="ib g" data-a="cal">${ico('cal', 18)}</button>${wkPill(date)}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+        <button class="ib g" data-a="shday_s" aria-label="Поделиться днём" title="Поделиться днём">${ico('share', 18)}</button>
+        <button class="ib g" data-a="cal" aria-label="Календарь">${ico('cal', 18)}</button>
+        ${wkPill(date)}
+      </div>
     </div>
     <div class="day-nav-bar">
       <button class="ar" data-a="shift" data-v="-1" aria-label="Предыдущий день">‹</button>
@@ -774,6 +873,7 @@ function sched() {
   h += `<div class="strip g">${s}</div>`;
   CUR = gi === 0 ? [] : lessonsOf(t, w, DN[gi - 1]); LD = null;
   h += `<div id="lst" class="slide" style="--dx:${SLIDE * 28}px">${dayHtml(t, date, true)}</div>`;
+  h += `<button class="btn gl" data-a="shday_s" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px">${ico('share', 18)}<span>Поделиться днём</span></button>`;
   $('page').innerHTML = h;
   $('today').hidden = same(date, now); SLIDE = 0;
 }
@@ -790,7 +890,17 @@ function find() {
 }
 
 function flist() {
-  const now = NOW(), n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), q = n($('fq') ? $('fq').value : '');
+  const rawQ = ($('fq') ? $('fq').value : '').trim().toLowerCase();
+  if (rawQ === 'создатель' || rawQ === 'совенок' || rawQ === 'совёнок') {
+    $('flist').innerHTML = `<div class="box g" style="text-align:center;padding:24px 18px;border:1.5px solid var(--ac)">
+      <div style="margin:0 auto 10px;width:64px;height:64px">${owl(64)}</div>
+      <b style="font-size:18px;display:block">Тайный Архитектор НЧИ КФУ</b>
+      <div class="mu" style="margin:6px 0 14px">Сделано студентом для студентов и преподавателей. Без скучных экселек.</div>
+      <a class="btn" href="${CHANNEL_URL}" target="_blank" rel="noopener">Перейти в ТГК</a>
+    </div>`;
+    return;
+  }
+  const now = NOW(), n = s => s.toLowerCase().replace(/[^a-z0-9а-яё]/g, ''), q = n(rawQ);
   let ls = seg === 'f' ? (me.fav || []) : (seg === 'g' ? Object.keys(DATA) : Object.keys(T)).sort((a,b)=>a.localeCompare(b,'ru'));
   const filtered = seg === 'f' ? ls.filter(x => !q || n(x.n).includes(q)) : ls.filter(k => !q || n(k).includes(q));
   if (!filtered.length) { $('flist').innerHTML = '<div class="empty"><b>Ничего не найдено</b></div>'; return; }
@@ -966,7 +1076,7 @@ async function aiSend(txt) {
   await aiCompress(q, aiMode);
 }
 
-// --- ПРОФИЛЬ ---
+// --- ПРОФИЛЬ (БЕЗ ЮЗЕРНЕЙМОВ) ---
 function prof() {
   const isTeacher = me && me.target && me.target.k === 't';
   const userName = dispName() || (isTeacher ? 'Преподаватель' : 'Студент НЧИ КФУ');
@@ -983,11 +1093,12 @@ function prof() {
     </div>
     <div class="lab2">Аккаунт</div>
     <div class="box g pad">
-      ${isAuth ? item('tg', me.tgUser.first_name, (me.tgUser.username ? '@' + me.tgUser.username + ', ' : '') + 'заметки сохраняются на сервере', 'x') : item('tg', 'Войти через Telegram', 'Откроется бот, там подтверди вход', 'auth')}
+      ${isAuth ? item('tg', me.tgUser.first_name, 'Заметки сохраняются на сервере', 'x') : item('tg', 'Войти через Telegram', 'Откроется бот, там подтверди вход', 'auth')}
     </div>
-    <div class="lab2">Техподдержка</div>
+    <div class="lab2">Связь и новости</div>
     <div class="box g pad">
-      <a class="it" href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="ic">${ico('help')}</span><span class="t"><b>Задать вопрос</b><small>Есть вопрос? Напишите нам.</small></span><span class="chev">›</span></a>
+      <a class="it" href="${CHANNEL_URL}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="ic">${ico('tg')}</span><span class="t"><b>Телеграм-канал</b><small>Новости и обновления проекта</small></span><span class="chev">›</span></a>
+      <a class="it" href="${SUPPORT_URL}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="ic">${ico('help')}</span><span class="t"><b>Техподдержка</b><small>Есть вопрос? Напишите нам</small></span><span class="chev">›</span></a>
     </div>
     <div class="lab2">Приложение</div>
     <div class="box g pad">
@@ -995,7 +1106,7 @@ function prof() {
       ${item('pal', 'Внешний вид', 'Тема и цвет акцента', 'look')}
     </div>
     <button class="plain" data-a="reset">Сбросить данные на устройстве</button>
-    <button class="mu verb" data-a="ver">НЧИ КФУ, версия 2.2</button>`;
+    <button class="mu verb" data-a="ver">НЧИ КФУ, версия 2.3</button>`;
 }
 
 function lookOpen() {
@@ -1062,7 +1173,7 @@ const closeS = () => $('sheet').classList.remove('on');
 function authOpen() {
   $('pnl').innerHTML = `<h1 style="font-size:24px">Вход через Telegram</h1><div class="mu" style="margin:6px 0 14px">Бот даст код, ты введёшь его здесь. Группа и заметки подтянутся сами.</div>
     <div class="box g" style="padding:6px 16px">
-      <div class="it"><span class="cstep">1</span><span class="t"><b>Открой бота</b><small>@${BOT}</small></span></div>
+      <div class="it"><span class="cstep">1</span><span class="t"><b>Открой бота</b><small>В Telegram</small></span></div>
       <div class="it"><span class="cstep">2</span><span class="t"><b>Отправь команду /login</b><small>или /profile, это одно и то же</small></span></div>
       <div class="it"><span class="cstep">3</span><span class="t"><b>Введи код из ответа</b><small>Он действует 15 минут</small></span></div>
     </div>
@@ -1146,7 +1257,7 @@ function trackSession(eventType = 'open_app', detail = '') {
   } catch (e) {}
 }
 
-// --- АДМИНКА (4 ВКЛАДКИ + ВСЕ ФУНКЦИИ УПРАВЛЕНИЯ) ---
+// --- АДМИНКА (4 ВКЛАДКИ + УПРАВЛЕНИЕ ОТЗЫВАМИ) ---
 let ADM_TOKEN = '', ADM_PENDING = null;
 let admTab = 'overview', admOverviewData = null, admUsersCache = [], admUserSearch = '', admUserSort = 'active';
 const ERRLOG = []; window.addEventListener('error', e => ERRLOG.push(e.message));
@@ -1294,6 +1405,13 @@ function adminOpen() {
       </div>`;
   } else {
     body = `
+      <div class="box g" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <b>Сбор отзывов при входе</b>
+          <div class="mu">Всплывающее окно оценки 1–5 ⭐️ и отзыва</div>
+        </div>
+        <button class="pill g" style="${FB_ENABLED ? 'background:var(--ac);color:#fff' : ''}" data-adm="toggle_fb">${FB_ENABLED ? 'Включено' : 'Выключено'}</button>
+      </div>
       <div class="box g"><b>Данные</b><div class="mu">Групп ${Object.keys(DATA).length}, преподавателей ${Object.keys(T).length}, пар ${n}. Источник: ${ld('data') ? 'кэш schedule.json' : 'встроено в страницу'}</div></div>
       <div class="box g"><b>Новое расписание</b><div class="mu" style="margin:4px 0 8px">Файл schedule.json. Сначала проверим и покажем на этом устройстве, потом можно отправить всем.</div><input class="fld" type="file" id="adm_file" accept=".json,application/json"><button class="btn" data-adm="upload">Отправить на сервер</button><button class="btn gl" data-adm="reset">Вернуть встроенное расписание</button></div>
       <div class="box g"><b>Проверка расписания (${bad.length})</b><div class="log">${esc(bad.slice(0, 12).join('\n') || 'Ошибок не найдено')}</div></div>
@@ -1335,6 +1453,20 @@ async function admAct(a, btn) {
     if (admTab === 'overview' || admTab === 'ai') fetchAdmOverview();
     if (admTab === 'users') fetchAdmUsers();
     return adminOpen();
+  }
+  if (a === 'toggle_fb') {
+    FB_ENABLED = !FB_ENABLED;
+    sv('fb_enabled_local', FB_ENABLED);
+    try {
+      const d = await admApi('/api/admin/toggle_feedback', {});
+      if (d && d.status === 'ok') {
+        FB_ENABLED = Boolean(d.enabled);
+        sv('fb_enabled_local', FB_ENABLED);
+      }
+    } catch (e) {}
+    toast(FB_ENABLED ? 'Сбор отзывов включён' : 'Сбор отзывов выключен');
+    adminOpen();
+    return;
   }
   if (a === 'usort_active' || a === 'usort_launches') {
     admUserSort = a === 'usort_launches' ? 'launches' : 'active';
@@ -1455,8 +1587,56 @@ const A = {
   wday: v => { const m = mon(NOW()); m.setDate(m.getDate() + +v); date = m; go('s'); },
   story: v => { const el = document.querySelector('.story[data-v="' + v + '"]'); storyOpen(v, el && el.getBoundingClientRect ? el.getBoundingClientRect() : null); },
   storyx: () => storyClose(), storynext: () => storyStep(1), storyprev: () => storyStep(-1),
-  storygo: () => { const s = SV.list[SV.i]; storyClose(); setTimeout(() => { if (s.a === 'tab') go(s.v); else if (s.a === 'look') lookOpen(); }, 200); },
-  closeadm: () => $('adm').classList.remove('on')
+  storygo: () => {
+    const s = SV.list[SV.i];
+    storyClose();
+    setTimeout(() => {
+      if (s.a === 'tg_chan') window.open(CHANNEL_URL, '_blank');
+      else if (s.a === 'tab') go(s.v);
+      else if (s.a === 'look') lookOpen();
+    }, 200);
+  },
+  closeadm: () => $('adm').classList.remove('on'),
+  shday_h: () => shareScheduleDay(HB || homeD || ds(NOW())),
+  shday_s: () => shareScheduleDay(date || ds(NOW())),
+  fbrate: v => {
+    FB_RATING = +v;
+    const wrap = $('fb_stars');
+    if (wrap) {
+      wrap.innerHTML = [1, 2, 3, 4, 5].map(n =>
+        `<button type="button" data-a="fbrate" data-v="${n}" style="font-size:32px;padding:4px 8px;transform:${n <= FB_RATING ? 'scale(1.1)' : 'scale(0.95)'};opacity:${n <= FB_RATING ? '1' : '0.3'}">⭐️</button>`
+      ).join('');
+    }
+  },
+  fbsend: async () => {
+    const el = $('fb_text');
+    const txt = el ? el.value.trim() : '';
+    const u = (me && me.tgUser) || tgU || {};
+    try {
+      const r = await fetch(`${API_URL}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating: FB_RATING,
+          text: txt,
+          user_id: u.id || 0,
+          username: u.username || '',
+          first_name: dispName() || u.first_name || 'Студент',
+          group_name: (me && me.target && me.target.n) || ''
+        })
+      });
+      const d = await r.json();
+      if (d && d.status === 'ok') {
+        sv('feedback_sent', true);
+        closeS();
+        toast('Спасибо за отзыв!', '❤️');
+      } else {
+        toast('Не удалось отправить, попробуй позже');
+      }
+    } catch (e) {
+      toast('Сервер недоступен');
+    }
+  }
 };
 
 document.addEventListener('click', e => { const c = e.target.closest('[data-a]'); if (c && A[c.dataset.a]) A[c.dataset.a](c.dataset.v); });
@@ -1502,6 +1682,7 @@ fetch('./schedule.json')
   .catch(() => {});
 
 loadAnn();
+loadFeedbackStatus();
 checkAdminUrl();
 setTimeout(() => trackSession('open_app'), 700);
 
